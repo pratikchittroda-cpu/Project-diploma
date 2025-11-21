@@ -128,7 +128,7 @@ export default function AppNavigator() {
           name="Profile"
           component={ProfileScreen}
           options={{
-            animation: 'slide_from_right',
+            animation: 'fade',
             animationDuration: 300,
           }}
         />
@@ -172,7 +172,7 @@ export default function AppNavigator() {
             animationDuration: 300,
           }}
         />
-        
+
         {/* Personal Profile Screens */}
         <Stack.Screen
           name="EditProfile"
@@ -214,7 +214,7 @@ export default function AppNavigator() {
             animationDuration: 300,
           }}
         />
-        
+
         {/* Company Profile Screens */}
         <Stack.Screen
           name="EditCompanyProfile"

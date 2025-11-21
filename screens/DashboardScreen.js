@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -11,6 +12,7 @@ import {
   ActivityIndicator,
   StatusBar,
   RefreshControl,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,24 +21,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function DashboardScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
-  
-  // Don't render until theme is loaded - check this BEFORE other hooks
-  if (isLoading || !theme) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.background || '#f8f9fa' }}>
-        <StatusBar backgroundColor={theme?.background || '#f8f9fa'} barStyle={theme?.statusBarStyle || 'dark-content'} translucent={true} />
-        <ActivityIndicator size="large" color={theme?.primary || '#667eea'} />
-      </View>
-    );
-  }
-
   const { user, userData } = useAuth();
   const { transactions, loading: transactionsLoading, getTransactionStats, refresh: refreshTransactions } = useTransactions();
-  const [selectedPeriod, setSelectedPeriod] = useState('This Month');
+
   const [recentActions, setRecentActions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({
@@ -52,6 +43,15 @@ export default function DashboardScreen({ navigation }) {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
 
+  // Don't render until theme is loaded
+  if (isLoading || !theme) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
+
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -60,41 +60,29 @@ export default function DashboardScreen({ navigation }) {
     return 'Good Evening';
   };
 
-  // Auto refresh functionality when screen becomes active
+  // Auto refresh functionality
   const autoRefresh = async () => {
     try {
-      // Refresh transactions silently (this will trigger stats recalculation)
       await refreshTransactions();
-
-      // Reload recent actions
       await loadRecentActions();
     } catch (error) {
       // Error auto-refreshing dashboard
     }
   };
 
-  // Manual refresh functionality (keeping for optional pull-to-refresh)
+  // Manual refresh
   const onRefresh = async () => {
     setRefreshing(true);
-
     try {
-      // Refresh transactions first (this will trigger stats recalculation)
       await refreshTransactions();
-
-      // Reload recent actions
       await loadRecentActions();
-
-      // Add a small delay for better UX
-      setTimeout(() => {
-        setRefreshing(false);
-      }, 500);
-
+      setTimeout(() => setRefreshing(false), 500);
     } catch (error) {
       setRefreshing(false);
     }
   };
 
-  // Load dashboard statistics from Firebase - recalculate whenever transactions change
+  // Load dashboard statistics
   useEffect(() => {
     const calculateDashboardStats = () => {
       if (!transactions || transactions.length === 0) {
@@ -108,7 +96,6 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
-      // Calculate total balance (all income - all expenses)
       const totalIncome = transactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
@@ -141,40 +128,32 @@ export default function DashboardScreen({ navigation }) {
         totalBalance,
         monthlyIncome,
         monthlyExpenses,
-        budgetUsed: monthlyExpenses, // Current month expenses as budget used
+        budgetUsed: monthlyExpenses,
         budgetLimit: userData?.monthlyBudget || 0,
       });
     };
 
     calculateDashboardStats();
-  }, [transactions, userData]); // Recalculate when transactions or user data changes
+  }, [transactions, userData]);
 
-  // Auto-refresh functionality
+  // Auto-refresh interval
   useEffect(() => {
-    // Auto-refresh every 30 seconds
     const autoRefreshInterval = setInterval(() => {
-      if (refreshTransactions) {
-        refreshTransactions();
-      }
+      if (refreshTransactions) refreshTransactions();
     }, 30000);
 
-    // Listen for navigation focus to refresh data
     const unsubscribe = navigation.addListener('focus', () => {
-      if (refreshTransactions) {
-        refreshTransactions();
-      }
+      if (refreshTransactions) refreshTransactions();
       loadRecentActions();
     });
 
     return () => {
       clearInterval(autoRefreshInterval);
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      if (unsubscribe) unsubscribe();
     };
   }, [navigation, refreshTransactions]);
 
-  // Helper function for category icons - MUST be defined before use
+  // Helper for icons
   const getCategoryIcon = (category) => {
     const iconMap = {
       food: 'food',
@@ -187,57 +166,39 @@ export default function DashboardScreen({ navigation }) {
       business: 'briefcase',
       other: 'help-circle'
     };
-    return iconMap[category] || 'help-circle';
+    return iconMap[category?.toLowerCase()] || 'help-circle';
   };
 
-  // Get recent transactions for display
+  // Recent transactions
   const recentTransactions = transactions.slice(0, 5).map(transaction => ({
     ...transaction,
     icon: getCategoryIcon(transaction.category)
   }));
 
+  // Animations and Initial Load
   useEffect(() => {
-    // Entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
-        tension: 80,
+        tension: 60,
         friction: 8,
         useNativeDriver: true,
       }),
       Animated.spring(cardScale, {
         toValue: 1,
-        tension: 100,
+        tension: 80,
         friction: 8,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Load recent actions
     loadRecentActions();
-
-    // Auto-refresh data every 30 seconds
-    const autoRefreshInterval = setInterval(() => {
-      autoRefresh();
-    }, 30000);
-
-    // Listen for navigation focus to auto-refresh and update recent actions
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadRecentActions();
-      // Auto-refresh dashboard data when screen becomes active
-      autoRefresh();
-    });
-
-    return () => {
-      clearInterval(autoRefreshInterval);
-      unsubscribe();
-    };
-  }, [navigation]);
+  }, []);
 
   const loadRecentActions = async () => {
     try {
@@ -245,48 +206,38 @@ export default function DashboardScreen({ navigation }) {
       if (stored) {
         setRecentActions(JSON.parse(stored));
       } else {
-        // Default actions if none stored
         setRecentActions([
           { id: 'transactions', name: 'Transactions', icon: 'swap-vertical', color: '#4CAF50' },
           { id: 'budget', name: 'Budget', icon: 'wallet', color: '#2196F3' },
           { id: 'stats', name: 'Statistics', icon: 'chart-pie', color: '#FF9800' },
-          { id: 'add', name: 'Add Transaction', icon: 'plus-circle', color: '#9C27B0' },
+          { id: 'add', name: 'Add', icon: 'plus-circle', color: '#9C27B0' },
         ]);
       }
     } catch (error) {
-      // Error loading recent actions
+      console.error('Error loading recent actions:', error);
     }
   };
 
   const updateRecentActions = async (actionId, actionName, actionIcon, actionColor) => {
     try {
       const newAction = { id: actionId, name: actionName, icon: actionIcon, color: actionColor, timestamp: Date.now() };
-
       let updatedActions = recentActions.filter(action => action.id !== actionId);
       updatedActions.unshift(newAction);
-      updatedActions = updatedActions.slice(0, 4); // Keep only 4 most recent
-
+      updatedActions = updatedActions.slice(0, 4);
       setRecentActions(updatedActions);
       await AsyncStorage.setItem('personal_recent_actions', JSON.stringify(updatedActions));
     } catch (error) {
-      // Error updating recent actions
+      console.error('Error updating recent actions:', error);
     }
   };
 
   const formatCurrency = (amount) => {
-    return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
-  };
-
-  const getTransactionIcon = (category) => {
-    const icons = {
-      food: 'food',
-      transport: 'car',
-      shopping: 'shopping',
-      salary: 'cash',
-      freelance: 'laptop',
-      cash: 'cash-multiple',
-    };
-    return icons[category.toLowerCase()] || 'wallet';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   const handleProfilePress = () => {
@@ -295,35 +246,36 @@ export default function DashboardScreen({ navigation }) {
 
   const renderOverviewCard = () => (
     <Animated.View style={[styles.overviewCard, { opacity: fadeAnim, transform: [{ scale: cardScale }] }]}>
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        style={styles.overviewGradient}
-      >
-        <View style={styles.overviewHeader}>
-          <Text style={styles.overviewTitle}>Total Balance</Text>
-          <TouchableOpacity>
-            <Icon name="eye-outline" size={20} color="white" />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.balanceAmount}>{formatCurrency(dashboardStats.totalBalance)}</Text>
+      <View style={styles.overviewHeader}>
+        <Text style={styles.overviewTitle}>Total Balance</Text>
+        <TouchableOpacity>
+          <Icon name="eye-outline" size={20} color="rgba(255,255,255,0.8)" />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.balanceAmount}>{formatCurrency(dashboardStats.totalBalance)}</Text>
 
-        <View style={styles.incomeExpenseRow}>
-          <View style={styles.incomeExpenseItem}>
-            <Icon name="trending-up" size={16} color="#4CAF50" />
+      <View style={styles.incomeExpenseRow}>
+        <View style={styles.incomeExpenseItem}>
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
+            <Icon name="arrow-down-circle" size={20} color="#4CAF50" />
+          </View>
+          <View>
             <Text style={styles.incomeExpenseLabel}>Income</Text>
             <Text style={styles.incomeAmount}>{formatCurrency(dashboardStats.monthlyIncome)}</Text>
           </View>
-          <View style={styles.incomeExpenseItem}>
-            <Icon name="trending-down" size={16} color="#FF5252" />
+        </View>
+        <View style={styles.incomeExpenseItem}>
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(255, 82, 82, 0.2)' }]}>
+            <Icon name="arrow-up-circle" size={20} color="#FF5252" />
+          </View>
+          <View>
             <Text style={styles.incomeExpenseLabel}>Expenses</Text>
             <Text style={styles.expenseAmount}>{formatCurrency(dashboardStats.monthlyExpenses)}</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
-
-
 
   const renderTransactionItem = (transaction, index) => (
     <Animated.View
@@ -338,10 +290,10 @@ export default function DashboardScreen({ navigation }) {
     >
       <View style={[
         styles.transactionIcon,
-        { backgroundColor: transaction.type === 'income' ? '#E8F5E8' : '#FFF3E0' }
+        { backgroundColor: transaction.type === 'income' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)' }
       ]}>
         <Icon
-          name={getTransactionIcon(transaction.category)}
+          name={getCategoryIcon(transaction.category)}
           size={20}
           color={transaction.type === 'income' ? '#4CAF50' : '#FF9800'}
         />
@@ -361,137 +313,144 @@ export default function DashboardScreen({ navigation }) {
     </Animated.View>
   );
 
-  const styles = createStyles(theme);
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="transparent" barStyle={theme.statusBarStyle} translucent={true} />
-      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-        <View>
-          <Text style={styles.greeting}>
-            {getGreeting()}, {userData?.fullName || 'User'}!
-          </Text>
-          <Text style={styles.userName}>Welcome back to your dashboard</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={handleProfilePress}
-        >
-          <Icon name="account-circle" size={40} color={theme.primary} />
-        </TouchableOpacity>
-      </Animated.View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+
+      {/* Background */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.background}
+      />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <View>
+            <Text style={styles.greeting}>
+              {getGreeting()}, {userData?.fullName || 'User'}!
+            </Text>
+            <Text style={styles.userName}>Welcome back</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={handleProfilePress}
+          >
+            <Icon name="account-circle" size={40} color="rgba(255,255,255,0.9)" />
+          </TouchableOpacity>
+        </Animated.View>
 
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.primary]}
-            tintColor={theme.primary}
-            title="Pull to refresh"
-            titleColor={theme.textSecondary}
-          />
-        }
-      >
-        {/* Overview Section */}
-        {renderOverviewCard()}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="white"
+            />
+          }
+        >
+          {/* Overview Section */}
+          {renderOverviewCard()}
 
+          {/* Recent Actions Section */}
+          <Animated.View style={[styles.sectionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.recentActionsGrid}>
+              {recentActions.map((action) => (
+                <TouchableOpacity
+                  key={action.id}
+                  style={styles.recentActionButton}
+                  onPress={() => {
+                    updateRecentActions(action.id, action.name, action.icon, action.color);
+                    if (action.id === 'transactions') navigation.navigate('Transactions');
+                    else if (action.id === 'budget') navigation.navigate('Budget');
+                    else if (action.id === 'stats') navigation.navigate('Stats');
+                    else if (action.id === 'add') navigation.navigate('AddTransaction');
+                  }}
+                >
+                  <View style={[styles.actionIconContainer, { backgroundColor: `${action.color} 30` }]}>
+                    <Icon name={action.icon} size={24} color={action.color} />
+                  </View>
+                  <Text style={styles.recentActionText}>{action.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
 
-
-        {/* Recent Actions Section */}
-        <Animated.View style={[styles.recentActionsSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <Text style={styles.sectionTitle}>Recent Actions</Text>
-          <View style={styles.recentActionsGrid}>
-            {recentActions.map((action, index) => (
-              <TouchableOpacity
-                key={action.id}
-                style={styles.recentActionButton}
-                onPress={() => {
-                  updateRecentActions(action.id, action.name, action.icon, action.color);
-                  if (action.id === 'transactions') {
-                    navigation.navigate('Transactions');
-                  } else if (action.id === 'budget') {
-                    navigation.navigate('Budget');
-                  } else if (action.id === 'stats') {
-                    navigation.navigate('Stats');
-                  } else if (action.id === 'add') {
-                    navigation.navigate('AddTransaction');
-                  }
-                }}
-              >
-                <Icon name={action.icon} size={24} color={action.color} />
-                <Text style={styles.recentActionText}>{action.name}</Text>
+          {/* Recent Transactions Section */}
+          <Animated.View style={[styles.sectionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Transactions</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
+                <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        </Animated.View>
+            </View>
 
-        {/* Recent Transactions Section */}
-        <Animated.View style={[styles.transactionsSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.transactionsList}>
-            {transactionsLoading ? (
-              <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
-            ) : recentTransactions.length > 0 ? (
-              recentTransactions.map((transaction, index) =>
-                renderTransactionItem(transaction, index)
-              )
-            ) : (
-              <Text style={[styles.emptyText, { color: theme.textSecondary, textAlign: 'center', marginVertical: 20 }]}>
-                No transactions yet. Add your first transaction!
-              </Text>
-            )}
-          </View>
-        </Animated.View>
-      </ScrollView>
-    </SafeAreaView>
+            <View style={styles.transactionsList}>
+              {transactionsLoading ? (
+                <ActivityIndicator size="small" color="white" style={{ marginVertical: 20 }} />
+              ) : recentTransactions.length > 0 ? (
+                recentTransactions.map((transaction, index) =>
+                  renderTransactionItem(transaction, index)
+                )
+              ) : (
+                <Text style={styles.emptyText}>
+                  No transactions yet. Add your first one!
+                </Text>
+              )}
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
-const createStyles = (theme) => StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.background,
-  },
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: '#667eea',
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#667eea',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
-    paddingBottom: 30,
-    backgroundColor: theme.headerBackground,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
+    paddingBottom: 20,
   },
   greeting: {
-    fontSize: 16,
-    color: theme.textSecondary,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
   },
   userName: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: theme.text,
-    marginTop: 2,
+    color: 'white',
+    marginTop: 4,
   },
   profileButton: {
     padding: 5,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
   },
   content: {
     flex: 1,
@@ -501,25 +460,20 @@ const createStyles = (theme) => StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Overview Card Styles
+  // Overview Card
   overviewCard: {
-    marginTop: 20,
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  overviewGradient: {
-    padding: 25,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 25,
   },
   overviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   overviewTitle: {
     fontSize: 16,
@@ -527,75 +481,48 @@ const createStyles = (theme) => StyleSheet.create({
     fontWeight: '500',
   },
   balanceAmount: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '700',
     color: 'white',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   incomeExpenseRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 15,
   },
   incomeExpenseItem: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   incomeExpenseLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 5,
-    marginBottom: 5,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 2,
   },
   incomeAmount: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.success,
+    fontWeight: '600',
+    color: '#4CAF50',
   },
   expenseAmount: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.error,
-  },
-
-  // Section Title Style
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 15,
-  },
-
-  // Recent Actions Section Styles
-  recentActionsSection: {
-    marginTop: 20,
-  },
-  recentActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  recentActionButton: {
-    width: '48%',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  recentActionText: {
-    fontSize: 14,
     fontWeight: '600',
-    color: theme.text,
-    marginTop: 8,
+    color: '#FF5252',
   },
 
-  // Transactions Section Styles
-  transactionsSection: {
-    marginTop: 20,
+  // Sections
+  sectionContainer: {
+    marginBottom: 25,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -605,30 +532,67 @@ const createStyles = (theme) => StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 15,
   },
   seeAllText: {
     fontSize: 14,
-    color: theme.primary,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
   },
+
+  // Quick Actions
+  recentActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  recentActionButton: {
+    width: '48%',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  actionIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recentActionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+    flexShrink: 1,
+  },
+
+  // Transactions List
   transactionsList: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 15,
-    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    padding: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: theme.divider,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   transactionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
@@ -639,15 +603,21 @@ const createStyles = (theme) => StyleSheet.create({
   transactionDescription: {
     fontSize: 16,
     fontWeight: '500',
-    color: theme.text,
-    marginBottom: 2,
+    color: 'white',
+    marginBottom: 4,
   },
   transactionCategory: {
     fontSize: 12,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.6)',
   },
   transactionAmount: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+  },
+  emptyText: {
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    marginVertical: 20,
+    fontStyle: 'italic',
   },
 });

@@ -11,6 +11,8 @@ import {
   TextInput,
   Alert,
   RefreshControl,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,8 +22,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 
 export default function TransactionsScreen({ navigation }) {
-  const { theme, isLoading } = useTheme();
-  const { user, userData } = useAuth();
+  const { theme } = useTheme();
+  const { userData } = useAuth();
   const { transactions, loading: transactionsLoading, deleteTransaction, refresh } = useTransactions();
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,15 +33,6 @@ export default function TransactionsScreen({ navigation }) {
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-
-  // Don't render until theme is loaded
-  if (isLoading || !theme) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.loadingBackground || '#f8f9fa', paddingTop: StatusBar.currentHeight || 0 }}>
-        <ActivityIndicator size="large" color={theme?.loadingIndicator || '#667eea'} />
-      </View>
-    );
-  }
 
   useEffect(() => {
     Animated.parallel([
@@ -59,10 +52,9 @@ export default function TransactionsScreen({ navigation }) {
     // Track this screen visit
     trackScreenVisit();
 
-    // Listen for navigation focus to auto-refresh and track tab bar navigation
+    // Listen for navigation focus to auto-refresh
     const unsubscribe = navigation.addListener('focus', () => {
       trackScreenVisit();
-      // Auto-refresh transactions when screen becomes active
       autoRefresh();
     });
 
@@ -73,34 +65,35 @@ export default function TransactionsScreen({ navigation }) {
     try {
       const stored = await AsyncStorage.getItem('personal_recent_actions');
       let recentActions = stored ? JSON.parse(stored) : [];
-      
+
       const newAction = {
         id: 'transactions',
         name: 'Transactions',
         icon: 'swap-vertical',
-        color: theme.success,
+        color: theme.primary,
         timestamp: Date.now()
       };
-      
+
       recentActions = recentActions.filter(action => action.id !== 'transactions');
       recentActions.unshift(newAction);
       recentActions = recentActions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('personal_recent_actions', JSON.stringify(recentActions));
     } catch (error) {
-      }
+      console.error('Error tracking screen visit:', error);
+    }
   };
 
-  // Calculate transaction summary from Firebase data
+  // Calculate transaction summary
   const transactionSummary = React.useMemo(() => {
     const totalIncome = transactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
-    
+
     const totalExpenses = transactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
-    
+
     return {
       totalIncome,
       totalExpenses,
@@ -116,20 +109,21 @@ export default function TransactionsScreen({ navigation }) {
       shopping: 'shopping',
       entertainment: 'movie',
       health: 'medical-bag',
+      bills: 'receipt',
       salary: 'cash-multiple',
       freelance: 'laptop',
       business: 'briefcase',
-      other: 'help-circle'
+      others: 'help-circle'
     };
     return iconMap[category] || 'help-circle';
   };
 
   const getCategoryColor = (category, type) => {
-    if (type === 'income') return theme.categoryColors?.income || theme.success;
+    if (type === 'income') return theme.categoryColors?.income || '#4CAF50';
     return theme.categoryColors?.[category] || theme.primary;
   };
 
-  // Filter transactions based on selected filter and search query
+  // Filter transactions
   const filteredTransactions = React.useMemo(() => {
     let filtered = transactions;
 
@@ -141,7 +135,7 @@ export default function TransactionsScreen({ navigation }) {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(t => 
+      filtered = filtered.filter(t =>
         t.description.toLowerCase().includes(query) ||
         t.category.toLowerCase().includes(query)
       );
@@ -153,7 +147,7 @@ export default function TransactionsScreen({ navigation }) {
       icon: getCategoryIcon(transaction.category),
       color: getCategoryColor(transaction.category, transaction.type)
     }));
-  }, [transactions, selectedFilter, searchQuery]);
+  }, [transactions, selectedFilter, searchQuery, theme]);
 
   const handleDeleteTransaction = async (transactionId) => {
     Alert.alert(
@@ -175,28 +169,21 @@ export default function TransactionsScreen({ navigation }) {
     );
   };
 
-  // Auto refresh functionality when screen becomes active
   const autoRefresh = async () => {
     try {
-      // Refresh transactions from Firebase silently
       await refresh();
     } catch (error) {
-      }
+      console.error('Auto refresh error:', error);
+    }
   };
 
-  // Manual refresh functionality (keeping for optional pull-to-refresh)
   const onRefresh = async () => {
     setRefreshing(true);
-    
     try {
-      // Refresh transactions data
       await refresh();
-      
-      // Add a small delay for better UX
       setTimeout(() => {
         setRefreshing(false);
       }, 500);
-      
     } catch (error) {
       setRefreshing(false);
     }
@@ -210,235 +197,230 @@ export default function TransactionsScreen({ navigation }) {
   ];
 
   const formatCurrency = (amount) => {
-    return `₹${amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
-
-  const renderHeader = () => (
-    <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-      <TouchableOpacity 
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Icon name="arrow-left" size={24} color={theme.text} />
-      </TouchableOpacity>
-      <View style={styles.headerContent}>
-        <Text style={styles.headerTitle}>Transactions</Text>
-        <Text style={styles.headerSubtitle}>{userData?.fullName || 'User'}'s Activity</Text>
-      </View>
-      <TouchableOpacity 
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddTransaction')}
-      >
-        <Icon name="plus" size={20} color="white" />
-      </TouchableOpacity>
-    </Animated.View>
-  );
-
-  const renderSummaryCard = () => (
-    <Animated.View style={[styles.summaryCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <LinearGradient colors={[theme.primary, theme.primaryLight]} style={styles.summaryGradient}>
-        <Text style={styles.summaryTitle}>This Month Summary</Text>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
-            <Icon name="trending-up" size={20} color={theme.categoryColors?.income || '#4CAF50'} />
-            <Text style={styles.summaryLabel}>Income</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.totalIncome)}</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Icon name="trending-down" size={20} color={theme.categoryColors?.expense || '#FF5252'} />
-            <Text style={styles.summaryLabel}>Expenses</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.totalExpenses)}</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Icon name="wallet" size={20} color={theme.categoryColors?.net || '#2196F3'} />
-            <Text style={styles.summaryLabel}>Net</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.netAmount)}</Text>
-          </View>
-        </View>
-      </LinearGradient>
-    </Animated.View>
-  );
-
-  const renderPeriodSelector = () => (
-    <Animated.View style={[styles.periodSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodScrollContent}>
-        {periods.map((period) => (
-          <TouchableOpacity
-            key={period}
-            style={[
-              styles.periodButton,
-              selectedPeriod === period && styles.periodButtonActive
-            ]}
-            onPress={() => setSelectedPeriod(period)}
-          >
-            <Text style={[
-              styles.periodButtonText,
-              selectedPeriod === period && styles.periodButtonTextActive
-            ]}>
-              {period}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </Animated.View>
-  );
-
-  const renderSearchBar = () => (
-    <Animated.View style={[styles.searchContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Icon name="magnify" size={20} color={theme.textLight} style={styles.searchIcon} />
-      <TextInput
-        style={styles.searchInput}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Search transactions..."
-        placeholderTextColor={theme.textLight}
-      />
-      {searchQuery.length > 0 && (
-        <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-          <Icon name="close" size={16} color={theme.textLight} />
-        </TouchableOpacity>
-      )}
-    </Animated.View>
-  );
-
-  const renderFilterTabs = () => (
-    <Animated.View style={[styles.filterTabs, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {filters.map((filter) => (
-        <TouchableOpacity
-          key={filter.id}
-          style={[
-            styles.filterTab,
-            selectedFilter === filter.id && styles.filterTabActive
-          ]}
-          onPress={() => setSelectedFilter(filter.id)}
-        >
-          <Icon 
-            name={filter.icon} 
-            size={16} 
-            color={selectedFilter === filter.id ? 'white' : theme.primary} 
-          />
-          <Text style={[
-            styles.filterTabText,
-            selectedFilter === filter.id && styles.filterTabTextActive
-          ]}>
-            {filter.name}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </Animated.View>
-  );
-
-  const renderTransactionsList = () => {
-    return (
-      <Animated.View style={[styles.transactionsList, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-        <Text style={styles.sectionTitle}>
-          Transactions ({filteredTransactions.length})
-        </Text>
-        
-        {transactionsLoading ? (
-          <ActivityIndicator size="large" color={theme.primary} style={{ marginVertical: 40 }} />
-        ) : (
-          <>
-            {filteredTransactions.map((transaction, index) => (
-              <TouchableOpacity 
-                key={transaction.id} 
-                style={styles.transactionItem}
-                onLongPress={() => handleDeleteTransaction(transaction.id)}
-              >
-                <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}20` }]}>
-                  <Icon name={transaction.icon} size={20} color={transaction.color} />
-                </View>
-                
-                <View style={styles.transactionDetails}>
-                  <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                  <Text style={styles.transactionCategory}>
-                    {transaction.category} • {new Date(transaction.date).toLocaleDateString()}
-                  </Text>
-                </View>
-                
-                <Text style={[
-                  styles.transactionAmount,
-                  { color: transaction.type === 'income' ? theme.categoryColors?.income || theme.success : theme.categoryColors?.expense || theme.error }
-                ]}>
-                  {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-
-            {filteredTransactions.length === 0 && !transactionsLoading && (
-              <View style={styles.emptyState}>
-                <Icon name="receipt" size={64} color={theme.textLight} />
-                <Text style={styles.emptyStateTitle}>No transactions found</Text>
-                <Text style={styles.emptyStateMessage}>
-                  {searchQuery ? 'Try adjusting your search' : 'Start by adding your first transaction'}
-                </Text>
-              </View>
-            )}
-          </>
-        )}
-      </Animated.View>
-    );
-  };
-
-  const styles = createStyles(theme);
 
   return (
     <View style={styles.container}>
-      {renderHeader()}
-      
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.primary]}
-            tintColor={theme.primary}
-            title="Pull to refresh"
-            titleColor={theme.textSecondary}
-          />
-        }
-      >
-        {renderSummaryCard()}
-        {renderPeriodSelector()}
-        {renderSearchBar()}
-        {renderFilterTabs()}
-        {renderTransactionsList()}
-      </ScrollView>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+
+      {/* Background */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.background}
+      />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-left" size={24} color="white" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Transactions</Text>
+            <Text style={styles.headerSubtitle}>{userData?.fullName || 'User'}'s Activity</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AddTransaction')}
+          >
+            <Icon name="plus" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="white"
+            />
+          }
+        >
+          {/* Summary Card */}
+          <Animated.View style={[styles.summaryCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <Text style={styles.summaryTitle}>This Month Summary</Text>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Icon name="trending-up" size={20} color="#4CAF50" />
+                <Text style={styles.summaryLabel}>Income</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.totalIncome)}</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryItem}>
+                <Icon name="trending-down" size={20} color="#FF5252" />
+                <Text style={styles.summaryLabel}>Expenses</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.totalExpenses)}</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryItem}>
+                <Icon name="wallet" size={20} color="#2196F3" />
+                <Text style={styles.summaryLabel}>Net</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.netAmount)}</Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Period Selector */}
+          <Animated.View style={[styles.periodSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodScrollContent}>
+              {periods.map((period) => (
+                <TouchableOpacity
+                  key={period}
+                  style={[
+                    styles.periodButton,
+                    selectedPeriod === period && styles.periodButtonActive
+                  ]}
+                  onPress={() => setSelectedPeriod(period)}
+                >
+                  <Text style={[
+                    styles.periodButtonText,
+                    selectedPeriod === period && styles.periodButtonTextActive
+                  ]}>
+                    {period}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Animated.View>
+
+          {/* Search Bar */}
+          <Animated.View style={[styles.searchContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <Icon name="magnify" size={20} color="rgba(255,255,255,0.7)" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search transactions..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+                <Icon name="close" size={16} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            )}
+          </Animated.View>
+
+          {/* Filter Tabs */}
+          <Animated.View style={[styles.filterTabs, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            {filters.map((filter) => (
+              <TouchableOpacity
+                key={filter.id}
+                style={[
+                  styles.filterTab,
+                  selectedFilter === filter.id && styles.filterTabActive
+                ]}
+                onPress={() => setSelectedFilter(filter.id)}
+              >
+                <Icon
+                  name={filter.icon}
+                  size={16}
+                  color={selectedFilter === filter.id ? 'white' : 'rgba(255,255,255,0.7)'}
+                />
+                <Text style={[
+                  styles.filterTabText,
+                  selectedFilter === filter.id && styles.filterTabTextActive
+                ]}>
+                  {filter.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+
+          {/* Transactions List */}
+          <Animated.View style={[styles.transactionsList, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <Text style={styles.sectionTitle}>
+              Transactions ({filteredTransactions.length})
+            </Text>
+
+            {transactionsLoading ? (
+              <ActivityIndicator size="large" color="white" style={{ marginVertical: 40 }} />
+            ) : (
+              <>
+                {filteredTransactions.map((transaction) => (
+                  <TouchableOpacity
+                    key={transaction.id}
+                    style={styles.transactionItem}
+                    onLongPress={() => handleDeleteTransaction(transaction.id)}
+                  >
+                    <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
+                      <Icon name={transaction.icon} size={20} color={transaction.color} />
+                    </View>
+
+                    <View style={styles.transactionDetails}>
+                      <Text style={styles.transactionDescription}>{transaction.description}</Text>
+                      <Text style={styles.transactionCategory}>
+                        {transaction.category} • {new Date(transaction.date).toLocaleDateString()}
+                      </Text>
+                    </View>
+
+                    <Text style={[
+                      styles.transactionAmount,
+                      { color: transaction.type === 'income' ? '#4CAF50' : '#FF5252' }
+                    ]}>
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                {filteredTransactions.length === 0 && !transactionsLoading && (
+                  <View style={styles.emptyState}>
+                    <Icon name="receipt" size={64} color="rgba(255,255,255,0.3)" />
+                    <Text style={styles.emptyStateTitle}>No transactions found</Text>
+                    <Text style={styles.emptyStateMessage}>
+                      {searchQuery ? 'Try adjusting your search' : 'Start by adding your first transaction'}
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
 
-const createStyles = (theme) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
-    paddingBottom: 20,
-    backgroundColor: theme.headerBackground || theme.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
+    paddingBottom: 15,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   headerContent: {
     flex: 1,
@@ -447,25 +429,20 @@ const createStyles = (theme) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.primary,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   content: {
     flex: 1,
@@ -475,19 +452,14 @@ const createStyles = (theme) => StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Summary Card Styles
+  // Summary Card
   summaryCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 20,
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  summaryGradient: {
     padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   summaryTitle: {
     fontSize: 16,
@@ -520,7 +492,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.3)',
   },
 
-  // Period Selector Styles
+  // Period Selector
   periodSelector: {
     marginBottom: 15,
   },
@@ -528,36 +500,35 @@ const createStyles = (theme) => StyleSheet.create({
     gap: 10,
   },
   periodButton: {
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   periodButtonActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
+    backgroundColor: 'white',
   },
   periodButtonText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: theme.text,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
   },
   periodButtonTextActive: {
-    color: 'white',
+    color: '#667eea',
   },
 
-  // Search Bar Styles
+  // Search Bar
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     marginBottom: 15,
     paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   searchIcon: {
     marginRight: 10,
@@ -565,14 +536,14 @@ const createStyles = (theme) => StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: theme.text,
+    color: 'white',
     paddingVertical: 12,
   },
   clearButton: {
     padding: 5,
   },
 
-  // Filter Tabs Styles
+  // Filter Tabs
   filterTabs: {
     flexDirection: 'row',
     gap: 10,
@@ -583,49 +554,46 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   filterTabActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   filterTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.text,
+    color: 'rgba(255,255,255,0.7)',
     marginLeft: 6,
   },
   filterTabTextActive: {
     color: 'white',
   },
 
-  // Transactions List Styles
+  // Transactions List
   transactionsList: {
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginBottom: 15,
   },
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 15,
     marginBottom: 10,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   transactionIcon: {
     width: 40,
@@ -641,19 +609,19 @@ const createStyles = (theme) => StyleSheet.create({
   transactionDescription: {
     fontSize: 16,
     fontWeight: '500',
-    color: theme.text,
+    color: 'white',
     marginBottom: 2,
   },
   transactionCategory: {
     fontSize: 12,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
   },
   transactionAmount: {
     fontSize: 16,
     fontWeight: 'bold',
   },
 
-  // Empty State Styles
+  // Empty State
   emptyState: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -661,13 +629,13 @@ const createStyles = (theme) => StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginTop: 15,
     marginBottom: 8,
   },
   emptyStateMessage: {
     fontSize: 14,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
   },
 });

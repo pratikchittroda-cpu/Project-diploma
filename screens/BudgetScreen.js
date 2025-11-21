@@ -8,10 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
-  Alert,
-  Dimensions,
-  Modal,
-  TextInput,
+  SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,29 +18,39 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 import budgetService from '../services/budgetService';
-
-const { width } = Dimensions.get('window');
+import CircularProgress from '../components/budget/CircularProgress';
+import AddBudgetModal from '../components/budget/AddBudgetModal';
+import BudgetInsights from '../components/budget/BudgetInsights';
 
 export default function BudgetScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
-  
-  // Don't render until theme is loaded - check this BEFORE other hooks
+
+  // Don't render until theme is loaded
   if (isLoading || !theme) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', paddingTop: StatusBar.currentHeight || 0 }}>
-        <ActivityIndicator size="large" color="#667eea" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.loadingBackground || '#f8f9fa', paddingTop: StatusBar.currentHeight || 0 }}>
+        <ActivityIndicator size="large" color={theme?.loadingIndicator || '#667eea'} />
       </View>
     );
   }
 
-  const { user, userData, updateUserProfile } = useAuth();
+  const { user, userData } = useAuth();
   const { transactions, refresh: refreshTransactions } = useTransactions();
   const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
-  const [selectedView, setSelectedView] = useState('overview');
-  const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [budgetAmount, setBudgetAmount] = useState('');
-  const [budgetCategory, setBudgetCategory] = useState('food');
+  const [budgets, setBudgets] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(null);
+  const [expandedCards, setExpandedCards] = useState({});
+  const [budgetStats, setBudgetStats] = useState({
+    totalBudget: 0,
+    totalSpent: 0,
+    totalRemaining: 0,
+    percentage: 0,
+    categories: [],
+    alerts: [],
+    daysRemaining: 0,
+  });
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -63,100 +71,104 @@ export default function BudgetScreen({ navigation }) {
       }),
     ]).start();
 
-    // Track this screen visit
     trackScreenVisit();
-
-    // Load budgets from database
     loadBudgetsFromDatabase();
 
-    // Listen for navigation focus to auto-refresh and track tab bar navigation
     const unsubscribe = navigation.addListener('focus', () => {
       trackScreenVisit();
-      // Auto-refresh budget data when screen becomes active
       autoRefresh();
-      // Reload budgets when screen becomes active
-      loadBudgetsFromDatabase();
     });
 
     return unsubscribe;
   }, [navigation]);
 
-  // Auto refresh functionality when screen becomes active
-  const autoRefresh = async () => {
-    try {
-      // Refresh transactions silently (this will trigger budget recalculation)
-      await refreshTransactions();
-      // Reload budgets from database
-      await loadBudgetsFromDatabase();
-    } catch (error) {
-      }
-  };
+  // Recalculate budget stats when transactions or budgets change
+  useEffect(() => {
+    const stats = calculateBudgetStats();
+    setBudgetStats(stats);
+  }, [transactions, budgets, selectedPeriod]);
 
   const trackScreenVisit = async () => {
     try {
       const stored = await AsyncStorage.getItem('personal_recent_actions');
       let recentActions = stored ? JSON.parse(stored) : [];
-      
+
       const newAction = {
         id: 'budget',
         name: 'Budget',
         icon: 'wallet',
-        color: '#2196F3',
+        color: theme.primary,
         timestamp: Date.now()
       };
-      
+
       recentActions = recentActions.filter(action => action.id !== 'budget');
       recentActions.unshift(newAction);
       recentActions = recentActions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('personal_recent_actions', JSON.stringify(recentActions));
     } catch (error) {
-      }
+      // Error tracking screen visit
+    }
   };
 
-  // Budget data state - starts empty until user creates budgets
-  const [budgets, setBudgets] = useState([]);
-
-  // Load budgets from database
   const loadBudgetsFromDatabase = async () => {
     try {
       if (user?.uid) {
         const result = await budgetService.getUserBudgets(user.uid);
         if (result.success) {
           setBudgets(result.budgets);
-        } else {
-          }
+        }
       }
     } catch (error) {
-      }
+      // Error loading budgets
+    }
   };
 
-  // Calculate budget data from real transactions
-  const calculateBudgetData = () => {
-    // Get current period transactions
+  const autoRefresh = async () => {
+    try {
+      await refreshTransactions();
+      await loadBudgetsFromDatabase();
+    } catch (error) {
+      // Error refreshing
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await autoRefresh();
+    setTimeout(() => setRefreshing(false), 500);
+  };
+
+  const getPeriodDates = () => {
     const now = new Date();
     let startDate, endDate;
 
     switch (selectedPeriod) {
       case 'Weekly':
-        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-        const endOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 6));
-        startDate = startOfWeek.toISOString().split('T')[0];
-        endDate = endOfWeek.toISOString().split('T')[0];
+        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+        endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
         break;
       case 'Yearly':
-        startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-        endDate = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
         break;
       default: // Monthly
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     }
 
-    // Filter transactions for the period
+    return { startDate, endDate };
+  };
+
+  const calculateBudgetStats = () => {
+    const { startDate, endDate } = getPeriodDates();
+
+    // Filter transactions for period
     const periodTransactions = transactions.filter(t => {
       const transactionDate = t.date || t.createdAt?.split('T')[0];
-      return transactionDate >= startDate && transactionDate <= endDate && t.type === 'expense';
+      return transactionDate >= startDate.toISOString().split('T')[0] &&
+        transactionDate <= endDate.toISOString().split('T')[0] &&
+        t.type === 'expense';
     });
 
     // Calculate spending by category
@@ -166,7 +178,7 @@ export default function BudgetScreen({ navigation }) {
       categorySpending[category] = (categorySpending[category] || 0) + transaction.amount;
     });
 
-    // Create budget categories with real data
+    // Build category budget data
     const categoryData = [
       { id: 'food', name: 'Food & Dining', color: '#FF9800', icon: 'food' },
       { id: 'transport', name: 'Transportation', color: '#2196F3', icon: 'car' },
@@ -176,7 +188,7 @@ export default function BudgetScreen({ navigation }) {
       { id: 'health', name: 'Healthcare', color: '#4CAF50', icon: 'medical-bag' },
     ];
 
-    const categories = categoryData.map((cat, index) => {
+    const categories = categoryData.map(cat => {
       const spent = categorySpending[cat.id] || 0;
       const budget = budgets.find(b => b.category === cat.id && b.period === selectedPeriod)?.amount || 0;
       const remaining = Math.max(0, budget - spent);
@@ -184,754 +196,738 @@ export default function BudgetScreen({ navigation }) {
       const transactionCount = periodTransactions.filter(t => t.category === cat.id).length;
 
       return {
-        id: index + 1,
         ...cat,
         budget,
         spent,
         remaining,
         percentage,
-        transactions: transactionCount
+        transactions: transactionCount,
+        status: percentage < 75 ? 'good' : percentage < 90 ? 'warning' : 'danger',
       };
     }).filter(cat => cat.budget > 0 || cat.spent > 0);
 
     const totalBudget = categories.reduce((sum, cat) => sum + cat.budget, 0);
     const totalSpent = categories.reduce((sum, cat) => sum + cat.spent, 0);
     const totalRemaining = Math.max(0, totalBudget - totalSpent);
+    const percentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
     // Generate alerts
     const alerts = categories
-      .filter(cat => cat.percentage >= 80)
-      .map((cat, index) => ({
-        id: index + 1,
+      .filter(cat => cat.percentage >= 75)
+      .map(cat => ({
+        id: cat.id,
         category: cat.name,
-        message: cat.percentage >= 100 
-          ? 'Budget exceeded!' 
-          : `You've used ${cat.percentage}% of your budget`,
-        severity: cat.percentage >= 100 ? 'danger' : 'warning'
+        message: cat.percentage >= 100
+          ? `Budget exceeded by ₹${(cat.spent - cat.budget).toFixed(2)}`
+          : `${cat.percentage}% of budget used`,
+        severity: cat.percentage >= 90 ? 'danger' : 'warning',
       }));
+
+    // Calculate days remaining
+    const today = new Date();
+    const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     return {
       totalBudget,
       totalSpent,
       totalRemaining,
+      percentage,
       categories,
-      alerts
+      alerts,
+      daysRemaining,
     };
   };
 
-  const [budgetData, setBudgetData] = useState({
-    totalBudget: 0,
-    totalSpent: 0,
-    totalRemaining: 0,
-    categories: [],
-    alerts: []
-  });
-
-  // Recalculate budget data when transactions or budgets change
-  useEffect(() => {
-    const newBudgetData = calculateBudgetData();
-    setBudgetData(newBudgetData);
-  }, [transactions, budgets, selectedPeriod]);
-
-  // Load existing budgets from user profile
-  useEffect(() => {
-    if (userData) {
-      const existingBudgets = [];
-      
-      // Add weekly budget if exists
-      if (userData.weeklyBudget) {
-        existingBudgets.push({
-          id: 'weekly_total',
-          category: 'total',
-          amount: userData.weeklyBudget,
-          period: 'Weekly'
-        });
-      }
-      
-      // Add monthly budget if exists
-      if (userData.monthlyBudget) {
-        existingBudgets.push({
-          id: 'monthly_total',
-          category: 'total',
-          amount: userData.monthlyBudget,
-          period: 'Monthly'
-        });
-      }
-      
-      // Add yearly budget if exists
-      if (userData.yearlyBudget) {
-        existingBudgets.push({
-          id: 'yearly_total',
-          category: 'total',
-          amount: userData.yearlyBudget,
-          period: 'Yearly'
-        });
-      }
-      
-      if (existingBudgets.length > 0) {
-        setBudgets(existingBudgets);
-      }
-    }
-  }, [userData]);
-
-  const periods = ['Weekly', 'Monthly', 'Yearly'];
-  const views = [
-    { id: 'overview', name: 'Overview', icon: 'chart-pie' },
-    { id: 'categories', name: 'Categories', icon: 'format-list-bulleted' },
-    { id: 'alerts', name: 'Alerts', icon: 'alert-circle' },
-  ];
+  const getBudgetStatusColor = (percentage) => {
+    if (percentage < 75) return theme.success || '#4CAF50';
+    if (percentage < 90) return theme.warning || '#FF9800';
+    return theme.error || '#F44336';
+  };
 
   const formatCurrency = (amount) => {
-    return `₹${amount.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,')}`;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  const getAlertColor = (severity) => {
-    switch (severity) {
-      case 'danger': return '#F44336';
-      case 'warning': return '#FF9800';
-      case 'info': return '#2196F3';
-      default: return theme.textSecondary;
-    }
+  const handleAddBudget = () => {
+    setEditingBudget(null);
+    setShowAddModal(true);
   };
 
-  const handleCreateBudget = () => {
-    setShowAddBudgetModal(true);
+  const handleEditBudget = (budget) => {
+    setEditingBudget(budget);
+    setShowAddModal(true);
   };
 
-  // Function to set total budget for a period (using modal for better compatibility)
-  const handleSetTotalBudget = () => {
-    setShowAddBudgetModal(true);
-  };
-
-  const handleSaveTotalBudget = async () => {
-    if (!budgetAmount || parseFloat(budgetAmount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid budget amount');
-      return;
-    }
-
+  const handleSaveBudget = async (budgetData) => {
     try {
-      const amount = parseFloat(budgetAmount);
-      const profileUpdate = {};
-      
-      if (selectedPeriod === 'Weekly') {
-        profileUpdate.weeklyBudget = amount;
-      } else if (selectedPeriod === 'Monthly') {
-        profileUpdate.monthlyBudget = amount;
-      } else if (selectedPeriod === 'Yearly') {
-        profileUpdate.yearlyBudget = amount;
-      }
+      if (editingBudget) {
+        // Update existing budget
+        const result = await budgetService.updateBudget(user.uid, editingBudget.id, budgetData);
+        if (result.success) {
+          // Update local state
+          const updatedBudgets = budgets.map(b =>
+            b.id === editingBudget.id ? { ...b, ...budgetData } : b
+          );
 
-      const result = await updateUserProfile(profileUpdate);
-      
-      if (result.success) {
-        Alert.alert('Success!', `${selectedPeriod} budget has been set to ${formatCurrency(amount)}`);
-        
-        // Update local budgets state
-        const newBudget = {
-          id: `${selectedPeriod.toLowerCase()}_total`,
-          category: 'total',
-          amount: amount,
-          period: selectedPeriod
-        };
-        
-        const updatedBudgets = budgets.filter(b => !(b.category === 'total' && b.period === selectedPeriod));
-        setBudgets([...updatedBudgets, newBudget]);
-        
-        // Close modal and reset form
-        setShowAddBudgetModal(false);
-        setBudgetAmount('');
-      } else {
-        Alert.alert('Error', result.error || 'Failed to set budget');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to set budget. Please try again.');
-    }
-  };
-
-  const handleAddBudget = async () => {
-    if (!budgetAmount || parseFloat(budgetAmount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid budget amount');
-      return;
-    }
-
-    try {
-      const budgetData = {
-        category: budgetCategory,
-        amount: parseFloat(budgetAmount),
-        period: selectedPeriod,
-        name: getCategoryName(budgetCategory)
-      };
-
-      // Save to database
-      const result = await budgetService.createBudget(user.uid, budgetData);
-      
-      if (result.success) {
-        // Update local state
-        const newBudget = {
-          id: result.budgetId,
-          ...budgetData
-        };
-
-        // Remove existing budget for same category and period
-        const updatedBudgets = budgets.filter(b => !(b.category === budgetCategory && b.period === selectedPeriod));
-        setBudgets([...updatedBudgets, newBudget]);
-
-        // Reset form
-        setBudgetAmount('');
-        setBudgetCategory('food');
-        setShowAddBudgetModal(false);
-
-        // Update user profile with total budget for this period
-        updateUserBudgetProfile(newBudget, [...updatedBudgets, newBudget]);
-
-        Alert.alert('Success!', `${selectedPeriod} budget for ${getCategoryName(budgetCategory)} has been saved to database and set to ${formatCurrency(parseFloat(budgetAmount))}`);
-      } else {
-        Alert.alert('Error', `Failed to save budget: ${result.error}`);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save budget. Please try again.');
-    }
-  };
-
-  // Function to update user profile with budget totals
-  const updateUserBudgetProfile = async (newBudget, allBudgets) => {
-    try {
-      const periodBudgets = allBudgets.filter(b => b.period === selectedPeriod);
-      const totalBudget = periodBudgets.reduce((sum, b) => sum + b.amount, 0);
-
-      // Update user profile with the total budget for this period
-      const profileUpdate = {};
-      if (selectedPeriod === 'Weekly') {
-        profileUpdate.weeklyBudget = totalBudget;
-      } else if (selectedPeriod === 'Monthly') {
-        profileUpdate.monthlyBudget = totalBudget;
-      } else if (selectedPeriod === 'Yearly') {
-        profileUpdate.yearlyBudget = totalBudget;
-      }
-
-      const result = await updateUserProfile(profileUpdate);
-      if (!result.success) {
+          // Sync with other period
+          const syncedBudgets = await syncBudgetWithOtherPeriod(updatedBudgets, budgetData);
+          setBudgets(syncedBudgets);
+          setShowAddModal(false);
         }
-    } catch (error) {
+      } else {
+        // Create new budget
+        const result = await budgetService.createBudget(user.uid, budgetData);
+        if (result.success) {
+          const newBudget = { id: result.budgetId, ...budgetData };
+          const updatedBudgets = [...budgets, newBudget];
+
+          // Sync with other period
+          const syncedBudgets = await syncBudgetWithOtherPeriod(updatedBudgets, budgetData);
+          setBudgets(syncedBudgets);
+          setShowAddModal(false);
+        }
       }
+    } catch (error) {
+      console.error('Error saving budget:', error);
+    }
   };
 
-  const getCategoryName = (categoryId) => {
-    const categoryMap = {
-      food: 'Food & Dining',
-      transport: 'Transportation',
-      shopping: 'Shopping',
-      entertainment: 'Entertainment',
-      bills: 'Bills & Utilities',
-      health: 'Healthcare'
-    };
-    return categoryMap[categoryId] || categoryId;
+  const syncBudgetWithOtherPeriod = async (currentBudgets, budgetData) => {
+    try {
+      let updatedBudgets = [...currentBudgets];
+
+      if (budgetData.period === 'Weekly') {
+        // Weekly budget created/updated - sync to Monthly (weekly * 4) and Yearly (weekly * 52)
+        const monthlyAmount = budgetData.amount * 4;
+        const yearlyAmount = budgetData.amount * 52;
+
+        // Sync Monthly
+        const existingMonthly = updatedBudgets.find(
+          b => b.category === budgetData.category && b.period === 'Monthly'
+        );
+
+        if (existingMonthly) {
+          const result = await budgetService.updateBudget(user.uid, existingMonthly.id, {
+            ...existingMonthly,
+            amount: monthlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map(b =>
+              b.id === existingMonthly.id ? { ...b, amount: monthlyAmount } : b
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            category: budgetData.category,
+            categoryName: budgetData.categoryName,
+            amount: monthlyAmount,
+            period: 'Monthly',
+          });
+          if (result.success) {
+            updatedBudgets.push({
+              id: result.budgetId,
+              category: budgetData.category,
+              categoryName: budgetData.categoryName,
+              amount: monthlyAmount,
+              period: 'Monthly',
+            });
+          }
+        }
+
+        // Sync Yearly
+        const existingYearly = updatedBudgets.find(
+          b => b.category === budgetData.category && b.period === 'Yearly'
+        );
+
+        if (existingYearly) {
+          const result = await budgetService.updateBudget(user.uid, existingYearly.id, {
+            ...existingYearly,
+            amount: yearlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map(b =>
+              b.id === existingYearly.id ? { ...b, amount: yearlyAmount } : b
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            category: budgetData.category,
+            categoryName: budgetData.categoryName,
+            amount: yearlyAmount,
+            period: 'Yearly',
+          });
+          if (result.success) {
+            updatedBudgets.push({
+              id: result.budgetId,
+              category: budgetData.category,
+              categoryName: budgetData.categoryName,
+              amount: yearlyAmount,
+              period: 'Yearly',
+            });
+          }
+        }
+      } else if (budgetData.period === 'Monthly') {
+        // Monthly budget created/updated - sync to Weekly (monthly / 4) and Yearly (monthly * 12)
+        const weeklyAmount = budgetData.amount / 4;
+        const yearlyAmount = budgetData.amount * 12;
+
+        // Sync Weekly
+        const existingWeekly = updatedBudgets.find(
+          b => b.category === budgetData.category && b.period === 'Weekly'
+        );
+
+        if (existingWeekly) {
+          const result = await budgetService.updateBudget(user.uid, existingWeekly.id, {
+            ...existingWeekly,
+            amount: weeklyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map(b =>
+              b.id === existingWeekly.id ? { ...b, amount: weeklyAmount } : b
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            category: budgetData.category,
+            categoryName: budgetData.categoryName,
+            amount: weeklyAmount,
+            period: 'Weekly',
+          });
+          if (result.success) {
+            updatedBudgets.push({
+              id: result.budgetId,
+              category: budgetData.category,
+              categoryName: budgetData.categoryName,
+              amount: weeklyAmount,
+              period: 'Weekly',
+            });
+          }
+        }
+
+        // Sync Yearly
+        const existingYearly = updatedBudgets.find(
+          b => b.category === budgetData.category && b.period === 'Yearly'
+        );
+
+        if (existingYearly) {
+          const result = await budgetService.updateBudget(user.uid, existingYearly.id, {
+            ...existingYearly,
+            amount: yearlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map(b =>
+              b.id === existingYearly.id ? { ...b, amount: yearlyAmount } : b
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            category: budgetData.category,
+            categoryName: budgetData.categoryName,
+            amount: yearlyAmount,
+            period: 'Yearly',
+          });
+          if (result.success) {
+            updatedBudgets.push({
+              id: result.budgetId,
+              category: budgetData.category,
+              categoryName: budgetData.categoryName,
+              amount: yearlyAmount,
+              period: 'Yearly',
+            });
+          }
+        }
+      } else if (budgetData.period === 'Yearly') {
+        // Yearly budget created/updated - sync to Monthly (yearly / 12) and Weekly (yearly / 52)
+        const monthlyAmount = budgetData.amount / 12;
+        const weeklyAmount = budgetData.amount / 52;
+
+        // Sync Monthly
+        const existingMonthly = updatedBudgets.find(
+          b => b.category === budgetData.category && b.period === 'Monthly'
+        );
+
+        if (existingMonthly) {
+          const result = await budgetService.updateBudget(user.uid, existingMonthly.id, {
+            ...existingMonthly,
+            amount: monthlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map(b =>
+              b.id === existingMonthly.id ? { ...b, amount: monthlyAmount } : b
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            category: budgetData.category,
+            categoryName: budgetData.categoryName,
+            amount: monthlyAmount,
+            period: 'Monthly',
+          });
+          if (result.success) {
+            updatedBudgets.push({
+              id: result.budgetId,
+              category: budgetData.category,
+              categoryName: budgetData.categoryName,
+              amount: monthlyAmount,
+              period: 'Monthly',
+            });
+          }
+        }
+
+        // Sync Weekly
+        const existingWeekly = updatedBudgets.find(
+          b => b.category === budgetData.category && b.period === 'Weekly'
+        );
+
+        if (existingWeekly) {
+          const result = await budgetService.updateBudget(user.uid, existingWeekly.id, {
+            ...existingWeekly,
+            amount: weeklyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map(b =>
+              b.id === existingWeekly.id ? { ...b, amount: weeklyAmount } : b
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            category: budgetData.category,
+            categoryName: budgetData.categoryName,
+            amount: weeklyAmount,
+            period: 'Weekly',
+          });
+          if (result.success) {
+            updatedBudgets.push({
+              id: result.budgetId,
+              category: budgetData.category,
+              categoryName: budgetData.categoryName,
+              amount: weeklyAmount,
+              period: 'Weekly',
+            });
+          }
+        }
+      }
+
+      return updatedBudgets;
+    } catch (error) {
+      console.error('Error syncing budget:', error);
+      return currentBudgets;
+    }
   };
 
-  const getCategoryIcon = (categoryId) => {
-    const iconMap = {
-      food: 'food',
-      transport: 'car',
-      shopping: 'shopping',
-      entertainment: 'movie',
-      bills: 'receipt',
-      health: 'medical-bag'
-    };
-    return iconMap[categoryId] || 'folder';
+  const handleDeleteBudget = async (budgetId) => {
+    try {
+      const result = await budgetService.deleteBudget(user.uid, budgetId);
+      if (result.success) {
+        setBudgets(budgets.filter(b => b.id !== budgetId));
+      }
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+    }
   };
 
-  const getCategoryColor = (categoryId) => {
-    const colorMap = {
-      food: '#FF9800',
-      transport: '#2196F3',
-      shopping: '#9C27B0',
-      entertainment: '#FF5722',
-      bills: '#607D8B',
-      health: '#4CAF50'
-    };
-    return colorMap[categoryId] || '#666';
-  };
-
-  const availableCategories = [
-    { id: 'food', name: 'Food & Dining', icon: 'food', color: '#FF9800' },
-    { id: 'transport', name: 'Transportation', icon: 'car', color: '#2196F3' },
-    { id: 'shopping', name: 'Shopping', icon: 'shopping', color: '#9C27B0' },
-    { id: 'entertainment', name: 'Entertainment', icon: 'movie', color: '#FF5722' },
-    { id: 'bills', name: 'Bills & Utilities', icon: 'receipt', color: '#607D8B' },
-    { id: 'health', name: 'Healthcare', icon: 'medical-bag', color: '#4CAF50' }
-  ];
-
-  const handleEditBudget = (category) => {
-    Alert.alert('Edit Budget', `Edit budget for ${category.name}`);
+  const toggleCardExpansion = (categoryId) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
   };
 
   const renderHeader = () => (
     <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
-        <Icon name="arrow-left" size={24} color={theme.text} />
+        <Icon name="arrow-left" size={24} color="white" />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Budget</Text>
-      <TouchableOpacity style={styles.createButton} onPress={handleSetTotalBudget}>
-        <Icon name="wallet" size={20} color="white" />
+      <TouchableOpacity
+        style={styles.actionButton}
+        onPress={handleAddBudget}
+      >
+        <Icon name="plus" size={20} color="white" />
       </TouchableOpacity>
     </Animated.View>
   );
 
   const renderPeriodSelector = () => {
-    // Calculate data for each period
-    const getPeriodData = (period) => {
-      const now = new Date();
-      let startDate, endDate;
-
-      switch (period) {
-        case 'Weekly':
-          const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-          const endOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 6));
-          startDate = startOfWeek.toISOString().split('T')[0];
-          endDate = endOfWeek.toISOString().split('T')[0];
-          break;
-        case 'Yearly':
-          startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-          endDate = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
-          break;
-        default: // Monthly
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      }
-
-      // Filter transactions for this period
-      const periodTransactions = transactions.filter(t => {
-        const transactionDate = t.date || t.createdAt?.split('T')[0];
-        return transactionDate >= startDate && transactionDate <= endDate && t.type === 'expense';
-      });
-
-      // Calculate spending for this period
-      const totalSpent = periodTransactions.reduce((sum, t) => sum + t.amount, 0);
-      
-      // Get budgets for this period
-      const periodBudgets = budgets.filter(b => b.period === period);
-      const totalBudget = periodBudgets.reduce((sum, b) => sum + b.amount, 0);
-
-      return {
-        spent: totalSpent,
-        budget: totalBudget,
-        transactions: periodTransactions.length
-      };
-    };
+    const periods = ['Weekly', 'Monthly', 'Yearly'];
 
     return (
       <Animated.View style={[styles.periodSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.periodBoxContainer}>
-          {periods.map((period) => {
-            const data = getPeriodData(period);
-            const isSelected = selectedPeriod === period;
-            
-            return (
-              <TouchableOpacity
-                key={period}
-                style={[
-                  styles.periodBox,
-                  isSelected && styles.periodBoxActive
-                ]}
-                onPress={() => setSelectedPeriod(period)}
-              >
-                <Text style={[
-                  styles.periodBoxTitle,
-                  isSelected && styles.periodBoxTitleActive
-                ]}>
-                  {period}
-                </Text>
-                <Text style={[
-                  styles.periodBoxAmount,
-                  isSelected && styles.periodBoxAmountActive
-                ]}>
-                  ₹{data.spent.toFixed(0)}
-                </Text>
-                <Text style={[
-                  styles.periodBoxSubtext,
-                  isSelected && styles.periodBoxSubtextActive
-                ]}>
-                  {data.transactions} transactions
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {periods.map((period) => (
+          <TouchableOpacity
+            key={period}
+            style={[
+              styles.periodButton,
+              selectedPeriod === period && styles.periodButtonActive
+            ]}
+            onPress={() => setSelectedPeriod(period)}
+          >
+            <Text style={[
+              styles.periodButtonText,
+              selectedPeriod === period && styles.periodButtonTextActive
+            ]}>
+              {period}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </Animated.View>
     );
   };
 
-  const renderViewSelector = () => (
-    <Animated.View style={[styles.viewSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <View style={styles.viewButtonContainer}>
-        {views.map((view) => (
-          <TouchableOpacity
-            key={view.id}
-            style={[
-              styles.viewButton,
-              selectedView === view.id && styles.viewButtonActive
-            ]}
-            onPress={() => setSelectedView(view.id)}
-          >
-            <Icon 
-              name={view.icon} 
-              size={18} 
-              color={selectedView === view.id ? 'white' : theme.primary} 
-            />
-            <Text style={[
-              styles.viewButtonText,
-              selectedView === view.id && styles.viewButtonTextActive
-            ]}>
-              {view.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </Animated.View>
-  );
-
   const renderBudgetOverview = () => (
-    <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {/* Total Budget Card */}
-      <View style={styles.totalBudgetCard}>
-        <LinearGradient colors={[theme.primary, theme.primaryLight]} style={styles.totalBudgetGradient}>
-          <View style={styles.totalBudgetHeader}>
-            <Text style={styles.totalBudgetTitle}>{selectedPeriod} Budget</Text>
-            <Icon name="wallet" size={24} color="white" />
+    <Animated.View style={[styles.overviewCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.overviewGradient}
+      >
+        <View style={styles.overviewHeader}>
+          <View>
+            <Text style={styles.overviewTitle}>{selectedPeriod} Budget</Text>
+            <Text style={styles.overviewSubtitle}>
+              {budgetStats.daysRemaining} days remaining
+            </Text>
           </View>
-          <Text style={styles.totalBudgetAmount}>{formatCurrency(budgetData.totalBudget)}</Text>
-          
-          {budgetData.totalBudget === 0 ? (
-            <View style={styles.noBudgetMessage}>
-              <Text style={styles.noBudgetText}>No budget set for this period</Text>
-              <Text style={styles.noBudgetSubtext}>Tap the + button to create your first budget</Text>
-            </View>
-          ) : (
-            <View style={styles.budgetBreakdown}>
-              <View style={styles.budgetBreakdownItem}>
-                <Text style={styles.budgetBreakdownLabel}>Spent</Text>
-                <Text style={styles.budgetBreakdownValue}>{formatCurrency(budgetData.totalSpent)}</Text>
-              </View>
-              <View style={styles.budgetBreakdownDivider} />
-              <View style={styles.budgetBreakdownItem}>
-                <Text style={styles.budgetBreakdownLabel}>Remaining</Text>
-                <Text style={styles.budgetBreakdownValue}>{formatCurrency(budgetData.totalRemaining)}</Text>
-              </View>
-            </View>
-          )}
-        </LinearGradient>
+          <Icon name="calendar-month" size={24} color="rgba(255,255,255,0.8)" />
+        </View>
+
+        <View style={styles.progressContainer}>
+          <CircularProgress
+            percentage={budgetStats.percentage}
+            size={160}
+            strokeWidth={14}
+            color="white"
+            backgroundColor="rgba(255,255,255,0.3)"
+            showPercentage={true}
+            textColor="white"
+            fontSize={32}
+          />
+        </View>
+
+        <View style={styles.overviewStats}>
+          <View style={styles.overviewStatItem}>
+            <Text style={styles.overviewStatLabel}>Budget</Text>
+            <Text style={styles.overviewStatValue}>{formatCurrency(budgetStats.totalBudget)}</Text>
+          </View>
+          <View style={styles.overviewStatDivider} />
+          <View style={styles.overviewStatItem}>
+            <Text style={styles.overviewStatLabel}>Spent</Text>
+            <Text style={styles.overviewStatValue}>{formatCurrency(budgetStats.totalSpent)}</Text>
+          </View>
+          <View style={styles.overviewStatDivider} />
+          <View style={styles.overviewStatItem}>
+            <Text style={styles.overviewStatLabel}>Remaining</Text>
+            <Text style={styles.overviewStatValue}>{formatCurrency(budgetStats.totalRemaining)}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+    </Animated.View>
+  );
+
+  const renderQuickStats = () => (
+    <Animated.View style={[styles.quickStatsGrid, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <View style={[styles.quickStatCard, { backgroundColor: '#E8F5E9' }]}>
+        <Icon name="wallet-outline" size={24} color="#4CAF50" />
+        <Text style={styles.quickStatValue}>
+          {budgetStats.totalBudget > 0 ? `${budgetStats.percentage}%` : '0%'}
+        </Text>
+        <Text style={styles.quickStatLabel}>Used</Text>
       </View>
 
-      {/* Budget Summary Cards */}
-      <View style={styles.summaryGrid}>
-        <View style={[styles.summaryCard, { backgroundColor: '#E8F5E8' }]}>
-          <Icon name="wallet-outline" size={24} color="#4CAF50" />
-          <Text style={styles.summaryValue}>
-            ₹{budgetData.totalSpent.toFixed(0)}
-          </Text>
-          <Text style={styles.summaryLabel}>Budget Used</Text>
-          <Text style={styles.summaryPercentage}>
-            {budgetData.totalBudget > 0 ? ((budgetData.totalSpent / budgetData.totalBudget) * 100).toFixed(1) : '0.0'}%
-          </Text>
-        </View>
+      <View style={[styles.quickStatCard, { backgroundColor: '#E3F2FD' }]}>
+        <Icon name="cash" size={24} color="#2196F3" />
+        <Text style={styles.quickStatValue}>₹{budgetStats.totalRemaining.toFixed(0)}</Text>
+        <Text style={styles.quickStatLabel}>Remaining</Text>
+      </View>
 
-        <View style={[styles.summaryCard, { backgroundColor: '#E3F2FD' }]}>
-          <Icon name="cash" size={24} color="#2196F3" />
-          <Text style={styles.summaryValue}>₹{budgetData.totalRemaining.toFixed(0)}</Text>
-          <Text style={styles.summaryLabel}>Remaining</Text>
-          <Text style={styles.summaryPercentage}>
-            {budgetData.totalBudget > 0 ? (((budgetData.totalBudget - budgetData.totalSpent) / budgetData.totalBudget) * 100).toFixed(1) : '100.0'}%
-          </Text>
-        </View>
-
-        <View style={[styles.summaryCard, { backgroundColor: '#FFF3E0' }]}>
-          <Icon name="alert-circle" size={24} color="#FF9800" />
-          <Text style={styles.summaryValue}>{budgetData.alerts.length}</Text>
-          <Text style={styles.summaryLabel}>Alerts</Text>
-          <Text style={styles.summaryPercentage}>
-            {budgetData.categories.length > 0 ? 'Active' : 'None'}
-          </Text>
-        </View>
+      <View style={[styles.quickStatCard, { backgroundColor: '#FFF3E0' }]}>
+        <Icon name="alert-circle" size={24} color="#FF9800" />
+        <Text style={styles.quickStatValue}>{budgetStats.alerts.length}</Text>
+        <Text style={styles.quickStatLabel}>Alerts</Text>
       </View>
     </Animated.View>
   );
 
-  const renderCategoryBudgets = () => (
-    <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>Budget Categories</Text>
-      
-      {budgetData.categories.length === 0 ? (
-        <View style={styles.emptyBudgetContainer}>
-          <Icon name="wallet-plus" size={64} color={theme.textSecondary} />
-          <Text style={styles.emptyBudgetTitle}>No Budgets Set</Text>
-          <Text style={styles.emptyBudgetMessage}>
-            Create your first {selectedPeriod.toLowerCase()} budget to start tracking your spending
-          </Text>
-          <TouchableOpacity 
-            style={styles.createFirstBudgetButton}
-            onPress={handleSetTotalBudget}
-          >
-            <Icon name="wallet" size={20} color="white" />
-            <Text style={styles.createFirstBudgetText}>Set Total Budget</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.createFirstBudgetButton, { backgroundColor: theme.textSecondary, marginTop: 10 }]}
-            onPress={handleCreateBudget}
-          >
-            <Icon name="plus" size={20} color="white" />
-            <Text style={styles.createFirstBudgetText}>Create Category Budget</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        budgetData.categories.map((category) => (
-        <View key={category.id} style={styles.categoryCard}>
-          <View style={styles.categoryHeader}>
-            <View style={styles.categoryInfo}>
-              <View style={[styles.categoryIcon, { backgroundColor: `${category.color}20` }]}>
-                <Icon name={category.icon} size={20} color={category.color} />
-              </View>
-              <View style={styles.categoryDetails}>
-                <Text style={styles.categoryName}>{category.name}</Text>
-                <Text style={styles.categoryBudgetText}>
-                  {formatCurrency(category.spent)} of {formatCurrency(category.budget)}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.categoryActions}>
-              <Text style={[styles.categoryPercentage, { color: category.color }]}>
-                {category.percentage}%
-              </Text>
-              <TouchableOpacity 
-                style={styles.editButton}
-                onPress={() => handleEditBudget(category)}
-              >
-                <Icon name="pencil" size={16} color={theme.textLight} />
-              </TouchableOpacity>
-            </View>
-          </View>
+  const renderBudgetAlerts = () => {
+    if (budgetStats.alerts.length === 0) {
+      return null;
+    }
 
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarBackground}>
-              <Animated.View 
-                style={[
-                  styles.progressBarFill, 
-                  { 
-                    width: `${category.percentage}%`,
-                    backgroundColor: category.color
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-
-          <View style={styles.categoryFooter}>
-            <Text style={styles.remainingAmount}>
-              {formatCurrency(category.remaining)} remaining
-            </Text>
-            <Text style={styles.transactionCount}>
-              {category.transactions} transactions
-            </Text>
+    return (
+      <Animated.View style={[styles.alertsSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Budget Alerts</Text>
+          <View style={styles.alertBadge}>
+            <Text style={styles.alertBadgeText}>{budgetStats.alerts.length}</Text>
           </View>
         </View>
-        ))
-      )}
-    </Animated.View>
-  );
 
-  const renderBudgetAlerts = () => (
-    <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>Budget Alerts ({budgetData.alerts.length})</Text>
-      {budgetData.alerts.map((alert) => (
-        <View key={alert.id} style={styles.alertCard}>
-          <View style={styles.alertHeader}>
-            <View style={[styles.alertIcon, { backgroundColor: `${getAlertColor(alert.severity)}20` }]}>
-              <Icon 
-                name={alert.severity === 'warning' ? 'alert' : 'alert-circle'} 
-                size={20} 
-                color={getAlertColor(alert.severity)} 
+        {budgetStats.alerts.map((alert, index) => (
+          <View key={index} style={styles.alertCard}>
+            <View style={[
+              styles.alertIconContainer,
+              { backgroundColor: alert.severity === 'danger' ? `${theme.error}20` : `${theme.warning}20` }
+            ]}>
+              <Icon
+                name={alert.severity === 'danger' ? 'alert-circle' : 'alert'}
+                size={24}
+                color={alert.severity === 'danger' ? theme.error : theme.warning}
               />
             </View>
             <View style={styles.alertContent}>
-              <View style={styles.alertTitleRow}>
-                <Text style={styles.alertCategory}>{alert.category}</Text>
-                <View style={[styles.severityBadge, { backgroundColor: getAlertColor(alert.severity) }]}>
-                  <Text style={styles.severityText}>{alert.severity}</Text>
-                </View>
-              </View>
+              <Text style={styles.alertCategory}>{alert.category}</Text>
               <Text style={styles.alertMessage}>{alert.message}</Text>
             </View>
+            <View style={[
+              styles.alertSeverityBadge,
+              { backgroundColor: alert.severity === 'danger' ? theme.error : theme.warning }
+            ]}>
+              <Text style={styles.alertSeverityText}>
+                {alert.severity === 'danger' ? 'OVER' : 'WARNING'}
+              </Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.alertAction}>
-            <Text style={styles.alertActionText}>Adjust Budget</Text>
-            <Icon name="arrow-right" size={16} color={theme.primary} />
+        ))}
+      </Animated.View>
+    );
+  };
+
+  const renderCategoryBudgets = () => {
+    if (budgetStats.categories.length === 0) {
+      return (
+        <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
+          <Icon name="wallet-plus" size={64} color={theme.textSecondary} />
+          <Text style={styles.emptyTitle}>No Budgets Set</Text>
+          <Text style={styles.emptyMessage}>
+            Create your first {selectedPeriod.toLowerCase()} budget to start tracking your spending
+          </Text>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={handleAddBudget}
+          >
+            <Icon name="plus" size={20} color="white" />
+            <Text style={styles.createButtonText}>Create Budget</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      );
+    }
+
+    return (
+      <Animated.View style={[styles.categoriesSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Category Budgets</Text>
+          <TouchableOpacity onPress={handleAddBudget}>
+            <Icon name="plus-circle" size={24} color={theme.primary} />
           </TouchableOpacity>
         </View>
-      ))}
 
-      {budgetData.alerts.length === 0 && (
-        <View style={styles.noAlertsContainer}>
-          <Icon name="check-circle" size={64} color="#4CAF50" />
-          <Text style={styles.noAlertsTitle}>All Good!</Text>
-          <Text style={styles.noAlertsMessage}>Your budget is on track</Text>
-        </View>
-      )}
-    </Animated.View>
-  );
+        {budgetStats.categories.map((category) => {
+          const budget = budgets.find(b => b.category === category.id && b.period === selectedPeriod);
+          const isExpanded = expandedCards[category.id];
 
-  const renderContent = () => {
-    switch (selectedView) {
-      case 'overview':
-        return renderBudgetOverview();
-      case 'categories':
-        return renderCategoryBudgets();
-      case 'alerts':
-        return renderBudgetAlerts();
-      default:
-        return renderBudgetOverview();
-    }
+          return (
+            <TouchableOpacity
+              key={category.id}
+              style={styles.categoryCard}
+              onPress={() => toggleCardExpansion(category.id)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.categoryHeader}>
+                <View style={styles.categoryInfo}>
+                  <View style={[styles.categoryIconContainer, { backgroundColor: `${category.color}20` }]}>
+                    <Icon name={category.icon} size={24} color={category.color} />
+                  </View>
+                  <View style={styles.categoryDetails}>
+                    <Text style={styles.categoryName}>{category.name}</Text>
+                    <Text style={styles.categoryAmount}>
+                      {formatCurrency(category.spent)} of {formatCurrency(category.budget)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.categoryActions}>
+                  <CircularProgress
+                    percentage={category.percentage}
+                    size={60}
+                    strokeWidth={6}
+                    color={getBudgetStatusColor(category.percentage)}
+                    backgroundColor={theme.border}
+                    showPercentage={true}
+                    textColor={theme.text}
+                    fontSize={14}
+                  />
+                  {budget && (
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={styles.editIconButton}
+                        onPress={() => handleEditBudget(budget)}
+                      >
+                        <Icon name="pencil" size={16} color={theme.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.deleteIconButton}
+                        onPress={() => handleDeleteBudget(budget.id)}
+                      >
+                        <Icon name="delete" size={16} color={theme.error} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.progressBarContainer}>
+                <View style={styles.progressBarBackground}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${Math.min(category.percentage, 100)}%`,
+                        backgroundColor: getBudgetStatusColor(category.percentage)
+                      }
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.categoryFooter}>
+                <Text style={styles.categoryFooterText}>
+                  ₹{category.remaining.toFixed(2)} remaining
+                </Text>
+                <TouchableOpacity onPress={() => toggleCardExpansion(category.id)}>
+                  <Text style={[styles.categoryFooterText, { color: theme.primary }]}>
+                    {isExpanded ? 'Show less' : `${category.transactions} transactions`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {isExpanded && (
+                <View style={styles.expandedContent}>
+                  <View style={styles.expandedDivider} />
+                  <Text style={styles.expandedTitle}>Spending Details</Text>
+                  <View style={styles.expandedStats}>
+                    <View style={styles.expandedStatItem}>
+                      <Text style={styles.expandedStatLabel}>Average per transaction</Text>
+                      <Text style={styles.expandedStatValue}>
+                        ₹{category.transactions > 0 ? (category.spent / category.transactions).toFixed(2) : '0.00'}
+                      </Text>
+                    </View>
+                    <View style={styles.expandedStatItem}>
+                      <Text style={styles.expandedStatLabel}>Daily average</Text>
+                      <Text style={styles.expandedStatValue}>
+                        ₹{(category.spent / Math.max(1, 30 - budgetStats.daysRemaining)).toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Budget Sync Info */}
+                  <View style={styles.syncInfoCard}>
+                    <Icon name="sync" size={16} color={theme.primary} />
+                    <View style={styles.syncInfoContent}>
+                      <Text style={styles.syncInfoLabel}>Budget Sync</Text>
+                      {selectedPeriod === 'Weekly' && (
+                        <>
+                          <Text style={styles.syncInfoText}>
+                            Monthly: ₹{(category.budget * 4).toFixed(2)} (Weekly × 4)
+                          </Text>
+                          <Text style={styles.syncInfoText}>
+                            Yearly: ₹{(category.budget * 52).toFixed(2)} (Weekly × 52)
+                          </Text>
+                        </>
+                      )}
+                      {selectedPeriod === 'Monthly' && (
+                        <>
+                          <Text style={styles.syncInfoText}>
+                            Weekly: ₹{(category.budget / 4).toFixed(2)} (Monthly ÷ 4)
+                          </Text>
+                          <Text style={styles.syncInfoText}>
+                            Yearly: ₹{(category.budget * 12).toFixed(2)} (Monthly × 12)
+                          </Text>
+                        </>
+                      )}
+                      {selectedPeriod === 'Yearly' && (
+                        <>
+                          <Text style={styles.syncInfoText}>
+                            Monthly: ₹{(category.budget / 12).toFixed(2)} (Yearly ÷ 12)
+                          </Text>
+                          <Text style={styles.syncInfoText}>
+                            Weekly: ₹{(category.budget / 52).toFixed(2)} (Yearly ÷ 52)
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                  </View>
+
+                  {category.percentage > 100 && (
+                    <View style={styles.overBudgetWarning}>
+                      <Icon name="alert-circle" size={16} color={theme.error} />
+                      <Text style={styles.overBudgetText}>
+                        Over budget by ₹{(category.spent - category.budget).toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </Animated.View>
+    );
   };
 
   const styles = createStyles(theme);
 
   return (
     <View style={styles.container}>
-      {renderHeader()}
-      {renderPeriodSelector()}
-      {renderViewSelector()}
-      
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {renderContent()}
-      </ScrollView>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-      {/* Add Budget Modal */}
-      <Modal
-        visible={showAddBudgetModal}
-        transparent={true}
-        animationType="fade"
-        statusBarTranslucent={true}
-        onRequestClose={() => setShowAddBudgetModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowAddBudgetModal(false)}
+      {/* Background */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.background}
+      />
+
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="white"
+            />
+          }
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Set {selectedPeriod} Budget</Text>
-              <TouchableOpacity 
-                onPress={() => setShowAddBudgetModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Icon name="close" size={24} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Total Budget Amount</Text>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>₹</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={budgetAmount}
-                  onChangeText={setBudgetAmount}
-                  placeholder="0.00"
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="numeric"
-                  autoFocus={true}
-                />
-              </View>
+          {renderPeriodSelector()}
+          {renderBudgetOverview()}
+          {renderQuickStats()}
+          {renderBudgetAlerts()}
+          <BudgetInsights categories={budgetStats.categories} theme={theme} />
+          {renderCategoryBudgets()}
+        </ScrollView>
 
-              <Text style={styles.inputLabel}>Period</Text>
-              <View style={styles.periodInfo}>
-                <Icon name="calendar" size={20} color={theme.primary} />
-                <Text style={styles.periodInfoText}>{selectedPeriod}</Text>
-              </View>
-              
-              <Text style={styles.modalHelpText}>
-                Set your total {selectedPeriod.toLowerCase()} budget to track your spending.
-              </Text>
-            </View>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => {
-                  setShowAddBudgetModal(false);
-                  setBudgetAmount('');
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.addButton}
-                onPress={handleSaveTotalBudget}
-              >
-                <Text style={styles.addButtonText}>Set Budget</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Category Selection Modal */}
-      <Modal
-        visible={showCategoryModal}
-        transparent={true}
-        animationType="slide"
-        statusBarTranslucent={true}
-        onRequestClose={() => setShowCategoryModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCategoryModal(false)}
-        >
-          <View style={styles.categoryModalContent}>
-            <View style={styles.categoryModalHeader}>
-              <Text style={styles.categoryModalTitle}>Select Category</Text>
-              <TouchableOpacity 
-                onPress={() => setShowCategoryModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Icon name="close" size={24} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.categoryList}>
-              {availableCategories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.categoryOption,
-                    budgetCategory === category.id && styles.categoryOptionSelected
-                  ]}
-                  onPress={() => {
-                    setBudgetCategory(category.id);
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <View style={[styles.categoryOptionIcon, { backgroundColor: `${category.color}20` }]}>
-                    <Icon name={category.icon} size={24} color={category.color} />
-                  </View>
-                  <Text style={styles.categoryOptionText}>{category.name}</Text>
-                  {budgetCategory === category.id && (
-                    <Icon name="check" size={20} color={theme.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        {/* Add/Edit Budget Modal */}
+        <AddBudgetModal
+          visible={showAddModal}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingBudget(null);
+          }}
+          onSave={handleSaveBudget}
+          editingBudget={editingBudget}
+          period={selectedPeriod}
+          theme={theme}
+        />
+      </SafeAreaView>
     </View>
   );
 }
@@ -939,270 +935,301 @@ export default function BudgetScreen({ navigation }) {
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
   },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
+  },
+
+  // Header (matches other screens)
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
-    paddingBottom: 20,
-    backgroundColor: theme.headerBackground || theme.background,
+    paddingTop: (StatusBar.currentHeight || 0) + 10,
+    paddingBottom: 15,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
   },
-  createButton: {
+  actionButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.primary,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
 
-  // Period Selector Styles
-  periodSelector: {
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  periodBoxContainer: {
-    flexDirection: 'row',
-  },
-  periodBox: {
-    flex: 1,
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.border,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  periodBoxActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
-    elevation: 4,
-    shadowOpacity: 0.2,
-  },
-  periodBoxTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.text,
-    marginBottom: 6,
-  },
-  periodBoxTitleActive: {
-    color: 'white',
-  },
-  periodBoxAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 3,
-  },
-  periodBoxAmountActive: {
-    color: 'white',
-  },
-  periodBoxSubtext: {
-    fontSize: 11,
-    color: theme.textSecondary,
-    textAlign: 'center',
-  },
-  periodBoxSubtextActive: {
-    color: 'rgba(255,255,255,0.8)',
-  },
-
-  // View Selector Styles
-  viewSelector: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  viewButtonContainer: {
-    flexDirection: 'row',
-  },
-  viewButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  viewButtonActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
-  },
-  viewButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
-    marginLeft: 8,
-  },
-  viewButtonTextActive: {
-    color: 'white',
-  },
-
-  // Content Styles
+  // ScrollView
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
     paddingBottom: 100,
   },
-  content: {
+
+  // Period Selector
+  periodSelector: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 20,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 15,
+  periodButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  periodButtonActive: {
+    backgroundColor: 'white',
+  },
+  periodButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  periodButtonTextActive: {
+    color: theme.primary,
   },
 
-  // Total Budget Card Styles
-  totalBudgetCard: {
+  // Budget Overview Card
+  overviewCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 20,
     elevation: 8,
     shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  totalBudgetGradient: {
-    padding: 25,
+  overviewGradient: {
+    padding: 24,
   },
-  totalBudgetHeader: {
+  overviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  totalBudgetTitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-  },
-  totalBudgetAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: 'white',
+    alignItems: 'flex-start',
     marginBottom: 20,
   },
-  budgetBreakdown: {
+  overviewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  overviewSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  progressContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  overviewStats: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  overviewStatItem: {
     alignItems: 'center',
   },
-  budgetBreakdownItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  budgetBreakdownLabel: {
+  overviewStatLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 5,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 4,
   },
-  budgetBreakdownValue: {
+  overviewStatValue: {
     fontSize: 16,
     fontWeight: 'bold',
     color: 'white',
   },
-  budgetBreakdownDivider: {
+  overviewStatDivider: {
     width: 1,
-    height: 30,
     backgroundColor: 'rgba(255,255,255,0.3)',
   },
 
-  // Summary Grid Styles
-  summaryGrid: {
+  // Quick Stats Grid
+  quickStatsGrid: {
     flexDirection: 'row',
-    gap: 12,
+    paddingHorizontal: 20,
     marginBottom: 20,
+    gap: 12,
   },
-  summaryCard: {
+  quickStatCard: {
     flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  summaryValue: {
+  quickStatValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginTop: 8,
     marginBottom: 2,
   },
-  summaryLabel: {
+  quickStatLabel: {
     fontSize: 12,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  summaryPercentage: {
-    fontSize: 10,
-    color: theme.textLight,
-    textAlign: 'center',
-    fontWeight: '500',
+    color: 'rgba(255,255,255,0.8)',
   },
 
-  // Category Card Styles
+  // Alerts Section
+  alertsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  alertBadge: {
+    backgroundColor: theme.error,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  alertBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  editButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  alertIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  alertContent: {
+    flex: 1,
+  },
+  alertCategory: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  alertMessage: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  alertSeverityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  alertSeverityText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+
+  // Categories Section
+  categoriesSection: {
+    paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+
+  // Category Card
   categoryCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
     padding: 20,
-    marginBottom: 15,
-    elevation: 3,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   categoryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  categoryActions: {
+    alignItems: 'flex-end',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 8,
+  },
+  editIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${theme.primary}20`,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+  },
+  deleteIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${theme.error}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  categoryIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1213,30 +1240,19 @@ const createStyles = (theme) => StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 2,
+    color: 'white',
+    marginBottom: 4,
   },
-  categoryBudgetText: {
+  categoryAmount: {
     fontSize: 14,
-    color: theme.textSecondary,
-  },
-  categoryActions: {
-    alignItems: 'flex-end',
-  },
-  categoryPercentage: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  editButton: {
-    padding: 5,
+    color: 'rgba(255,255,255,0.8)',
   },
   progressBarContainer: {
-    marginBottom: 15,
+    marginBottom: 12,
   },
   progressBarBackground: {
     height: 8,
-    backgroundColor: theme.border,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -1247,349 +1263,122 @@ const createStyles = (theme) => StyleSheet.create({
   categoryFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
-  remainingAmount: {
-    fontSize: 14,
-    color: theme.textSecondary,
+  categoryFooterText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
   },
-  transactionCount: {
-    fontSize: 14,
-    color: theme.textSecondary,
+  expandedContent: {
+    marginTop: 16,
+    paddingTop: 16,
   },
-
-  // Alert Card Styles
-  alertCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+  expandedDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 16,
   },
-  alertHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  expandedTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
     marginBottom: 12,
   },
-  alertIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  alertContent: {
-    flex: 1,
-  },
-  alertTitleRow: {
+  expandedStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  expandedStatItem: {
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  alertCategory: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.text,
-  },
-  severityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  severityText: {
-    fontSize: 10,
-    color: 'white',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  alertMessage: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    lineHeight: 20,
-  },
-  alertAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-  },
-  alertActionText: {
-    fontSize: 14,
-    color: theme.primary,
-    fontWeight: '500',
-  },
-
-  // No Alerts Styles
-  noAlertsContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  noAlertsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginTop: 15,
-    marginBottom: 8,
-  },
-  noAlertsMessage: {
-    fontSize: 16,
-    color: theme.textSecondary,
-    textAlign: 'center',
-  },
-
-  // Modal Styles
-  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 20 + (StatusBar.currentHeight || 0),
   },
-  modalContent: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 24,
-    width: '100%',
-    maxWidth: 400,
-    elevation: 15,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 15,
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-  },
-  modalCloseButton: {
-    padding: 5,
-  },
-  modalBody: {
-    padding: 24,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.text,
-    marginBottom: 8,
-    marginTop: 15,
-  },
-  categorySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.background,
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 2,
-    borderColor: theme.border,
-    elevation: 1,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  categorySelectorText: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.text,
-    marginLeft: 12,
-  },
-  amountInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.background,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: theme.border,
-    paddingHorizontal: 18,
-    elevation: 1,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginRight: 8,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.text,
-    paddingVertical: 15,
-  },
-  periodInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.background,
-    borderRadius: 12,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  periodInfoText: {
-    fontSize: 16,
-    color: theme.text,
-    marginLeft: 12,
-  },
-  modalHelpText: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    marginTop: 15,
-    lineHeight: 20,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    padding: 20,
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: theme.background,
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.textSecondary,
-  },
-  addButton: {
-    flex: 1,
-    backgroundColor: theme.primary,
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-  },
-
-  // Category Selection Modal Styles
-  categoryModalContent: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 20,
-    width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
-    elevation: 10,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-  },
-  categoryModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  categoryModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-  },
-  categoryList: {
-    maxHeight: 400,
-  },
-  categoryOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  categoryOptionSelected: {
-    backgroundColor: `${theme.primary}10`,
-  },
-  categoryOptionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  categoryOptionText: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.text,
-  },
-
-  // Empty Budget State Styles
-  emptyBudgetContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  emptyBudgetTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  emptyBudgetMessage: {
-    fontSize: 16,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 30,
-  },
-  createFirstBudgetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.primary,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  createFirstBudgetText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-  },
-
-  // No Budget Message Styles
-  noBudgetMessage: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  noBudgetText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+  expandedStatLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
     marginBottom: 4,
   },
-  noBudgetSubtext: {
+  expandedStatValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  overBudgetWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${theme.error}10`,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    gap: 8,
+  },
+  overBudgetText: {
+    fontSize: 13,
+    color: theme.error,
+    fontWeight: '500',
+  },
+  syncInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${theme.primary}10`,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    marginBottom: 12,
+    gap: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.primary,
+  },
+  syncInfoContent: {
+    flex: 1,
+  },
+  syncInfoLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: theme.textSecondary,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  syncInfoText: {
+    fontSize: 13,
+    color: theme.primary,
+    fontWeight: '600',
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
+    marginBottom: 24,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.primary,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    gap: 8,
+    elevation: 4,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  createButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });

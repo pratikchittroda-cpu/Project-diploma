@@ -181,7 +181,7 @@ const AnimatedTabIcon = ({ focused, iconName, size }) => {
         friction: 8,
         useNativeDriver: true,
       }).start();
-      
+
       Animated.timing(bounceAnim, {
         toValue: 0,
         duration: 200,
@@ -201,10 +201,10 @@ const AnimatedTabIcon = ({ focused, iconName, size }) => {
         justifyContent: 'center',
       }}
     >
-      <Icon 
-        name={iconName} 
-        size={focused ? size + 2 : size} 
-        color={focused ? theme.primary : theme.textLight} 
+      <Icon
+        name={iconName}
+        size={focused ? size + 2 : size}
+        color={focused ? theme.primary : theme.textLight}
       />
       {focused && (
         <Animated.View
@@ -294,7 +294,7 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
           },
         ]}
       />
-      
+
       {/* Background circle for focused state */}
       <Animated.View
         style={[
@@ -313,7 +313,7 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
           },
         ]}
       />
-      
+
       {/* Icon with press animation */}
       <Animated.View
         style={{
@@ -322,10 +322,10 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
           justifyContent: 'center',
         }}
       >
-        <Icon 
-          name={iconName} 
-          size={focused ? size + 3 : size} 
-          color={focused ? theme.primary : theme.textLight} 
+        <Icon
+          name={iconName}
+          size={focused ? size + 3 : size}
+          color={focused ? theme.primary : theme.textLight}
         />
         {focused && (
           <Animated.View
@@ -424,7 +424,7 @@ const AnimatedAddButton = ({ isFocused, onPress }) => {
       style={customTabBarStyles.addButton}
       activeOpacity={0.8}
     >
-      <Animated.View 
+      <Animated.View
         style={[
           customTabBarStyles.addButtonInner,
           {
@@ -441,10 +441,10 @@ const AnimatedAddButton = ({ isFocused, onPress }) => {
             transform: [{ rotate: rotation }],
           }}
         >
-          <Icon 
-            name="plus" 
-            size={32} 
-            color="white" 
+          <Icon
+            name="plus"
+            size={32}
+            color="white"
           />
         </Animated.View>
       </Animated.View>
@@ -545,19 +545,20 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
 const createCustomTabBarStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: theme.tabBar,
-    borderTopWidth: theme.tabBarBorder === 'transparent' ? 0 : 1,
-    borderTopColor: theme.tabBarBorder,
-    elevation: 20,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(30px)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255, 255, 255, 0.6)',
+    elevation: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
     paddingBottom: 10,
     paddingTop: 15,
     height: 75,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
     position: 'absolute',
     left: 0,
     right: 0,
@@ -614,7 +615,7 @@ const createCustomTabBarStyles = (theme) => StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     borderWidth: 4,
-    borderColor: theme.tabBar,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
   },
 });
 
@@ -708,7 +709,7 @@ const AnimatedAddTransactionScreen = ({ navigation }) => {
 
 export default function TabNavigator() {
   const { theme, isLoading } = useTheme();
-  
+
   // Don't render until theme is loaded
   if (isLoading || !theme) {
     return (
@@ -717,31 +718,31 @@ export default function TabNavigator() {
       </View>
     );
   }
-  
+
   // Suppress default configuration warnings
   React.useEffect(() => {
     const originalWarn = console.warn;
     const originalLog = console.log;
-    
+
     console.warn = (...args) => {
-      if (args[0] && typeof args[0] === 'string' && 
-          (args[0].includes('default configuration') || 
-           args[0].includes('configuration warning') ||
-           args[0].includes('TabNavigator'))) {
+      if (args[0] && typeof args[0] === 'string' &&
+        (args[0].includes('default configuration') ||
+          args[0].includes('configuration warning') ||
+          args[0].includes('TabNavigator'))) {
         return;
       }
       originalWarn.apply(console, args);
     };
-    
+
     console.log = (...args) => {
-      if (args[0] && typeof args[0] === 'string' && 
-          (args[0].includes('default configuration') || 
-           args[0].includes('configuration warning'))) {
+      if (args[0] && typeof args[0] === 'string' &&
+        (args[0].includes('default configuration') ||
+          args[0].includes('configuration warning'))) {
         return;
       }
       originalLog.apply(console, args);
     };
-    
+
     return () => {
       console.warn = originalWarn;
       console.log = originalLog;
@@ -759,42 +760,42 @@ export default function TabNavigator() {
           unmountOnBlur: false,
         }}
       >
-      <Tab.Screen 
-        name="Home" 
-        component={AnimatedDashboardScreen}
-        options={{
-          tabBarLabel: 'Home',
-        }}
-      />
-      <Tab.Screen 
-        name="Transactions" 
-        component={AnimatedTransactionsScreen}
-        options={{
-          tabBarLabel: 'Transactions',
-        }}
-      />
-      <Tab.Screen 
-        name="AddTransaction" 
-        component={AnimatedAddTransactionScreen}
-        options={{
-          tabBarLabel: 'Add',
-        }}
-      />
-      <Tab.Screen 
-        name="Budget" 
-        component={AnimatedBudgetScreen}
-        options={{
-          tabBarLabel: 'Budget',
-        }}
-      />
-      <Tab.Screen 
-        name="Stats" 
-        component={AnimatedStatsScreen}
-        options={{
-          tabBarLabel: 'Stats',
-        }}
-      />
-    </Tab.Navigator>
+        <Tab.Screen
+          name="Home"
+          component={AnimatedDashboardScreen}
+          options={{
+            tabBarLabel: 'Home',
+          }}
+        />
+        <Tab.Screen
+          name="Transactions"
+          component={AnimatedTransactionsScreen}
+          options={{
+            tabBarLabel: 'Transactions',
+          }}
+        />
+        <Tab.Screen
+          name="AddTransaction"
+          component={AnimatedAddTransactionScreen}
+          options={{
+            tabBarLabel: 'Add',
+          }}
+        />
+        <Tab.Screen
+          name="Budget"
+          component={AnimatedBudgetScreen}
+          options={{
+            tabBarLabel: 'Budget',
+          }}
+        />
+        <Tab.Screen
+          name="Stats"
+          component={AnimatedStatsScreen}
+          options={{
+            tabBarLabel: 'Stats',
+          }}
+        />
+      </Tab.Navigator>
     </View>
   );
 }

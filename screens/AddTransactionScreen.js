@@ -25,17 +25,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 
 export default function AddTransactionScreen({ navigation }) {
-  const { theme, isLoading } = useTheme();
-  
-  // Don't render until theme is loaded - check this BEFORE other hooks
-  if (isLoading || !theme) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.loadingBackground || '#f8f9fa', paddingTop: StatusBar.currentHeight || 0 }}>
-        <ActivityIndicator size="large" color={theme?.loadingIndicator || '#667eea'} />
-      </View>
-    );
-  }
-
+  const { theme } = useTheme();
   const { user, userData } = useAuth();
   const { addTransaction } = useTransactions();
   const [amount, setAmount] = useState('');
@@ -79,7 +69,7 @@ export default function AddTransactionScreen({ navigation }) {
     try {
       const stored = await AsyncStorage.getItem('personal_recent_actions');
       let recentActions = stored ? JSON.parse(stored) : [];
-      
+
       const newAction = {
         id: 'add',
         name: 'Add Transaction',
@@ -87,11 +77,11 @@ export default function AddTransactionScreen({ navigation }) {
         color: theme.primary,
         timestamp: Date.now()
       };
-      
+
       recentActions = recentActions.filter(action => action.id !== 'add');
       recentActions.unshift(newAction);
       recentActions = recentActions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('personal_recent_actions', JSON.stringify(recentActions));
     } catch (error) {
       // Error tracking screen visit
@@ -160,22 +150,29 @@ export default function AddTransactionScreen({ navigation }) {
             color: theme.primary,
             timestamp: Date.now()
           };
-          
+
           const existingActions = await AsyncStorage.getItem('personal_recent_actions');
           const actions = existingActions ? JSON.parse(existingActions) : [];
-          
+
           // Remove existing action with same id and add new one at the beginning
           const filteredActions = actions.filter(action => action.id !== newAction.id);
           const updatedActions = [newAction, ...filteredActions].slice(0, 4);
-          
+
           await AsyncStorage.setItem('personal_recent_actions', JSON.stringify(updatedActions));
         } catch (storageError) {
           // Error updating recent actions
         }
 
+        const formattedAmount = new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: 'INR',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(parseFloat(amount));
+
         Alert.alert(
           'Success!',
-          `Great job, ${userData?.fullName || 'User'}! Your ${selectedType === 'income' ? 'income' : 'expense'} of ₹${parseFloat(amount).toFixed(2)} has been added successfully.`,
+          `Great job, ${userData?.fullName || 'User'}! Your ${selectedType === 'income' ? 'income' : 'expense'} of ${formattedAmount} has been added successfully.`,
           [
             {
               text: 'Add Another',
@@ -206,16 +203,16 @@ export default function AddTransactionScreen({ navigation }) {
       <Text style={styles.sectionTitle}>Transaction Type</Text>
       <View style={styles.typeSelector}>
         <TouchableOpacity
-          style={[styles.typeButton, selectedType === 'expense' && styles.typeButtonActive]}
+          style={[styles.typeButton, selectedType === 'expense' && styles.typeButtonActiveExpense]}
           onPress={() => {
             setSelectedType('expense');
             setSelectedCategory('food');
           }}
         >
-          <Icon 
-            name="minus-circle" 
-            size={24} 
-            color={selectedType === 'expense' ? 'white' : theme.error} 
+          <Icon
+            name="minus-circle"
+            size={24}
+            color={selectedType === 'expense' ? 'white' : '#FF5252'}
           />
           <Text style={[
             styles.typeButtonText,
@@ -226,16 +223,16 @@ export default function AddTransactionScreen({ navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.typeButton, selectedType === 'income' && styles.typeButtonActive]}
+          style={[styles.typeButton, selectedType === 'income' && styles.typeButtonActiveIncome]}
           onPress={() => {
             setSelectedType('income');
             setSelectedCategory('salary');
           }}
         >
-          <Icon 
-            name="plus-circle" 
-            size={24} 
-            color={selectedType === 'income' ? 'white' : theme.success} 
+          <Icon
+            name="plus-circle"
+            size={24}
+            color={selectedType === 'income' ? 'white' : '#4CAF50'}
           />
           <Text style={[
             styles.typeButtonText,
@@ -252,13 +249,13 @@ export default function AddTransactionScreen({ navigation }) {
     <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <Text style={styles.sectionTitle}>Amount</Text>
       <View style={styles.amountInputContainer}>
-        <Text style={styles.currencySymbol}>₹</Text>
+        <Text style={styles.currencySymbol}>{'\u20B9'}</Text>
         <TextInput
           style={styles.amountInput}
           value={amount}
           onChangeText={setAmount}
           placeholder="0.00"
-          placeholderTextColor={theme.textLight}
+          placeholderTextColor="rgba(255,255,255,0.5)"
           keyboardType="numeric"
           returnKeyType="next"
         />
@@ -274,7 +271,7 @@ export default function AddTransactionScreen({ navigation }) {
         value={description}
         onChangeText={setDescription}
         placeholder="Enter transaction description"
-        placeholderTextColor={theme.textLight}
+        placeholderTextColor="rgba(255,255,255,0.5)"
         multiline
         numberOfLines={3}
         textAlignVertical="top"
@@ -285,7 +282,7 @@ export default function AddTransactionScreen({ navigation }) {
 
   const renderCategorySelector = () => {
     const selectedCategoryData = personalCategories[selectedType].find(cat => cat.id === selectedCategory);
-    
+
     return (
       <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <Text style={styles.sectionTitle}>Category</Text>
@@ -294,16 +291,16 @@ export default function AddTransactionScreen({ navigation }) {
           onPress={() => setShowCategoryDropdown(true)}
         >
           <View style={styles.categoryDropdownContent}>
-            <Icon 
-              name={selectedCategoryData?.icon || 'help-circle'} 
-              size={24} 
-              color={theme.primary} 
+            <Icon
+              name={selectedCategoryData?.icon || 'help-circle'}
+              size={24}
+              color="white"
             />
             <Text style={styles.categoryDropdownText}>
               {selectedCategoryData?.name || 'Select Category'}
             </Text>
           </View>
-          <Icon name="chevron-down" size={20} color={theme.textSecondary} />
+          <Icon name="chevron-down" size={20} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
       </Animated.View>
     );
@@ -316,7 +313,7 @@ export default function AddTransactionScreen({ navigation }) {
       animationType="fade"
       onRequestClose={() => setShowCategoryDropdown(false)}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.modalOverlay}
         activeOpacity={1}
         onPress={() => setShowCategoryDropdown(false)}
@@ -324,14 +321,14 @@ export default function AddTransactionScreen({ navigation }) {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Category</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowCategoryDropdown(false)}
               style={styles.modalCloseButton}
             >
-              <Icon name="close" size={24} color={theme.textSecondary} />
+              <Icon name="close" size={24} color="white" />
             </TouchableOpacity>
           </View>
-          
+
           <FlatList
             data={personalCategories[selectedType]}
             keyExtractor={(item) => item.id}
@@ -348,10 +345,10 @@ export default function AddTransactionScreen({ navigation }) {
                 }}
               >
                 <View style={styles.categoryModalItemContent}>
-                  <Icon 
-                    name={item.icon} 
-                    size={24} 
-                    color={selectedCategory === item.id ? 'white' : theme.primary} 
+                  <Icon
+                    name={item.icon}
+                    size={24}
+                    color={selectedCategory === item.id ? 'white' : 'rgba(255,255,255,0.7)'}
                   />
                   <Text style={[
                     styles.categoryModalItemText,
@@ -371,18 +368,24 @@ export default function AddTransactionScreen({ navigation }) {
     </Modal>
   );
 
-  const styles = createStyles(theme);
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor={theme.primary} barStyle="light-content" translucent={true} />
-      <View style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+
+      {/* Background */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.background}
+      />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-left" size={24} color={theme.text} />
+            <Icon name="arrow-left" size={24} color="white" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Add Transaction</Text>
@@ -405,49 +408,52 @@ export default function AddTransactionScreen({ navigation }) {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-        {renderTypeSelector()}
-        {renderAmountInput()}
-        {renderDescriptionInput()}
-        {renderCategorySelector()}
+            {renderTypeSelector()}
+            {renderAmountInput()}
+            {renderDescriptionInput()}
+            {renderCategorySelector()}
 
-        <Animated.View style={[styles.submitSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            <LinearGradient
-              colors={isSubmitting ? [theme.textLight, theme.textLight] : [theme.primary, theme.primaryLight]}
-              style={styles.submitGradient}
-            >
-              {isSubmitting ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="white" style={{ marginRight: 10 }} />
-                  <Text style={styles.submitButtonText}>Adding...</Text>
-                </View>
-              ) : (
-                <Text style={styles.submitButtonText}>Add Transaction</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
+            <Animated.View style={[styles.submitSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+              <TouchableOpacity
+                style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="white" style={{ marginRight: 10 }} />
+                    <Text style={styles.submitButtonText}>Adding...</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Icon name="check-circle" size={20} color="white" style={{ marginRight: 8 }} />
+                    <Text style={styles.submitButtonText}>Add Transaction</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
-        
+
         {renderCategoryModal()}
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const createStyles = (theme) => StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.background,
-  },
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardView: {
     flex: 1,
@@ -457,29 +463,23 @@ const createStyles = (theme) => StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 150,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
-    paddingBottom: 20,
-    backgroundColor: theme.headerBackground || theme.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
+    paddingBottom: 15,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   headerContent: {
     flex: 1,
@@ -488,11 +488,11 @@ const createStyles = (theme) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
   placeholder: {
@@ -502,10 +502,10 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 25,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 15,
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 12,
   },
   typeSelector: {
     flexDirection: 'row',
@@ -516,21 +516,25 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  typeButtonActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
+  typeButtonActiveExpense: {
+    backgroundColor: '#FF5252',
+    borderColor: '#FF5252',
+  },
+  typeButtonActiveIncome: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   typeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.text,
+    color: 'rgba(255,255,255,0.8)',
     marginLeft: 8,
   },
   typeButtonTextActive: {
@@ -539,105 +543,44 @@ const createStyles = (theme) => StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   currencySymbol: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: theme.primary,
+    color: 'white',
     marginRight: 10,
   },
   amountInput: {
     flex: 1,
     fontSize: 24,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     paddingVertical: 15,
   },
   descriptionInput: {
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 15,
     fontSize: 16,
-    color: theme.text,
+    color: 'white',
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: 'rgba(255,255,255,0.2)',
     minHeight: 80,
   },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  categoryButton: {
-    width: '48%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 15,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  categoryButtonActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
-  },
-  categoryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
-    marginLeft: 10,
-    flex: 1,
-  },
-  categoryButtonTextActive: {
-    color: 'white',
-  },
-  submitSection: {
-    marginTop: 20,
-  },
-  submitButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 4,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  submitButtonDisabled: {
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  submitGradient: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  
-  // Dropdown styles
   categoryDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 15,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   categoryDropdownContent: {
     flexDirection: 'row',
@@ -646,29 +589,58 @@ const createStyles = (theme) => StyleSheet.create({
   },
   categoryDropdownText: {
     fontSize: 16,
-    color: theme.text,
+    color: 'white',
     marginLeft: 12,
     fontWeight: '500',
   },
-  
+  submitSection: {
+    marginTop: 20,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingVertical: 18,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  submitButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#667eea',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
   modalContent: {
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    backdropFilter: 'blur(10px)',
     borderRadius: 20,
     width: '100%',
     maxHeight: '70%',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -676,18 +648,18 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: theme.divider,
+    borderBottomColor: 'rgba(255,255,255,0.2)',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
   },
   modalCloseButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.background,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -697,10 +669,10 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.divider,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   categoryModalItemActive: {
-    backgroundColor: theme.primary,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   categoryModalItemContent: {
     flexDirection: 'row',
@@ -709,7 +681,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   categoryModalItemText: {
     fontSize: 16,
-    color: theme.text,
+    color: 'rgba(255,255,255,0.8)',
     marginLeft: 12,
     fontWeight: '500',
   },
