@@ -16,7 +16,7 @@ export default function CircularProgress({
   fontSize = 24,
 }) {
   const animatedValue = useRef(new Animated.Value(0)).current;
-  
+
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const clampedPercentage = Math.min(Math.max(percentage, 0), 100);

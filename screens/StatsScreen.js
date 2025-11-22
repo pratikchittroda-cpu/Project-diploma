@@ -190,24 +190,62 @@ export default function StatsScreen({ navigation }) {
         }))
         .sort((a, b) => b.amount - a.amount);
 
-      // Monthly Trends (Last 6 months)
+      // Expense Trends based on selected period
       const trendLabels = [];
       const trendData = [];
 
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const mStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-        const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+      if (selectedPeriod === 'Weekly') {
+        // Last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(now.getDate() - i);
+          const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().split('T')[0];
+          const dayEnd = dayStart;
 
-        const mTrans = transactions.filter(t => {
-          const tDate = t.date || t.createdAt?.split('T')[0];
-          return tDate >= mStart && tDate <= mEnd;
-        });
+          const dayTrans = transactions.filter(t => {
+            const tDate = t.date || t.createdAt?.split('T')[0];
+            return tDate === dayStart;
+          });
 
-        const mExp = mTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+          const dayExp = dayTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
 
-        trendLabels.push(d.toLocaleDateString('en-US', { month: 'short' }));
-        trendData.push(mExp || 0); // Ensure number
+          trendLabels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+          trendData.push(dayExp || 0);
+        }
+      } else if (selectedPeriod === 'Monthly') {
+        // Last 6 months
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const mStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+          const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+
+          const mTrans = transactions.filter(t => {
+            const tDate = t.date || t.createdAt?.split('T')[0];
+            return tDate >= mStart && tDate <= mEnd;
+          });
+
+          const mExp = mTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+          trendLabels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+          trendData.push(mExp || 0);
+        }
+      } else {
+        // Yearly - Last 12 months
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const mStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+          const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+
+          const mTrans = transactions.filter(t => {
+            const tDate = t.date || t.createdAt?.split('T')[0];
+            return tDate >= mStart && tDate <= mEnd;
+          });
+
+          const mExp = mTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+          trendLabels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+          trendData.push(mExp || 0);
+        }
       }
 
       setStatsData({
@@ -503,7 +541,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   grid: {
     flexDirection: 'row',

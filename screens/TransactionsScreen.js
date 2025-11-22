@@ -361,7 +361,7 @@ export default function TransactionsScreen({ navigation }) {
                     <View style={styles.transactionDetails}>
                       <Text style={styles.transactionDescription}>{transaction.description}</Text>
                       <Text style={styles.transactionCategory}>
-                        {transaction.category} • {new Date(transaction.date).toLocaleDateString()}
+                        {transaction.category} • {new Date(transaction.date).toLocaleDateString('en-US', { weekday: 'long' })}, {new Date(transaction.date).toLocaleDateString()}
                       </Text>
                     </View>
 

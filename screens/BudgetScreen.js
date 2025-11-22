@@ -10,6 +10,7 @@ import {
   StatusBar,
   SafeAreaView,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -178,7 +179,6 @@ export default function BudgetScreen({ navigation }) {
       categorySpending[category] = (categorySpending[category] || 0) + transaction.amount;
     });
 
-    // Build category budget data
     const categoryData = [
       { id: 'food', name: 'Food & Dining', color: '#FF9800', icon: 'food' },
       { id: 'transport', name: 'Transportation', color: '#2196F3', icon: 'car' },
@@ -188,7 +188,8 @@ export default function BudgetScreen({ navigation }) {
       { id: 'health', name: 'Healthcare', color: '#4CAF50', icon: 'medical-bag' },
     ];
 
-    const categories = categoryData.map(cat => {
+    // Map categories with their budget and spending data
+    const categoriesWithData = categoryData.map(cat => {
       const spent = categorySpending[cat.id] || 0;
       const budget = budgets.find(b => b.category === cat.id && b.period === selectedPeriod)?.amount || 0;
       const remaining = Math.max(0, budget - spent);
@@ -204,16 +205,48 @@ export default function BudgetScreen({ navigation }) {
         transactions: transactionCount,
         status: percentage < 75 ? 'good' : percentage < 90 ? 'warning' : 'danger',
       };
-    }).filter(cat => cat.budget > 0 || cat.spent > 0);
+    });
+
+    // Only include categories that have a budget set
+    const categories = categoriesWithData.filter(cat => cat.budget > 0);
+
+    // Calculate unbudgeted spending (spending from categories without budgets)
+    const budgetedCategoryIds = categories.map(cat => cat.id);
+    const unbudgetedSpending = Object.keys(categorySpending).reduce((sum, categoryId) => {
+      if (!budgetedCategoryIds.includes(categoryId)) {
+        return sum + categorySpending[categoryId];
+      }
+      return sum;
+    }, 0);
+
+    // Add "Out of Budget" category if there is unbudgeted spending
+    if (unbudgetedSpending > 0) {
+      const unbudgetedTransactionCount = periodTransactions.filter(
+        t => !budgetedCategoryIds.includes(t.category || 'other')
+      ).length;
+
+      categories.push({
+        id: 'out-of-budget',
+        name: 'Out of Budget',
+        color: '#9E9E9E',
+        icon: 'alert-circle-outline',
+        budget: 0,
+        spent: unbudgetedSpending,
+        remaining: 0,
+        percentage: 0,
+        transactions: unbudgetedTransactionCount,
+        status: 'warning',
+      });
+    }
 
     const totalBudget = categories.reduce((sum, cat) => sum + cat.budget, 0);
     const totalSpent = categories.reduce((sum, cat) => sum + cat.spent, 0);
     const totalRemaining = Math.max(0, totalBudget - totalSpent);
     const percentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
-    // Generate alerts
+    // Generate alerts (exclude "Out of Budget" from alerts)
     const alerts = categories
-      .filter(cat => cat.percentage >= 75)
+      .filter(cat => cat.id !== 'out-of-budget' && cat.percentage >= 75)
       .map(cat => ({
         id: cat.id,
         category: cat.name,
@@ -582,6 +615,9 @@ export default function BudgetScreen({ navigation }) {
     );
   };
 
+  const [showBudgetPopup, setShowBudgetPopup] = useState(false);
+  const [showSpentPopup, setShowSpentPopup] = useState(false);
+
   const renderBudgetOverview = () => (
     <Animated.View style={[styles.overviewCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <LinearGradient
@@ -601,6 +637,7 @@ export default function BudgetScreen({ navigation }) {
         <View style={styles.progressContainer}>
           <CircularProgress
             percentage={budgetStats.percentage}
+            segments={budgetStats.segments}
             size={160}
             strokeWidth={14}
             color="white"
@@ -612,15 +649,15 @@ export default function BudgetScreen({ navigation }) {
         </View>
 
         <View style={styles.overviewStats}>
-          <View style={styles.overviewStatItem}>
+          <TouchableOpacity style={styles.overviewStatItem} onPress={() => setShowBudgetPopup(true)}>
             <Text style={styles.overviewStatLabel}>Budget</Text>
             <Text style={styles.overviewStatValue}>{formatCurrency(budgetStats.totalBudget)}</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.overviewStatDivider} />
-          <View style={styles.overviewStatItem}>
+          <TouchableOpacity style={styles.overviewStatItem} onPress={() => setShowSpentPopup(true)}>
             <Text style={styles.overviewStatLabel}>Spent</Text>
             <Text style={styles.overviewStatValue}>{formatCurrency(budgetStats.totalSpent)}</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.overviewStatDivider} />
           <View style={styles.overviewStatItem}>
             <Text style={styles.overviewStatLabel}>Remaining</Text>
@@ -633,22 +670,22 @@ export default function BudgetScreen({ navigation }) {
 
   const renderQuickStats = () => (
     <Animated.View style={[styles.quickStatsGrid, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <View style={[styles.quickStatCard, { backgroundColor: '#E8F5E9' }]}>
-        <Icon name="wallet-outline" size={24} color="#4CAF50" />
+      <View style={styles.quickStatCard}>
+        <Icon name="wallet-outline" size={28} color="white" style={{ marginBottom: 8 }} />
         <Text style={styles.quickStatValue}>
           {budgetStats.totalBudget > 0 ? `${budgetStats.percentage}%` : '0%'}
         </Text>
         <Text style={styles.quickStatLabel}>Used</Text>
       </View>
 
-      <View style={[styles.quickStatCard, { backgroundColor: '#E3F2FD' }]}>
-        <Icon name="cash" size={24} color="#2196F3" />
+      <View style={styles.quickStatCard}>
+        <Icon name="cash" size={28} color="white" style={{ marginBottom: 8 }} />
         <Text style={styles.quickStatValue}>₹{budgetStats.totalRemaining.toFixed(0)}</Text>
         <Text style={styles.quickStatLabel}>Remaining</Text>
       </View>
 
-      <View style={[styles.quickStatCard, { backgroundColor: '#FFF3E0' }]}>
-        <Icon name="alert-circle" size={24} color="#FF9800" />
+      <View style={styles.quickStatCard}>
+        <Icon name="alert-circle" size={28} color="white" style={{ marginBottom: 8 }} />
         <Text style={styles.quickStatValue}>{budgetStats.alerts.length}</Text>
         <Text style={styles.quickStatLabel}>Alerts</Text>
       </View>
@@ -671,14 +708,11 @@ export default function BudgetScreen({ navigation }) {
 
         {budgetStats.alerts.map((alert, index) => (
           <View key={index} style={styles.alertCard}>
-            <View style={[
-              styles.alertIconContainer,
-              { backgroundColor: alert.severity === 'danger' ? `${theme.error}20` : `${theme.warning}20` }
-            ]}>
+            <View style={styles.alertIconContainer}>
               <Icon
                 name={alert.severity === 'danger' ? 'alert-circle' : 'alert'}
                 size={24}
-                color={alert.severity === 'danger' ? theme.error : theme.warning}
+                color="white"
               />
             </View>
             <View style={styles.alertContent}>
@@ -687,9 +721,16 @@ export default function BudgetScreen({ navigation }) {
             </View>
             <View style={[
               styles.alertSeverityBadge,
-              { backgroundColor: alert.severity === 'danger' ? theme.error : theme.warning }
+              {
+                backgroundColor: alert.severity === 'danger' ? 'rgba(244, 67, 54, 0.2)' : 'rgba(255, 152, 0, 0.2)',
+                borderWidth: 1,
+                borderColor: alert.severity === 'danger' ? 'rgba(244, 67, 54, 0.5)' : 'rgba(255, 152, 0, 0.5)'
+              }
             ]}>
-              <Text style={styles.alertSeverityText}>
+              <Text style={[
+                styles.alertSeverityText,
+                { color: 'white' }
+              ]}>
                 {alert.severity === 'danger' ? 'OVER' : 'WARNING'}
               </Text>
             </View>
@@ -724,7 +765,7 @@ export default function BudgetScreen({ navigation }) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Category Budgets</Text>
           <TouchableOpacity onPress={handleAddBudget}>
-            <Icon name="plus-circle" size={24} color={theme.primary} />
+            <Icon name="plus-circle" size={24} color="white" />
           </TouchableOpacity>
         </View>
 
@@ -741,8 +782,8 @@ export default function BudgetScreen({ navigation }) {
             >
               <View style={styles.categoryHeader}>
                 <View style={styles.categoryInfo}>
-                  <View style={[styles.categoryIconContainer, { backgroundColor: `${category.color}20` }]}>
-                    <Icon name={category.icon} size={24} color={category.color} />
+                  <View style={styles.categoryIconContainer}>
+                    <Icon name={category.icon} size={24} color="white" />
                   </View>
                   <View style={styles.categoryDetails}>
                     <Text style={styles.categoryName}>{category.name}</Text>
@@ -768,13 +809,13 @@ export default function BudgetScreen({ navigation }) {
                         style={styles.editIconButton}
                         onPress={() => handleEditBudget(budget)}
                       >
-                        <Icon name="pencil" size={16} color={theme.primary} />
+                        <Icon name="pencil" size={16} color="white" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.deleteIconButton}
                         onPress={() => handleDeleteBudget(budget.id)}
                       >
-                        <Icon name="delete" size={16} color={theme.error} />
+                        <Icon name="delete" size={16} color="white" />
                       </TouchableOpacity>
                     </View>
                   )}
@@ -800,7 +841,7 @@ export default function BudgetScreen({ navigation }) {
                   ₹{category.remaining.toFixed(2)} remaining
                 </Text>
                 <TouchableOpacity onPress={() => toggleCardExpansion(category.id)}>
-                  <Text style={[styles.categoryFooterText, { color: theme.primary }]}>
+                  <Text style={[styles.categoryFooterText, { color: 'white', fontWeight: '600' }]}>
                     {isExpanded ? 'Show less' : `${category.transactions} transactions`}
                   </Text>
                 </TouchableOpacity>
@@ -880,6 +921,88 @@ export default function BudgetScreen({ navigation }) {
     );
   };
 
+  const renderBudgetPopup = () => (
+    <Modal
+      visible={showBudgetPopup}
+      transparent={true}
+      animationType="fade"
+      statusBarTranslucent={true}
+      onRequestClose={() => setShowBudgetPopup(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.popupContainer}>
+          <View style={styles.popupHeader}>
+            <Text style={styles.popupTitle}>Budget Breakdown</Text>
+            <TouchableOpacity onPress={() => setShowBudgetPopup(false)} style={styles.closeButton}>
+              <Icon name="close" size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.popupScroll} showsVerticalScrollIndicator={false}>
+            {budgetStats.categories.map((cat, index) => (
+              <View key={index} style={styles.popupItem}>
+                <View style={styles.popupItemLeft}>
+                  <View style={[styles.popupIcon, { backgroundColor: cat.color }]}>
+                    <Icon name={cat.icon} size={20} color="white" />
+                  </View>
+                  <Text style={styles.popupItemName}>{cat.name}</Text>
+                </View>
+                <Text style={styles.popupItemValue}>{formatCurrency(cat.budget || 0)}</Text>
+              </View>
+            ))}
+            {budgetStats.categories.length === 0 && (
+              <Text style={styles.emptyPopupText}>No budgets set for this period.</Text>
+            )}
+          </ScrollView>
+          <View style={styles.popupFooter}>
+            <Text style={styles.popupTotalLabel}>Total Budget</Text>
+            <Text style={styles.popupTotalValue}>{formatCurrency(budgetStats.totalBudget)}</Text>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderSpentPopup = () => (
+    <Modal
+      visible={showSpentPopup}
+      transparent={true}
+      animationType="fade"
+      statusBarTranslucent={true}
+      onRequestClose={() => setShowSpentPopup(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.popupContainer}>
+          <View style={styles.popupHeader}>
+            <Text style={styles.popupTitle}>Spending Breakdown</Text>
+            <TouchableOpacity onPress={() => setShowSpentPopup(false)} style={styles.closeButton}>
+              <Icon name="close" size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.popupScroll} showsVerticalScrollIndicator={false}>
+            {budgetStats.categories.map((cat, index) => (
+              <View key={index} style={styles.popupItem}>
+                <View style={styles.popupItemLeft}>
+                  <View style={[styles.popupIcon, { backgroundColor: cat.color }]}>
+                    <Icon name={cat.icon} size={20} color="white" />
+                  </View>
+                  <Text style={styles.popupItemName}>{cat.name}</Text>
+                </View>
+                <Text style={styles.popupItemValue}>{formatCurrency(cat.spent || 0)}</Text>
+              </View>
+            ))}
+            {budgetStats.categories.length === 0 && (
+              <Text style={styles.emptyPopupText}>No spending data available.</Text>
+            )}
+          </ScrollView>
+          <View style={styles.popupFooter}>
+            <Text style={styles.popupTotalLabel}>Total Spent</Text>
+            <Text style={styles.popupTotalValue}>{formatCurrency(budgetStats.totalSpent)}</Text>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const styles = createStyles(theme);
 
   return (
@@ -927,6 +1050,10 @@ export default function BudgetScreen({ navigation }) {
           period={selectedPeriod}
           theme={theme}
         />
+
+        {/* Detail Popups */}
+        {renderBudgetPopup()}
+        {renderSpentPopup()}
       </SafeAreaView>
     </View>
   );
@@ -1083,17 +1210,17 @@ const createStyles = (theme) => StyleSheet.create({
   quickStatCard: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
+
   quickStatValue: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
-    marginTop: 8,
     marginBottom: 2,
   },
   quickStatLabel: {
@@ -1128,7 +1255,7 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
@@ -1163,7 +1290,6 @@ const createStyles = (theme) => StyleSheet.create({
   alertSeverityText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: 'white',
   },
 
   // Categories Section
@@ -1209,17 +1335,21 @@ const createStyles = (theme) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: `${theme.primary}20`,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   deleteIconButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: `${theme.error}20`,
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(244, 67, 54, 0.3)',
   },
   categoryInfo: {
     flexDirection: 'row',
@@ -1266,7 +1396,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   categoryFooterText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.8)',
   },
   expandedContent: {
     marginTop: 16,
@@ -1305,21 +1435,23 @@ const createStyles = (theme) => StyleSheet.create({
   overBudgetWarning: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${theme.error}10`,
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
     borderRadius: 8,
     padding: 12,
     marginTop: 12,
     gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 67, 54, 0.3)',
   },
   overBudgetText: {
     fontSize: 13,
-    color: theme.error,
+    color: '#FFCDD2',
     fontWeight: '500',
   },
   syncInfoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${theme.primary}10`,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 8,
     padding: 12,
     marginTop: 12,
@@ -1333,13 +1465,13 @@ const createStyles = (theme) => StyleSheet.create({
   },
   syncInfoLabel: {
     fontSize: 12,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
     marginBottom: 2,
   },
   syncInfoText: {
     fontSize: 13,
-    color: theme.primary,
+    color: 'white',
     fontWeight: '600',
   },
 
@@ -1365,20 +1497,121 @@ const createStyles = (theme) => StyleSheet.create({
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 14,
     gap: 8,
-    elevation: 4,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   createButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+
+  // Popup Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  popupContainer: {
+    width: '100%',
+    maxHeight: '70%',
+    backgroundColor: theme.surface,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: theme.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  popupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  popupTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.text,
+  },
+  closeButton: {
+    padding: 4,
+    backgroundColor: theme.border,
+    borderRadius: 20,
+  },
+  popupScroll: {
+    marginBottom: 20,
+  },
+  popupItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  popupItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  popupIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  popupItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  popupItemSubtext: {
+    fontSize: 12,
+    color: theme.textSecondary,
+    marginTop: 2,
+  },
+  popupItemValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.text,
+  },
+  emptyPopupText: {
+    textAlign: 'center',
+    color: theme.textSecondary,
+    marginTop: 20,
+    fontStyle: 'italic',
+  },
+  popupFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+  },
+  popupTotalLabel: {
+    fontSize: 16,
+    color: theme.textSecondary,
+  },
+  popupTotalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.text,
   },
 });
