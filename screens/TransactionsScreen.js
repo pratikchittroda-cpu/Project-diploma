@@ -189,7 +189,7 @@ export default function TransactionsScreen({ navigation }) {
     }
   };
 
-  const periods = ['This Week', 'This Month', 'This Quarter', 'This Year'];
+  const periods = ['This Week', 'This Month', 'This Year'];
   const filters = [
     { id: 'all', name: 'All', icon: 'format-list-bulleted' },
     { id: 'income', name: 'Income', icon: 'trending-up' },
@@ -204,6 +204,8 @@ export default function TransactionsScreen({ navigation }) {
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  const styles = createStyles(theme);
 
   return (
     <View style={styles.container}>
@@ -274,25 +276,23 @@ export default function TransactionsScreen({ navigation }) {
 
           {/* Period Selector */}
           <Animated.View style={[styles.periodSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodScrollContent}>
-              {periods.map((period) => (
-                <TouchableOpacity
-                  key={period}
-                  style={[
-                    styles.periodButton,
-                    selectedPeriod === period && styles.periodButtonActive
-                  ]}
-                  onPress={() => setSelectedPeriod(period)}
-                >
-                  <Text style={[
-                    styles.periodButtonText,
-                    selectedPeriod === period && styles.periodButtonTextActive
-                  ]}>
-                    {period}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {periods.map((period) => (
+              <TouchableOpacity
+                key={period}
+                style={[
+                  styles.periodButton,
+                  selectedPeriod === period && styles.periodButtonActive
+                ]}
+                onPress={() => setSelectedPeriod(period)}
+              >
+                <Text style={[
+                  styles.periodButtonText,
+                  selectedPeriod === period && styles.periodButtonTextActive
+                ]}>
+                  {period}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </Animated.View>
 
           {/* Search Bar */}
@@ -392,7 +392,7 @@ export default function TransactionsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -494,29 +494,30 @@ const styles = StyleSheet.create({
 
   // Period Selector
   periodSelector: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 4,
     marginBottom: 15,
-  },
-  periodScrollContent: {
-    gap: 10,
-  },
-  periodButton: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+  },
+  periodButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   periodButtonActive: {
     backgroundColor: 'white',
   },
   periodButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.8)',
   },
   periodButtonTextActive: {
-    color: '#667eea',
+    color: theme.primary,
   },
 
   // Search Bar

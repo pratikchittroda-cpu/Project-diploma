@@ -10,12 +10,13 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import KeyboardAwareContainer from '../components/KeyboardAwareContainer';
 
 export default function EditProfileScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
@@ -31,9 +32,9 @@ export default function EditProfileScreen({ navigation }) {
   // Don't render until theme is loaded
   if (isLoading || !theme) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.background || '#f8f9fa' }}>
-        <StatusBar backgroundColor={theme?.background || '#f8f9fa'} barStyle={theme?.statusBarStyle || 'dark-content'} />
-        <ActivityIndicator size="large" color={theme?.primary || '#667eea'} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.primary || '#667eea' }}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+        <ActivityIndicator size="large" color="white" />
       </View>
     );
   }
@@ -74,7 +75,7 @@ export default function EditProfileScreen({ navigation }) {
 
       // Use the real updateUserProfile function from AuthContext
       const result = await updateUserProfile(profileData);
-      
+
       if (result.success) {
         Alert.alert(
           'Success!',
@@ -100,92 +101,99 @@ export default function EditProfileScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor={theme.background} barStyle={theme.statusBarStyle} />
-      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-        <LinearGradient
-          colors={[theme.primary, theme.primaryLight]}
-          style={styles.headerGradient}
-        >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.background}
+      />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Icon name="arrow-left" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-        </LinearGradient>
-      </Animated.View>
-
-      <KeyboardAwareContainer
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View style={[styles.profileSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.profileImageContainer}>
-            <View style={styles.profileImage}>
-              <Icon name="account" size={60} color={theme.primary} />
-            </View>
-            <TouchableOpacity style={styles.editImageButton}>
-              <Icon name="camera" size={16} color={theme.primary} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.changePhotoText}>Tap to change photo</Text>
+          <View style={styles.headerSpacer} />
         </Animated.View>
 
-        <Animated.View style={[styles.formSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <View style={styles.inputContainer}>
-              <Icon name="account-outline" size={20} color={theme.primary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your full name"
-                placeholderTextColor={theme.placeholderText}
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-              />
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Profile Image Section */}
+          <Animated.View style={[styles.profileSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <View style={styles.profileImageContainer}>
+              <View style={styles.profileImage}>
+                <Icon name="account" size={60} color="white" />
+              </View>
+              <TouchableOpacity style={styles.editImageButton}>
+                <Icon name="camera" size={16} color="white" />
+              </TouchableOpacity>
             </View>
-          </View>
+            <Text style={styles.changePhotoText}>Tap to change photo</Text>
+          </Animated.View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email</Text>
-            <View style={[styles.inputContainer, styles.disabledInput]}>
-              <Icon name="email-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.textInput, styles.disabledText]}
-                value={user?.email || ''}
-                editable={false}
-                placeholder="Email cannot be changed"
-                placeholderTextColor={theme.textSecondary}
-              />
+          {/* Form Section */}
+          <Animated.View style={[styles.formSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            {/* Full Name Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <View style={styles.inputContainer}>
+                <Icon name="account-outline" size={20} color="white" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter your full name"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  autoCapitalize="words"
+                />
+              </View>
             </View>
-            <Text style={styles.helperText}>Email address cannot be changed</Text>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Phone Number</Text>
-            <View style={styles.inputContainer}>
-              <Icon name="phone-outline" size={20} color={theme.primary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your phone number"
-                placeholderTextColor={theme.placeholderText}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
+            {/* Email Input (Disabled) */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <View style={[styles.inputContainer, styles.disabledInput]}>
+                <Icon name="email-outline" size={20} color="rgba(255,255,255,0.5)" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.textInput, styles.disabledText]}
+                  value={user?.email || ''}
+                  editable={false}
+                  placeholder="Email cannot be changed"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                />
+              </View>
+              <Text style={styles.helperText}>Email address cannot be changed</Text>
             </View>
-          </View>
-        </Animated.View>
 
-        <Animated.View style={[styles.buttonSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <TouchableOpacity 
-            style={[styles.saveButton, isSubmitting && styles.disabledButton]} 
-            onPress={handleSave}
-            disabled={isSubmitting}
-          >
-            <LinearGradient
-              colors={isSubmitting ? [theme.textSecondary, theme.textSecondary] : [theme.primary, theme.primaryLight]}
-              style={styles.saveButtonGradient}
+            {/* Phone Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Phone Number</Text>
+              <View style={styles.inputContainer}>
+                <Icon name="phone-outline" size={20} color="white" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter your phone number"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Buttons Section */}
+          <Animated.View style={[styles.buttonSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <TouchableOpacity
+              style={[styles.saveButton, isSubmitting && styles.disabledButton]}
+              onPress={handleSave}
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <ActivityIndicator size="small" color="white" />
@@ -195,17 +203,17 @@ export default function EditProfileScreen({ navigation }) {
                   <Text style={styles.saveButtonText}>Save Changes</Text>
                 </>
               )}
-            </LinearGradient>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.cancelButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </KeyboardAwareContainer>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -213,24 +221,24 @@ export default function EditProfileScreen({ navigation }) {
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  headerGradient: {
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
-    paddingBottom: 25,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
+    paddingBottom: 15,
   },
   backButton: {
     width: 40,
@@ -239,18 +247,20 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
   },
+  headerSpacer: {
+    width: 40,
+  },
   content: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
+    paddingBottom: 40,
   },
   profileSection: {
     alignItems: 'center',
@@ -264,11 +274,11 @@ const createStyles = (theme) => StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: theme.primary,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   editImageButton: {
     position: 'absolute',
@@ -277,19 +287,17 @@ const createStyles = (theme) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.surface,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   changePhotoText: {
     fontSize: 14,
-    color: theme.primary,
+    color: 'white',
     fontWeight: '500',
+    opacity: 0.8,
   },
   formSection: {
     paddingHorizontal: 20,
@@ -300,22 +308,22 @@ const createStyles = (theme) => StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.text,
+    color: 'white',
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 15,
     paddingVertical: 12,
   },
   disabledInput: {
-    backgroundColor: theme.disabledBackground,
-    borderColor: theme.disabledBorder,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   inputIcon: {
     marginRight: 12,
@@ -323,14 +331,14 @@ const createStyles = (theme) => StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 16,
-    color: theme.text,
+    color: 'white',
   },
   disabledText: {
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.5)',
   },
   helperText: {
     fontSize: 12,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.6)',
     marginTop: 5,
     marginLeft: 5,
   },
@@ -339,16 +347,16 @@ const createStyles = (theme) => StyleSheet.create({
     paddingTop: 20,
   },
   saveButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 15,
-  },
-  saveButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
     paddingVertical: 15,
     paddingHorizontal: 20,
+    marginBottom: 15,
   },
   saveButtonText: {
     fontSize: 16,
@@ -365,7 +373,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
   },
 });

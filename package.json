@@ -20,7 +20,11 @@
     "expo": "~53.0.23",
     "expo-auth-session": "~6.2.1",
     "expo-blur": "~14.1.5",
+    "expo-camera": "~16.1.11",
+    "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",
+    "expo-image-manipulator": "~13.1.7",
+    "expo-image-picker": "~16.1.4",
     "expo-linear-gradient": "~14.1.5",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
@@ -29,13 +33,15 @@
     "react": "^19.0.0",
     "react-native": "0.79.6",
     "react-native-chart-kit": "^6.12.0",
+    "react-native-dotenv": "^3.4.11",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-paper": "^5.14.5",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "react-native-svg": "15.11.2"
+    "react-native-svg": "15.11.2",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

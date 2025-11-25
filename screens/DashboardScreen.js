@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
+import BudgetAdvisor from '../components/BudgetAdvisor';
+import aiService from '../services/aiService';
 
 const { width } = Dimensions.get('window');
 
@@ -28,7 +30,7 @@ export default function DashboardScreen({ navigation }) {
   const { user, userData } = useAuth();
   const { transactions, loading: transactionsLoading, getTransactionStats, refresh: refreshTransactions } = useTransactions();
 
-  const [recentActions, setRecentActions] = useState([]);
+
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({
     totalBalance: 0,
@@ -64,7 +66,7 @@ export default function DashboardScreen({ navigation }) {
   const autoRefresh = async () => {
     try {
       await refreshTransactions();
-      await loadRecentActions();
+
     } catch (error) {
       // Error auto-refreshing dashboard
     }
@@ -75,7 +77,7 @@ export default function DashboardScreen({ navigation }) {
     setRefreshing(true);
     try {
       await refreshTransactions();
-      await loadRecentActions();
+
       setTimeout(() => setRefreshing(false), 500);
     } catch (error) {
       setRefreshing(false);
@@ -136,6 +138,37 @@ export default function DashboardScreen({ navigation }) {
     calculateDashboardStats();
   }, [transactions, userData]);
 
+  // Calculate AI recommendations only when transaction count changes
+  const aiRecommendations = useMemo(() => {
+    if (!transactions || transactions.length === 0) {
+      return [];
+    }
+
+    console.log('=== Calculating AI Recommendations ===');
+    console.log('Transactions count:', transactions.length);
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // Use default budgets if none set
+    const budgets = userData?.budgets || {
+      food: 5000,
+      transport: 2000,
+      shopping: 3000,
+      entertainment: 1000,
+      bills: 2000,
+      health: 1000
+    };
+
+    const recommendations = aiService.getBudgetRecommendations(
+      transactions,
+      budgets,
+      currentMonth
+    );
+
+    console.log('AI Recommendations generated:', recommendations.length);
+    return recommendations;
+  }, [transactions?.length, userData?.budgets]); // Only recalculate when count changes
+
   // Auto-refresh interval
   useEffect(() => {
     const autoRefreshInterval = setInterval(() => {
@@ -144,7 +177,7 @@ export default function DashboardScreen({ navigation }) {
 
     const unsubscribe = navigation.addListener('focus', () => {
       if (refreshTransactions) refreshTransactions();
-      loadRecentActions();
+
     });
 
     return () => {
@@ -197,39 +230,10 @@ export default function DashboardScreen({ navigation }) {
       }),
     ]).start();
 
-    loadRecentActions();
+
   }, []);
 
-  const loadRecentActions = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('personal_recent_actions');
-      if (stored) {
-        setRecentActions(JSON.parse(stored));
-      } else {
-        setRecentActions([
-          { id: 'transactions', name: 'Transactions', icon: 'swap-vertical', color: '#4CAF50' },
-          { id: 'budget', name: 'Budget', icon: 'wallet', color: '#2196F3' },
-          { id: 'stats', name: 'Statistics', icon: 'chart-pie', color: '#FF9800' },
-          { id: 'add', name: 'Add', icon: 'plus-circle', color: '#9C27B0' },
-        ]);
-      }
-    } catch (error) {
-      console.error('Error loading recent actions:', error);
-    }
-  };
 
-  const updateRecentActions = async (actionId, actionName, actionIcon, actionColor) => {
-    try {
-      const newAction = { id: actionId, name: actionName, icon: actionIcon, color: actionColor, timestamp: Date.now() };
-      let updatedActions = recentActions.filter(action => action.id !== actionId);
-      updatedActions.unshift(newAction);
-      updatedActions = updatedActions.slice(0, 4);
-      setRecentActions(updatedActions);
-      await AsyncStorage.setItem('personal_recent_actions', JSON.stringify(updatedActions));
-    } catch (error) {
-      console.error('Error updating recent actions:', error);
-    }
-  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -355,30 +359,10 @@ export default function DashboardScreen({ navigation }) {
           {/* Overview Section */}
           {renderOverviewCard()}
 
-          {/* Recent Actions Section */}
-          <Animated.View style={[styles.sectionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.recentActionsGrid}>
-              {recentActions.map((action) => (
-                <TouchableOpacity
-                  key={action.id}
-                  style={styles.recentActionButton}
-                  onPress={() => {
-                    updateRecentActions(action.id, action.name, action.icon, action.color);
-                    if (action.id === 'transactions') navigation.navigate('Transactions');
-                    else if (action.id === 'budget') navigation.navigate('Budget');
-                    else if (action.id === 'stats') navigation.navigate('Stats');
-                    else if (action.id === 'add') navigation.navigate('AddTransaction');
-                  }}
-                >
-                  <View style={[styles.actionIconContainer, { backgroundColor: `${action.color} 30` }]}>
-                    <Icon name={action.icon} size={24} color={action.color} />
-                  </View>
-                  <Text style={styles.recentActionText}>{action.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Animated.View>
+          {/* AI Budget Advisor */}
+          {aiRecommendations.length > 0 && (
+            <BudgetAdvisor recommendations={aiRecommendations} />
+          )}
 
           {/* Recent Transactions Section */}
           <Animated.View style={[styles.sectionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -540,38 +524,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
-  },
-
-  // Quick Actions
-  recentActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  recentActionButton: {
-    width: '48%',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  actionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recentActionText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'white',
-    flexShrink: 1,
   },
 
   // Transactions List

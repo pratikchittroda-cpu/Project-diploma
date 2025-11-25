@@ -10,6 +10,8 @@ import {
   Switch,
   ActivityIndicator,
   StatusBar,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -329,15 +331,18 @@ export default function ProfileScreen({ navigation, onClose }) {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       <LinearGradient
         colors={[theme.primary, theme.primaryLight]}
         style={styles.background}
       />
-      {renderProfileHeader()}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {renderAccountInfo()}
-        {renderMenuButtons()}
-      </ScrollView>
+      <SafeAreaView style={styles.safeArea}>
+        {renderProfileHeader()}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {renderAccountInfo()}
+          {renderMenuButtons()}
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -355,6 +360,9 @@ const createStyles = (theme) =>
       top: 0,
       bottom: 0,
     },
+    safeArea: {
+      flex: 1,
+    },
     // Profile Header
     profileHeader: {
       borderBottomLeftRadius: 30,
@@ -363,14 +371,14 @@ const createStyles = (theme) =>
       // Transparent to let gradient show through
     },
     profileGradient: {
-      paddingTop: (StatusBar.currentHeight || 0) + 20,
+      paddingTop: Platform.OS === 'android' ? 20 : 10,
       paddingBottom: 30,
       paddingHorizontal: 20,
       alignItems: 'center',
     },
     backButton: {
       position: 'absolute',
-      top: (StatusBar.currentHeight || 0) + 20,
+      top: Platform.OS === 'android' ? 20 : 10,
       left: 20,
       width: 40,
       height: 40,

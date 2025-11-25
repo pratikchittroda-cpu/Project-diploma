@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   StatusBar,
-  ProgressBarAndroid,
+  ActivityIndicator,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,26 +37,27 @@ export default function BackupRestoreScreen({ navigation }) {
     try {
       const recentActions = await AsyncStorage.getItem('recentActions');
       let actions = recentActions ? JSON.parse(recentActions) : [];
-      
+
       const screenData = {
         id: 'BackupRestore',
         title: 'Backup & Restore',
         icon: 'backup-restore',
         timestamp: Date.now(),
       };
-      
+
       actions = actions.filter(action => action.id !== screenData.id);
       actions.unshift(screenData);
       actions = actions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('recentActions', JSON.stringify(actions));
     } catch (error) {
-      }
+      console.error('Error tracking screen visit:', error);
+    }
   };
 
   useEffect(() => {
     trackScreenVisit();
-    
+
     // Entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -139,28 +141,13 @@ export default function BackupRestoreScreen({ navigation }) {
     );
   };
 
-  const renderHeader = () => (
-    <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.headerGradient}
-      >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Backup & Restore</Text>
-        <View style={styles.placeholder} />
-      </LinearGradient>
-    </Animated.View>
-  );
-
   const renderBackupStatus = () => (
     <Animated.View style={[styles.statusCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={styles.statusHeader}>
-        <Icon name="cloud-check" size={32} color={theme.success} />
+        <Icon name="cloud-check" size={32} color="white" />
         <Text style={styles.statusTitle}>Backup Status</Text>
       </View>
-      
+
       <View style={styles.statusInfo}>
         <View style={styles.statusRow}>
           <Text style={styles.statusLabel}>Last Backup:</Text>
@@ -178,19 +165,19 @@ export default function BackupRestoreScreen({ navigation }) {
     </Animated.View>
   );
 
-  const renderActionButton = (title, subtitle, icon, onPress, iconColor, backgroundColor, isLoading = false) => (
+  const renderActionButton = (title, subtitle, icon, onPress, isLoading = false) => (
     <TouchableOpacity onPress={onPress} disabled={isLoading}>
       <Animated.View style={[
-        styles.actionButton, 
+        styles.actionButton,
         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         isLoading && styles.disabledButton
       ]}>
         <View style={styles.actionLeft}>
-          <View style={[styles.actionIcon, { backgroundColor }]}>
+          <View style={styles.actionIcon}>
             {isLoading ? (
-              <Icon name="loading" size={22} color={iconColor} />
+              <ActivityIndicator size="small" color="white" />
             ) : (
-              <Icon name={icon} size={22} color={iconColor} />
+              <Icon name={icon} size={22} color="white" />
             )}
           </View>
           <View style={styles.actionContent}>
@@ -198,7 +185,7 @@ export default function BackupRestoreScreen({ navigation }) {
             <Text style={styles.actionSubtitle}>{subtitle}</Text>
           </View>
         </View>
-        <Icon name="chevron-right" size={20} color={theme.textLight} />
+        <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
       </Animated.View>
     </TouchableOpacity>
   );
@@ -214,74 +201,77 @@ export default function BackupRestoreScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {renderHeader()}
-      
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {renderBackupStatus()}
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-        {renderSection('Backup Actions', (
-          <>
-            {renderActionButton(
-              'Backup Now',
-              'Create a backup of all your data',
-              'backup-restore',
-              handleBackupNow,
-              theme.info,
-              theme.iconBackground.blue,
-              isBackingUp
-            )}
-            {renderActionButton(
-              'Restore from Backup',
-              'Restore data from your latest backup',
-              'restore',
-              handleRestoreBackup,
-              theme.warning,
-              theme.iconBackground.orange,
-              isRestoring
-            )}
-          </>
-        ))}
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.background}
+      />
 
-        {renderSection('Settings', (
-          <>
-            {renderActionButton(
-              'Change Cloud Provider',
-              `Currently using ${backupInfo.cloudProvider}`,
-              'cloud-sync',
-              handleChangeCloudProvider,
-              theme.success,
-              theme.iconBackground.green
-            )}
-            {renderActionButton(
-              'Backup Schedule',
-              'Configure automatic backup frequency',
-              'calendar-clock',
-              () => Alert.alert('Coming Soon', 'Backup scheduling will be available soon!'),
-              '#9C27B0',
-              theme.iconBackground.purple
-            )}
-          </>
-        ))}
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Icon name="arrow-left" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Backup & Restore</Text>
+          <View style={styles.headerSpacer} />
+        </Animated.View>
 
-        {(isBackingUp || isRestoring) && (
-          <Animated.View style={[styles.progressContainer, { opacity: fadeAnim }]}>
-            <Text style={styles.progressText}>
-              {isBackingUp ? 'Creating backup...' : 'Restoring data...'}
-            </Text>
-            {Platform.OS === 'android' && (
-              <ProgressBarAndroid
-                styleAttr="Horizontal"
-                indeterminate={true}
-                color={theme.primary}
-              />
-            )}
-          </Animated.View>
-        )}
-      </ScrollView>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {renderBackupStatus()}
+
+          {renderSection('Backup Actions', (
+            <>
+              {renderActionButton(
+                'Backup Now',
+                'Create a backup of all your data',
+                'backup-restore',
+                handleBackupNow,
+                isBackingUp
+              )}
+              {renderActionButton(
+                'Restore from Backup',
+                'Restore data from your latest backup',
+                'restore',
+                handleRestoreBackup,
+                isRestoring
+              )}
+            </>
+          ))}
+
+          {renderSection('Settings', (
+            <>
+              {renderActionButton(
+                'Change Cloud Provider',
+                `Currently using ${backupInfo.cloudProvider}`,
+                'cloud-sync',
+                handleChangeCloudProvider
+              )}
+              {renderActionButton(
+                'Backup Schedule',
+                'Configure automatic backup frequency',
+                'calendar-clock',
+                () => Alert.alert('Coming Soon', 'Backup scheduling will be available soon!')
+              )}
+            </>
+          ))}
+
+          {(isBackingUp || isRestoring) && (
+            <Animated.View style={[styles.progressContainer, { opacity: fadeAnim }]}>
+              <ActivityIndicator size="large" color="white" />
+              <Text style={styles.progressText}>
+                {isBackingUp ? 'Creating backup...' : 'Restoring data...'}
+              </Text>
+            </Animated.View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -289,25 +279,24 @@ export default function BackupRestoreScreen({ navigation }) {
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  headerGradient: {
-    paddingTop: (StatusBar.currentHeight || 0) + 15,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
+    paddingBottom: 15,
   },
   backButton: {
     width: 40,
@@ -322,7 +311,7 @@ const createStyles = (theme) => StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-  placeholder: {
+  headerSpacer: {
     width: 40,
   },
   content: {
@@ -333,17 +322,12 @@ const createStyles = (theme) => StyleSheet.create({
     paddingBottom: 40,
   },
   statusCard: {
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 25,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     borderWidth: 1,
-    borderColor: theme.divider,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   statusHeader: {
     flexDirection: 'row',
@@ -353,7 +337,7 @@ const createStyles = (theme) => StyleSheet.create({
   statusTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginLeft: 12,
   },
   statusInfo: {
@@ -366,12 +350,12 @@ const createStyles = (theme) => StyleSheet.create({
   },
   statusLabel: {
     fontSize: 16,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
   },
   statusValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.text,
+    color: 'white',
   },
   section: {
     marginBottom: 25,
@@ -379,24 +363,19 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginBottom: 15,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     borderWidth: 1,
-    borderColor: theme.divider,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   disabledButton: {
     opacity: 0.6,
@@ -410,14 +389,10 @@ const createStyles = (theme) => StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   actionContent: {
     flex: 1,
@@ -425,31 +400,27 @@ const createStyles = (theme) => StyleSheet.create({
   actionTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: theme.text,
+    color: 'white',
     marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 14,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
   },
   progressContainer: {
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
-    padding: 20,
+    padding: 30,
     marginTop: 20,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     borderWidth: 1,
-    borderColor: theme.divider,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
   },
   progressText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.text,
+    color: 'white',
     textAlign: 'center',
-    marginBottom: 15,
+    marginTop: 15,
   },
 });

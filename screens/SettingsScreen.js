@@ -9,6 +9,8 @@ import {
   Switch,
   Alert,
   StatusBar,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -75,28 +77,11 @@ export default function SettingsScreen({ navigation }) {
     );
   };
 
-  const renderHeader = () => (
-    <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        style={styles.headerGradient}
-      >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <TouchableOpacity style={styles.resetButton} onPress={handleResetSettings}>
-          <Icon name="refresh" size={24} color="white" />
-        </TouchableOpacity>
-      </LinearGradient>
-    </Animated.View>
-  );
-
-  const renderSettingItem = (title, subtitle, icon, setting, iconColor, backgroundColor) => (
+  const renderSettingItem = (title, subtitle, icon, setting) => (
     <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={styles.settingLeft}>
-        <View style={[styles.settingIcon, { backgroundColor }]}>
-          <Icon name={icon} size={22} color={iconColor} />
+        <View style={styles.settingIcon}>
+          <Icon name={icon} size={22} color="white" />
         </View>
         <View style={styles.settingContent}>
           <Text style={styles.settingTitle}>{title}</Text>
@@ -106,7 +91,7 @@ export default function SettingsScreen({ navigation }) {
       <Switch
         value={settings[setting]}
         onValueChange={(value) => handleSettingChange(setting, value)}
-        trackColor={{ false: theme.textLight, true: theme.primary }}
+        trackColor={{ false: 'rgba(255,255,255,0.3)', true: 'rgba(255,255,255,0.5)' }}
         thumbColor={settings[setting] ? '#fff' : '#f4f3f4'}
       />
     </Animated.View>
@@ -123,96 +108,103 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {renderHeader()}
-      
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {renderSection('Notifications', (
-          <>
-            {renderSettingItem(
-              'Push Notifications',
-              'Receive alerts for transactions and updates',
-              'bell',
-              'notifications',
-              theme.info,
-              theme.iconBackground.blue
-            )}
-            {renderSettingItem(
-              'Email Reports',
-              'Get weekly and monthly financial reports',
-              'email-newsletter',
-              'emailReports',
-              theme.success,
-              theme.iconBackground.green
-            )}
-          </>
-        ))}
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-        {renderSection('Security', (
-          <>
-            {renderSettingItem(
-              'Biometric Authentication',
-              'Use fingerprint or face ID to unlock',
-              'fingerprint',
-              'biometricAuth',
-              '#9C27B0',
-              theme.iconBackground.purple
-            )}
-            {renderSettingItem(
-              'Auto Backup',
-              'Automatically backup data to cloud',
-              'backup-restore',
-              'autoBackup',
-              theme.warning,
-              theme.iconBackground.orange
-            )}
-          </>
-        ))}
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.background}
+      />
 
-        {renderSection('Experience', (
-          <>
-            {renderSettingItem(
-              'Sound Effects',
-              'Play sounds for app interactions',
-              'volume-high',
-              'soundEffects',
-              theme.info,
-              theme.iconBackground.blue
-            )}
-            {renderSettingItem(
-              'Haptic Feedback',
-              'Vibrate on button presses and gestures',
-              'vibrate',
-              'hapticFeedback',
-              theme.success,
-              theme.iconBackground.green
-            )}
-          </>
-        ))}
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Icon name="arrow-left" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <TouchableOpacity style={styles.resetButton} onPress={handleResetSettings}>
+            <Icon name="refresh" size={24} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
 
-        {renderSection('Appearance', (
-          <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <View style={styles.settingLeft}>
-              <View style={[styles.settingIcon, { backgroundColor: theme.iconBackground.gray }]}>
-                <Icon name="theme-light-dark" size={22} color={theme.textSecondary} />
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {renderSection('Notifications', (
+            <>
+              {renderSettingItem(
+                'Push Notifications',
+                'Receive alerts for transactions and updates',
+                'bell',
+                'notifications'
+              )}
+              {renderSettingItem(
+                'Email Reports',
+                'Get weekly and monthly financial reports',
+                'email-newsletter',
+                'emailReports'
+              )}
+            </>
+          ))}
+
+          {renderSection('Security', (
+            <>
+              {renderSettingItem(
+                'Biometric Authentication',
+                'Use fingerprint or face ID to unlock',
+                'fingerprint',
+                'biometricAuth'
+              )}
+              {renderSettingItem(
+                'Auto Backup',
+                'Automatically backup data to cloud',
+                'backup-restore',
+                'autoBackup'
+              )}
+            </>
+          ))}
+
+          {renderSection('Experience', (
+            <>
+              {renderSettingItem(
+                'Sound Effects',
+                'Play sounds for app interactions',
+                'volume-high',
+                'soundEffects'
+              )}
+              {renderSettingItem(
+                'Haptic Feedback',
+                'Vibrate on button presses and gestures',
+                'vibrate',
+                'hapticFeedback'
+              )}
+            </>
+          ))}
+
+          {renderSection('Appearance', (
+            <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+              <View style={styles.settingLeft}>
+                <View style={styles.settingIcon}>
+                  <Icon name="theme-light-dark" size={22} color="white" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Dark Mode</Text>
+                  <Text style={styles.settingSubtitle}>Switch between light and dark themes</Text>
+                </View>
               </View>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Dark Mode</Text>
-                <Text style={styles.settingSubtitle}>Switch between light and dark themes</Text>
-              </View>
-            </View>
-            <Switch
-              value={isDarkMode}
-              onValueChange={toggleTheme}
-              trackColor={{ false: theme.textLight, true: theme.primary }}
-              thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
-            />
-          </Animated.View>
-        ))}
-      </ScrollView>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleTheme}
+                trackColor={{ false: 'rgba(255,255,255,0.3)', true: 'rgba(255,255,255,0.5)' }}
+                thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
+              />
+            </Animated.View>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -220,25 +212,24 @@ export default function SettingsScreen({ navigation }) {
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  headerGradient: {
-    paddingTop: (StatusBar.currentHeight || 0) + 15,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
+    paddingBottom: 15,
   },
   backButton: {
     width: 40,
@@ -274,24 +265,19 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginBottom: 15,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     borderWidth: 1,
-    borderColor: theme.divider,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   settingLeft: {
     flexDirection: 'row',
@@ -302,14 +288,10 @@ const createStyles = (theme) => StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   settingContent: {
     flex: 1,
@@ -317,11 +299,11 @@ const createStyles = (theme) => StyleSheet.create({
   settingTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: theme.text,
+    color: 'white',
     marginBottom: 2,
   },
   settingSubtitle: {
     fontSize: 14,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
   },
 });

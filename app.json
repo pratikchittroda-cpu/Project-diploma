@@ -13,7 +13,11 @@
       "backgroundColor": "#A5D6A7"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to scan receipts.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to select receipts."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +31,7 @@
     "web": {
       "favicon": "./assets/icon.png"
     },
-    "scheme": "greenspoonai",
+    "scheme": "Expenzo",
     "plugins": [
       "expo-font"
     ]

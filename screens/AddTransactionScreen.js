@@ -24,7 +24,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 
-export default function AddTransactionScreen({ navigation }) {
+export default function AddTransactionScreen({ navigation, route }) {
   const { theme } = useTheme();
   const { user, userData } = useAuth();
   const { addTransaction } = useTransactions();
@@ -34,12 +34,28 @@ export default function AddTransactionScreen({ navigation }) {
   const [selectedType, setSelectedType] = useState('expense');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [isScanned, setIsScanned] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
+    // Handle scanned data from ReceiptScanner
+    if (route?.params?.scannedData) {
+      const { amount: scannedAmount, description: scannedDesc, category, merchant } = route.params.scannedData;
+
+      if (scannedAmount) setAmount(scannedAmount);
+      if (scannedDesc) setDescription(scannedDesc);
+      if (category) setSelectedCategory(category);
+      if (merchant && !scannedDesc) setDescription(`Purchase at ${merchant}`);
+
+      setIsScanned(true);
+
+      // Clear the params to avoid re-filling on subsequent renders
+      navigation.setParams({ scannedData: null });
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -319,50 +335,56 @@ export default function AddTransactionScreen({ navigation }) {
         onPress={() => setShowCategoryDropdown(false)}
       >
         <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Category</Text>
-            <TouchableOpacity
-              onPress={() => setShowCategoryDropdown(false)}
-              style={styles.modalCloseButton}
-            >
-              <Icon name="close" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={personalCategories[selectedType]}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
+          <LinearGradient
+            colors={[theme.primary, theme.primaryLight]}
+            style={styles.modalGradient}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Category</Text>
               <TouchableOpacity
-                style={[
-                  styles.categoryModalItem,
-                  selectedCategory === item.id && styles.categoryModalItemActive
-                ]}
-                onPress={() => {
-                  setSelectedCategory(item.id);
-                  setShowCategoryDropdown(false);
-                }}
+                onPress={() => setShowCategoryDropdown(false)}
+                style={styles.modalCloseButton}
               >
-                <View style={styles.categoryModalItemContent}>
-                  <Icon
-                    name={item.icon}
-                    size={24}
-                    color={selectedCategory === item.id ? 'white' : 'rgba(255,255,255,0.7)'}
-                  />
-                  <Text style={[
-                    styles.categoryModalItemText,
-                    selectedCategory === item.id && styles.categoryModalItemTextActive
-                  ]}>
-                    {item.name}
-                  </Text>
-                </View>
-                {selectedCategory === item.id && (
-                  <Icon name="check" size={20} color="white" />
-                )}
+                <Icon name="close" size={24} color="white" />
               </TouchableOpacity>
-            )}
-          />
+            </View>
+
+            <FlatList
+              data={personalCategories[selectedType]}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalListContent}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.categoryModalItem,
+                    selectedCategory === item.id && styles.categoryModalItemActive
+                  ]}
+                  onPress={() => {
+                    setSelectedCategory(item.id);
+                    setShowCategoryDropdown(false);
+                  }}
+                >
+                  <View style={styles.categoryModalItemContent}>
+                    <Icon
+                      name={item.icon}
+                      size={24}
+                      color={selectedCategory === item.id ? 'white' : 'rgba(255,255,255,0.7)'}
+                    />
+                    <Text style={[
+                      styles.categoryModalItemText,
+                      selectedCategory === item.id && styles.categoryModalItemTextActive
+                    ]}>
+                      {item.name}
+                    </Text>
+                  </View>
+                  {selectedCategory === item.id && (
+                    <Icon name="check" size={20} color="white" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </LinearGradient>
         </View>
       </TouchableOpacity>
     </Modal>
@@ -393,7 +415,12 @@ export default function AddTransactionScreen({ navigation }) {
               Welcome, {userData?.fullName || 'User'}!
             </Text>
           </View>
-          <View style={styles.placeholder} />
+          <TouchableOpacity
+            style={styles.scanButton}
+            onPress={() => navigation.navigate('ReceiptScanner')}
+          >
+            <Icon name="camera" size={24} color="white" />
+          </TouchableOpacity>
         </Animated.View>
 
         <KeyboardAvoidingView
@@ -408,6 +435,12 @@ export default function AddTransactionScreen({ navigation }) {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
+            {isScanned && (
+              <Animated.View style={[styles.scannedBadge, { opacity: fadeAnim }]}>
+                <Icon name="camera-check" size={16} color="white" />
+                <Text style={styles.scannedBadgeText}>Scanned from receipt</Text>
+              </Animated.View>
+            )}
             {renderTypeSelector()}
             {renderAmountInput()}
             {renderDescriptionInput()}
@@ -495,8 +528,30 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
-  placeholder: {
+  scanButton: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scannedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.5)',
+    gap: 6,
+  },
+  scannedBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'white',
   },
   section: {
     marginBottom: 25,
@@ -622,20 +677,23 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: 20,
-    width: '100%',
+    backgroundColor: 'transparent',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '70%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
     overflow: 'hidden',
+  },
+  modalGradient: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+  },
+  modalListContent: {
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
