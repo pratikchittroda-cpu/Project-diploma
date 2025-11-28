@@ -13,6 +13,7 @@ import CompanyProfileScreen from '../screens/CompanyProfileScreen';
 import CompanyReportsScreen from '../screens/CompanyReportsScreen';
 import TeamManagementScreen from '../screens/TeamManagementScreen';
 import CompanyBudgetScreen from '../screens/CompanyBudgetScreen';
+import CompanyTransactionsScreen from '../screens/CompanyTransactionsScreen';
 import AddCompanyTransactionScreen from '../screens/AddCompanyTransactionScreen';
 // Personal Profile Screens
 import EditProfileScreen from '../screens/EditProfileScreen';
@@ -178,6 +179,14 @@ export default function AppNavigator() {
         <Stack.Screen
           name="CompanyBudgetDetail"
           component={CompanyBudgetScreen}
+          options={{
+            animation: 'slide_from_right',
+            animationDuration: 300,
+          }}
+        />
+        <Stack.Screen
+          name="CompanyTransactions"
+          component={CompanyTransactionsScreen}
           options={{
             animation: 'slide_from_right',
             animationDuration: 300,

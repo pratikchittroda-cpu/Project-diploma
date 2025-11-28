@@ -10,26 +10,52 @@ import {
   StatusBar,
   Alert,
   TextInput,
+  Modal,
+  SafeAreaView,
+  Platform,
+  KeyboardAvoidingView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import UserTypeGuard from '../components/UserTypeGuard';
+import teamService from '../services/teamService';
 
 export default function TeamManagementScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
+  const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState('team');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Modal States
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showAddTeamModal, setShowAddTeamModal] = useState(false);
+  const [showEditSalaryModal, setShowEditSalaryModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+
+  // Form States
+  const [newMember, setNewMember] = useState({ name: '', email: '', role: '', salary: '', department: '' });
+  const [newTeam, setNewTeam] = useState({ name: '', budget: '' });
+  const [salaryEdit, setSalaryEdit] = useState('');
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  // Data State
+  const [teamData, setTeamData] = useState({
+    members: [],
+    departments: []
+  });
+  const [loadingData, setLoadingData] = useState(true);
+
   // Don't render until theme is loaded
   if (isLoading || !theme) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.loadingBackground || '#f8f9fa', paddingTop: StatusBar.currentHeight || 0 }}>
-        <ActivityIndicator size="large" color={theme?.loadingIndicator || '#667eea'} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <ActivityIndicator size="large" color="#667eea" />
       </View>
     );
   }
@@ -49,486 +75,714 @@ export default function TeamManagementScreen({ navigation }) {
       }),
     ]).start();
 
-    // Track this screen visit
     trackScreenVisit();
+    loadData();
 
-    // Listen for navigation focus to track tab bar navigation
+    // Reload data when screen comes into focus
     const unsubscribe = navigation.addListener('focus', () => {
-      trackScreenVisit();
+      loadData();
     });
 
     return unsubscribe;
   }, [navigation]);
 
+  const loadData = async () => {
+    if (!user?.uid) return;
+
+    setLoadingData(true);
+    try {
+      const membersResult = await teamService.getMembers(user.uid);
+      const teamsResult = await teamService.getTeams(user.uid);
+
+      setTeamData({
+        members: membersResult.members || [],
+        departments: teamsResult.teams || []
+      });
+    } catch (error) {
+      console.error('Error loading team data:', error);
+      Alert.alert('Error', 'Failed to load team data');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   const trackScreenVisit = async () => {
     try {
       const stored = await AsyncStorage.getItem('company_recent_actions');
       let recentActions = stored ? JSON.parse(stored) : [];
-      
+
       const newAction = {
         id: 'team',
         name: 'Team',
         icon: 'account-group',
-        color: theme.info,
+        color: '#2196F3',
         timestamp: Date.now()
       };
-      
+
       recentActions = recentActions.filter(action => action.id !== 'team');
       recentActions.unshift(newAction);
       recentActions = recentActions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('company_recent_actions', JSON.stringify(recentActions));
     } catch (error) {
-      }
+      console.error('Error tracking screen visit:', error);
+    }
   };
-
-  // Sample team data
-  const [teamData] = useState({
-    members: [
-      {
-        id: 1,
-        name: 'Sarah Johnson',
-        email: 'sarah.johnson@techcorp.com',
-        role: 'Administrator',
-        department: 'Management',
-        status: 'active',
-        joinDate: '2020-03-15',
-        lastActive: '2 hours ago',
-        permissions: ['all'],
-        avatar: 'account-tie',
-        color: theme.success
-      },
-      {
-        id: 2,
-        name: 'Mike Chen',
-        email: 'mike.chen@techcorp.com',
-        role: 'Lead Developer',
-        department: 'Engineering',
-        status: 'active',
-        joinDate: '2021-01-20',
-        lastActive: '1 hour ago',
-        permissions: ['read', 'write'],
-        avatar: 'account-hard-hat',
-        color: theme.info
-      },
-      {
-        id: 3,
-        name: 'Emily Rodriguez',
-        email: 'emily.rodriguez@techcorp.com',
-        role: 'Marketing Manager',
-        department: 'Marketing',
-        status: 'active',
-        joinDate: '2021-06-10',
-        lastActive: '30 minutes ago',
-        permissions: ['read', 'write'],
-        avatar: 'account-star',
-        color: theme.warning
-      },
-      {
-        id: 4,
-        name: 'David Kim',
-        email: 'david.kim@techcorp.com',
-        role: 'Sales Representative',
-        department: 'Sales',
-        status: 'inactive',
-        joinDate: '2022-02-14',
-        lastActive: '2 days ago',
-        permissions: ['read'],
-        avatar: 'account-cash',
-        color: theme.categoryColors.shopping
-      },
-    ],
-    departments: [
-      { name: 'Engineering', members: 8, budget: 25000, color: theme.success },
-      { name: 'Marketing', members: 4, budget: 15000, color: theme.warning },
-      { name: 'Sales', members: 6, budget: 20000, color: theme.info },
-      { name: 'Operations', members: 3, budget: 10000, color: theme.categoryColors.shopping },
-      { name: 'HR', members: 2, budget: 8000, color: theme.categoryColors.others },
-      { name: 'Finance', members: 1, budget: 12000, color: theme.categoryColors.bills },
-    ],
-    permissions: [
-      { id: 'read', name: 'View Only', description: 'Can view company data and reports' },
-      { id: 'write', name: 'Edit Access', description: 'Can add and edit transactions' },
-      { id: 'admin', name: 'Admin Access', description: 'Full access to all features' },
-      { id: 'reports', name: 'Reports Access', description: 'Can generate and export reports' },
-    ]
-  });
-
-  const tabs = [
-    { id: 'team', name: 'Team Members', icon: 'account-group' },
-    { id: 'departments', name: 'Departments', icon: 'office-building' },
-    { id: 'permissions', name: 'Permissions', icon: 'shield-account' },
-  ];
 
   const formatCurrency = (amount) => {
-    return `₹${amount.toFixed(0).replace(/\\d(?=(\\d{3})+$)/g, '$&,')}`;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  const handleAddMember = () => {
-    Alert.alert('Add Team Member', 'Team member invitation functionality will be implemented here');
+  const calculateTotalSalary = () => {
+    return teamData.members.reduce((sum, member) => sum + (member.salary || 0), 0);
   };
 
-  const handleEditMember = (member) => {
-    Alert.alert('Edit Member', `Edit ${member.name}'s details and permissions`);
+  const handleCreateMember = async () => {
+    if (!newMember.name || !newMember.role || !newMember.salary) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (!user?.uid) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+
+    const newMemberObj = {
+      ...newMember,
+      salary: parseFloat(newMember.salary),
+      status: 'active',
+      joinDate: new Date().toISOString().split('T')[0],
+      avatar: 'account',
+      color: theme.primary
+    };
+
+    const result = await teamService.addMember(user.uid, newMemberObj);
+    if (result.success) {
+      // Automatically create salary expense transaction
+      await teamService.createMonthlySalaryExpense(user.uid, {
+        ...result.member,
+        id: result.member.id
+      });
+
+      setTeamData(prev => ({
+        ...prev,
+        members: [...prev.members, result.member]
+      }));
+      setShowAddMemberModal(false);
+      setNewMember({ name: '', email: '', role: '', salary: '', department: '' });
+      Alert.alert('Success', 'Team member added and salary expense recorded!');
+    } else {
+      Alert.alert('Error', 'Failed to add member');
+    }
   };
 
-  const handleRemoveMember = (member) => {
+  const handleCreateTeam = async () => {
+    if (!newTeam.name || !newTeam.budget) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (!user?.uid) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+
+    const newTeamObj = {
+      name: newTeam.name,
+      budget: parseFloat(newTeam.budget),
+      color: theme.primary,
+      icon: 'office-building'
+    };
+
+    const result = await teamService.addTeam(user.uid, newTeamObj);
+    if (result.success) {
+      setTeamData(prev => ({
+        ...prev,
+        departments: [...prev.departments, result.team]
+      }));
+      setShowAddTeamModal(false);
+      setNewTeam({ name: '', budget: '' });
+    } else {
+      Alert.alert('Error', 'Failed to create team');
+    }
+  };
+
+  const openSalaryEdit = (member) => {
+    setSelectedMember(member);
+    setSalaryEdit(member.salary.toString());
+    setShowEditSalaryModal(true);
+  };
+
+  const handleUpdateSalary = async () => {
+    if (!selectedMember || !salaryEdit) return;
+
+    const result = await teamService.updateMember(selectedMember.id, {
+      salary: parseFloat(salaryEdit)
+    });
+
+    if (result.success) {
+      const updatedMember = { ...selectedMember, salary: parseFloat(salaryEdit) };
+      setTeamData(prev => ({
+        ...prev,
+        members: prev.members.map(m =>
+          m.id === selectedMember.id ? updatedMember : m
+        )
+      }));
+      setShowEditSalaryModal(false);
+      setSelectedMember(null);
+      setSalaryEdit('');
+    } else {
+      Alert.alert('Error', 'Failed to update salary');
+    }
+  };
+
+  const handleGenerateMonthlySalaries = async () => {
     Alert.alert(
-      'Remove Member',
-      `Are you sure you want to remove ${member.name} from the team?`,
+      'Generate Monthly Salaries',
+      `This will create salary expense transactions for all ${teamData.members.filter(m => m.status === 'active').length} active team members. Continue?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive' }
+        {
+          text: 'Generate',
+          onPress: async () => {
+            setLoadingData(true);
+            try {
+              const result = await teamService.checkAndCreateMonthlySalaries(user.uid);
+              if (result.success) {
+                Alert.alert(
+                  'Success',
+                  `Monthly salary expenses generated for ${result.results.filter(r => r.success).length} team members!`
+                );
+              } else {
+                Alert.alert('Error', result.error || 'Failed to generate salary expenses');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to generate salary expenses');
+            } finally {
+              setLoadingData(false);
+            }
+          }
+        }
       ]
     );
   };
 
   const renderHeader = () => (
     <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
-        <Icon name="arrow-left" size={24} color={theme.text} />
+        <Icon name="arrow-left" size={24} color="white" />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Team Management</Text>
-      <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
-        <Icon name="plus" size={20} color="white" />
-      </TouchableOpacity>
+      <View style={{ width: 40 }} />
+    </Animated.View>
+  );
+
+  const renderOverview = () => (
+    <Animated.View style={[styles.overviewCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.overviewGradient}
+      >
+        <View style={styles.overviewRow}>
+          <View style={styles.overviewItem}>
+            <Text style={styles.overviewLabel}>Total Employees</Text>
+            <Text style={styles.overviewValue}>{teamData.members.length}</Text>
+          </View>
+          <View style={styles.overviewDivider} />
+          <View style={styles.overviewItem}>
+            <Text style={styles.overviewLabel}>Total Salary</Text>
+            <Text style={styles.overviewValue}>{formatCurrency(calculateTotalSalary())}</Text>
+          </View>
+        </View>
+        <View style={styles.overviewRow}>
+          <View style={styles.overviewItem}>
+            <Text style={styles.overviewLabel}>Active Teams</Text>
+            <Text style={styles.overviewValue}>{teamData.departments.length}</Text>
+          </View>
+          <View style={styles.overviewDivider} />
+          <View style={styles.overviewItem}>
+            <Text style={styles.overviewLabel}>Avg Salary</Text>
+            <Text style={styles.overviewValue}>
+              {formatCurrency(teamData.members.length ? calculateTotalSalary() / teamData.members.length : 0)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Generate Monthly Salaries Button */}
+        <TouchableOpacity
+          style={styles.generateSalariesButton}
+          onPress={handleGenerateMonthlySalaries}
+        >
+          <Icon name="cash-multiple" size={20} color="white" />
+          <Text style={styles.generateSalariesText}>Generate Monthly Salaries</Text>
+        </TouchableOpacity>
+      </LinearGradient>
     </Animated.View>
   );
 
   const renderTabSelector = () => (
-    <Animated.View style={[styles.tabSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScrollContent}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[
-              styles.tabButton,
-              selectedTab === tab.id && styles.tabButtonActive
-            ]}
-            onPress={() => setSelectedTab(tab.id)}
-          >
-            <Icon 
-              name={tab.icon} 
-              size={18} 
-              color={selectedTab === tab.id ? 'white' : theme.primary} 
-            />
-            <Text style={[
-              styles.tabButtonText,
-              selectedTab === tab.id && styles.tabButtonTextActive
-            ]}>
-              {tab.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </Animated.View>
+    <View style={styles.tabContainer}>
+      <TouchableOpacity
+        style={[styles.tabButton, selectedTab === 'team' && styles.tabButtonActive]}
+        onPress={() => setSelectedTab('team')}
+      >
+        <Text style={[styles.tabText, selectedTab === 'team' && styles.tabTextActive]}>Members</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tabButton, selectedTab === 'departments' && styles.tabButtonActive]}
+        onPress={() => setSelectedTab('departments')}
+      >
+        <Text style={[styles.tabText, selectedTab === 'departments' && styles.tabTextActive]}>Teams</Text>
+      </TouchableOpacity>
+    </View>
   );
 
-  const renderSearchBar = () => (
-    <Animated.View style={[styles.searchContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Icon name="magnify" size={20} color={theme.textLight} style={styles.searchIcon} />
-      <TextInput
-        style={styles.searchInput}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Search team members..."
-        placeholderTextColor={theme.textLight}
-      />
-      {searchQuery.length > 0 && (
-        <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-          <Icon name="close" size={16} color={theme.textLight} />
+  const renderMembersList = () => (
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <View style={styles.actionRow}>
+        <Text style={styles.sectionTitle}>All Members</Text>
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowAddMemberModal(true)}>
+          <Icon name="plus" size={20} color="white" />
+          <Text style={styles.addButtonText}>Add Member</Text>
         </TouchableOpacity>
-      )}
-    </Animated.View>
-  );
+      </View>
 
-  const renderTeamMembers = () => {
-    const filteredMembers = teamData.members.filter(member =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.department.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    return (
-      <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-        <Text style={styles.sectionTitle}>Team Members ({filteredMembers.length})</Text>
-        {filteredMembers.map((member) => (
-          <View key={member.id} style={styles.memberCard}>
-            <View style={styles.memberHeader}>
-              <View style={styles.memberInfo}>
-                <View style={[styles.memberAvatar, { backgroundColor: `${member.color}20` }]}>
-                  <Icon name={member.avatar} size={24} color={member.color} />
-                </View>
-                <View style={styles.memberDetails}>
-                  <View style={styles.memberNameRow}>
-                    <Text style={styles.memberName}>{member.name}</Text>
-                    <View style={[
-                      styles.statusBadge,
-                      { backgroundColor: member.status === 'active' ? theme.iconBackground.green : theme.iconBackground.orange }
-                    ]}>
-                      <Text style={[
-                        styles.statusText,
-                        { color: member.status === 'active' ? theme.statusColors.active : theme.statusColors.inactive }
-                      ]}>
-                        {member.status}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.memberEmail}>{member.email}</Text>
-                  <Text style={styles.memberRole}>{member.role} • {member.department}</Text>
-                </View>
+      {teamData.members.map((member) => (
+        <View key={member.id} style={styles.memberCard}>
+          <View style={styles.memberHeader}>
+            <View style={styles.memberInfo}>
+              <View style={[styles.avatarContainer, { backgroundColor: `${member.color}20` }]}>
+                <Icon name={member.avatar} size={24} color={member.color} />
               </View>
-              <TouchableOpacity 
-                style={styles.memberMenuButton}
-                onPress={() => handleEditMember(member)}
-              >
-                <Icon name="dots-vertical" size={20} color={theme.textLight} />
-              </TouchableOpacity>
+              <View>
+                <Text style={styles.memberName}>{member.name}</Text>
+                <Text style={styles.memberRole}>{member.role}</Text>
+              </View>
             </View>
-            
-            <View style={styles.memberFooter}>
-              <View style={styles.memberMetrics}>
-                <View style={styles.memberMetric}>
-                  <Icon name="calendar" size={14} color={theme.textSecondary} />
-                  <Text style={styles.memberMetricText}>Joined {member.joinDate}</Text>
-                </View>
-                <View style={styles.memberMetric}>
-                  <Icon name="clock" size={14} color={theme.textSecondary} />
-                  <Text style={styles.memberMetricText}>Active {member.lastActive}</Text>
-                </View>
-              </View>
-              <View style={styles.permissionTags}>
-                {member.permissions.map((permission) => (
-                  <View key={permission} style={styles.permissionTag}>
-                    <Text style={styles.permissionTagText}>{permission}</Text>
-                  </View>
-                ))}
-              </View>
+            <View style={[styles.statusBadge, { backgroundColor: member.status === 'active' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(158, 158, 158, 0.2)' }]}>
+              <Text style={[styles.statusText, { color: member.status === 'active' ? '#4CAF50' : '#9E9E9E' }]}>
+                {member.status}
+              </Text>
             </View>
           </View>
-        ))}
-      </Animated.View>
-    );
-  };
 
-  const renderDepartments = () => (
-    <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>Departments ({teamData.departments.length})</Text>
-      {teamData.departments.map((dept, index) => (
-        <View key={index} style={styles.departmentCard}>
-          <View style={styles.departmentHeader}>
-            <View style={styles.departmentInfo}>
-              <View style={[styles.departmentIcon, { backgroundColor: `${dept.color}20` }]}>
-                <Icon name="office-building" size={20} color={dept.color} />
-              </View>
-              <Text style={styles.departmentName}>{dept.name}</Text>
+          <View style={styles.memberDetails}>
+            <View style={styles.detailItem}>
+              <Icon name="email-outline" size={16} color="rgba(255,255,255,0.6)" />
+              <Text style={styles.detailText}>{member.email}</Text>
             </View>
-            <TouchableOpacity style={styles.departmentMenuButton}>
-              <Icon name="dots-vertical" size={20} color={theme.textLight} />
+            <View style={styles.detailItem}>
+              <Icon name="office-building" size={16} color="rgba(255,255,255,0.6)" />
+              <Text style={styles.detailText}>{member.department}</Text>
+            </View>
+          </View>
+
+          <View style={styles.salaryContainer}>
+            <View>
+              <Text style={styles.salaryLabel}>Annual Salary</Text>
+              <Text style={styles.salaryValue}>{formatCurrency(member.salary)}</Text>
+            </View>
+            <TouchableOpacity style={styles.editSalaryButton} onPress={() => openSalaryEdit(member)}>
+              <Icon name="pencil" size={16} color="white" />
+              <Text style={styles.editSalaryText}>Edit</Text>
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.departmentMetrics}>
-            <View style={styles.departmentMetric}>
-              <Icon name="account-group" size={16} color={theme.textSecondary} />
-              <Text style={styles.departmentMetricText}>{dept.members} Members</Text>
-            </View>
-            <View style={styles.departmentMetric}>
-              <Icon name="wallet" size={16} color={theme.textSecondary} />
-              <Text style={styles.departmentMetricText}>{formatCurrency(dept.budget)} Budget</Text>
-            </View>
-          </View>
         </View>
       ))}
     </Animated.View>
   );
 
-  const renderPermissions = () => (
-    <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>Permission Levels</Text>
-      {teamData.permissions.map((permission) => (
-        <View key={permission.id} style={styles.permissionCard}>
-          <View style={styles.permissionHeader}>
-            <View style={styles.permissionIcon}>
-              <Icon name="shield-check" size={20} color={theme.primary} />
+  const renderTeamsList = () => (
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <View style={styles.actionRow}>
+        <Text style={styles.sectionTitle}>Departments & Teams</Text>
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowAddTeamModal(true)}>
+          <Icon name="plus" size={20} color="white" />
+          <Text style={styles.addButtonText}>Add Team</Text>
+        </TouchableOpacity>
+      </View>
+
+      {teamData.departments.map((dept, index) => {
+        const memberCount = teamData.members.filter(m => m.department === dept.name).length;
+        const totalSalary = teamData.members
+          .filter(m => m.department === dept.name)
+          .reduce((sum, m) => sum + m.salary, 0);
+
+        return (
+          <View key={index} style={styles.teamCard}>
+            <View style={styles.teamHeader}>
+              <View style={[styles.teamIcon, { backgroundColor: `${dept.color}20` }]}>
+                <Icon name={dept.icon} size={24} color={dept.color} />
+              </View>
+              <View style={styles.teamInfo}>
+                <Text style={styles.teamName}>{dept.name}</Text>
+                <Text style={styles.teamMembers}>{memberCount} Members</Text>
+              </View>
             </View>
-            <View style={styles.permissionInfo}>
-              <Text style={styles.permissionName}>{permission.name}</Text>
-              <Text style={styles.permissionDescription}>{permission.description}</Text>
+
+            <View style={styles.teamStats}>
+              <View style={styles.teamStatItem}>
+                <Text style={styles.teamStatLabel}>Budget</Text>
+                <Text style={styles.teamStatValue}>{formatCurrency(dept.budget)}</Text>
+              </View>
+              <View style={styles.teamStatItem}>
+                <Text style={styles.teamStatLabel}>Utilized</Text>
+                <Text style={[styles.teamStatValue, { color: totalSalary > dept.budget ? '#F44336' : '#4CAF50' }]}>
+                  {formatCurrency(totalSalary)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: `${Math.min(100, (totalSalary / dept.budget) * 100)}%`,
+                    backgroundColor: totalSalary > dept.budget ? '#F44336' : dept.color
+                  }
+                ]}
+              />
             </View>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </Animated.View>
   );
-
-  const renderContent = () => {
-    switch (selectedTab) {
-      case 'team':
-        return renderTeamMembers();
-      case 'departments':
-        return renderDepartments();
-      case 'permissions':
-        return renderPermissions();
-      default:
-        return renderTeamMembers();
-    }
-  };
 
   const styles = createStyles(theme);
 
   return (
-    <View style={styles.container}>
-      {renderHeader()}
-      {renderTabSelector()}
-      {selectedTab === 'team' && renderSearchBar()}
-      
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {renderContent()}
-      </ScrollView>
-    </View>
+    <UserTypeGuard requiredUserType="company" navigation={navigation}>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+        <LinearGradient
+          colors={[theme.primary, theme.primaryLight]}
+          style={styles.background}
+        />
+
+        <SafeAreaView style={styles.safeArea}>
+          {renderHeader()}
+
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {renderOverview()}
+            {renderTabSelector()}
+            {selectedTab === 'team' ? renderMembersList() : renderTeamsList()}
+          </ScrollView>
+        </SafeAreaView>
+
+        {/* Add Member Modal */}
+        <Modal
+          visible={showAddMemberModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowAddMemberModal(false)}
+        >
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Team Member</Text>
+                <TouchableOpacity onPress={() => setShowAddMemberModal(false)}>
+                  <Icon name="close" size={24} color="white" />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Full Name"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={newMember.name}
+                onChangeText={(text) => setNewMember({ ...newMember, name: text })}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Email Address"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={newMember.email}
+                onChangeText={(text) => setNewMember({ ...newMember, email: text })}
+                keyboardType="email-address"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Role / Title"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={newMember.role}
+                onChangeText={(text) => setNewMember({ ...newMember, role: text })}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Department"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={newMember.department}
+                onChangeText={(text) => setNewMember({ ...newMember, department: text })}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Annual Salary (₹)"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={newMember.salary}
+                onChangeText={(text) => setNewMember({ ...newMember, salary: text })}
+                keyboardType="numeric"
+              />
+
+              <TouchableOpacity style={styles.modalButton} onPress={handleCreateMember}>
+                <Text style={styles.modalButtonText}>Add Member</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Add Team Modal */}
+        <Modal
+          visible={showAddTeamModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowAddTeamModal(false)}
+        >
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Create New Team</Text>
+                <TouchableOpacity onPress={() => setShowAddTeamModal(false)}>
+                  <Icon name="close" size={24} color="white" />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Team Name"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={newTeam.name}
+                onChangeText={(text) => setNewTeam({ ...newTeam, name: text })}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Annual Budget (₹)"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={newTeam.budget}
+                onChangeText={(text) => setNewTeam({ ...newTeam, budget: text })}
+                keyboardType="numeric"
+              />
+
+              <TouchableOpacity style={styles.modalButton} onPress={handleCreateTeam}>
+                <Text style={styles.modalButtonText}>Create Team</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Edit Salary Modal */}
+        <Modal
+          visible={showEditSalaryModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowEditSalaryModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Update Salary</Text>
+                <TouchableOpacity onPress={() => setShowEditSalaryModal(false)}>
+                  <Icon name="close" size={24} color="white" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>
+                Set new salary for {selectedMember?.name}
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Annual Salary (₹)"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={salaryEdit}
+                onChangeText={setSalaryEdit}
+                keyboardType="numeric"
+              />
+
+              <TouchableOpacity style={styles.modalButton} onPress={handleUpdateSalary}>
+                <Text style={styles.modalButtonText}>Update Salary</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+      </View>
+    </UserTypeGuard>
   );
 }
 
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: theme.primary,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
     paddingBottom: 20,
-    backgroundColor: theme.headerBackground || theme.background,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: theme.text,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-
-  // Tab Selector Styles
-  tabSelector: {
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  tabScrollContent: {
-    gap: 10,
-  },
-  tabButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  tabButtonActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
-  },
-  tabButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
-    marginLeft: 8,
-  },
-  tabButtonTextActive: {
     color: 'white',
-  },
-
-  // Search Bar Styles
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.text,
-    paddingVertical: 12,
-  },
-  clearButton: {
-    padding: 5,
-  },
-
-  // Content Styles
-  scrollView: {
-    flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
   content: {
+    flex: 1,
+  },
+
+  // Overview Card
+  overviewCard: {
     marginBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  overviewGradient: {
+    padding: 20,
+  },
+  overviewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  overviewItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  overviewDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 10,
+  },
+  overviewLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  overviewValue: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  generateSalariesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  generateSalariesText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  // Tab Selector
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabButtonActive: {
+    backgroundColor: 'white',
+  },
+  tabText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: theme.primary,
+  },
+
+  // Action Row
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 15,
+    color: 'white',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  addButtonText: {
+    color: 'white',
+    marginLeft: 4,
+    fontWeight: '600',
   },
 
-  // Member Card Styles
+  // Member Card
   memberCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   memberHeader: {
     flexDirection: 'row',
@@ -538,174 +792,194 @@ const createStyles = (theme) => StyleSheet.create({
   },
   memberInfo: {
     flexDirection: 'row',
-    flex: 1,
+    alignItems: 'center',
   },
-  memberAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  memberDetails: {
-    flex: 1,
-  },
-  memberNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
   memberName: {
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-    color: theme.text,
+  },
+  memberRole: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 8,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: 'bold',
     textTransform: 'uppercase',
   },
-  memberEmail: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    marginBottom: 2,
-  },
-  memberRole: {
-    fontSize: 12,
-    color: theme.textLight,
-  },
-  memberMenuButton: {
-    padding: 5,
-  },
-  memberFooter: {
+  memberDetails: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 12,
+    gap: 16,
   },
-  memberMetrics: {
-    gap: 8,
-  },
-  memberMetric: {
+  detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  memberMetricText: {
+  detailText: {
+    color: 'rgba(255,255,255,0.6)',
     fontSize: 12,
-    color: theme.textSecondary,
   },
-  permissionTags: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  permissionTag: {
-    backgroundColor: `${theme.primary}20`,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  permissionTagText: {
-    fontSize: 10,
-    color: theme.primary,
-    fontWeight: '600',
-  },
-
-  // Department Card Styles
-  departmentCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  departmentHeader: {
+  salaryContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: 12,
+    borderRadius: 12,
   },
-  departmentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  salaryLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 10,
+    marginBottom: 2,
   },
-  departmentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  departmentName: {
+  salaryValue: {
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-    color: theme.text,
   },
-  departmentMenuButton: {
-    padding: 5,
-  },
-  departmentMetrics: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-  departmentMetric: {
+  editSalaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
   },
-  departmentMetricText: {
-    fontSize: 14,
-    color: theme.textSecondary,
+  editSalaryText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 
-  // Permission Card Styles
-  permissionCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
+  // Team Card
+  teamCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  permissionHeader: {
+  teamHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
   },
-  permissionIcon: {
+  teamIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: `${theme.primary}20`,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  permissionInfo: {
+  teamInfo: {
     flex: 1,
   },
-  permissionName: {
+  teamName: {
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 4,
   },
-  permissionDescription: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    lineHeight: 20,
+  teamMembers: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+  },
+  teamStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  teamStatItem: {
+    alignItems: 'flex-start',
+  },
+  teamStatLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  teamStatValue: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  modalSubtitle: {
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 20,
+  },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: 'white',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 12,
+  },
+  modalButton: {
+    backgroundColor: theme.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

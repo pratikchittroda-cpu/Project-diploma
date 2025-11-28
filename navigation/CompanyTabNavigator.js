@@ -207,7 +207,7 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
           },
         ]}
       />
-      
+
       <Animated.View
         style={[
           customTabBarStyles.focusedBackground,
@@ -225,7 +225,7 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
           },
         ]}
       />
-      
+
       <Animated.View
         style={{
           transform: [{ scale: scaleAnim }],
@@ -233,10 +233,10 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
           justifyContent: 'center',
         }}
       >
-        <Icon 
-          name={iconName} 
-          size={focused ? size + 3 : size} 
-          color={focused ? theme.primary : theme.textLight} 
+        <Icon
+          name={iconName}
+          size={focused ? size + 3 : size}
+          color={focused ? 'white' : 'rgba(255, 255, 255, 0.6)'}
         />
         {focused && (
           <Animated.View
@@ -332,7 +332,7 @@ const AnimatedAddButton = ({ isFocused, onPress }) => {
       style={customTabBarStyles.addButton}
       activeOpacity={0.8}
     >
-      <Animated.View 
+      <Animated.View
         style={[
           customTabBarStyles.addButtonInner,
           {
@@ -349,10 +349,10 @@ const AnimatedAddButton = ({ isFocused, onPress }) => {
             transform: [{ rotate: rotation }],
           }}
         >
-          <Icon 
-            name="plus" 
-            size={32} 
-            color="white" 
+          <Icon
+            name="plus"
+            size={32}
+            color="white"
           />
         </Animated.View>
       </Animated.View>
@@ -447,23 +447,27 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
 const createCustomTabBarStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: theme.tabBar,
-    borderTopWidth: theme.tabBarBorder === 'transparent' ? 0 : 1,
-    borderTopColor: theme.tabBarBorder,
-    elevation: 20,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    paddingBottom: 10,
-    paddingTop: 15,
-    height: 75,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
+    paddingBottom: 10,
+    paddingTop: 15,
+    height: 75,
+    // Glassmorphism effect
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    // Shadow and elevation
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    // Backdrop blur simulation
+    overflow: 'hidden',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -483,14 +487,14 @@ const createCustomTabBarStyles = (theme) => StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: theme.primary,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   focusedBackground: {
     position: 'absolute',
     width: 45,
     height: 45,
     borderRadius: 22.5,
-    backgroundColor: theme.primary,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   focusedDot: {
     width: 6,
@@ -515,8 +519,8 @@ const createCustomTabBarStyles = (theme) => StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    borderWidth: 4,
-    borderColor: theme.tabBar,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 });
 
@@ -609,7 +613,7 @@ const AnimatedAddCompanyTransactionScreen = ({ navigation }) => {
 
 export default function CompanyTabNavigator() {
   const { theme, isLoading } = useTheme();
-  
+
   // Don't render until theme is loaded
   if (isLoading || !theme) {
     return (
@@ -618,7 +622,7 @@ export default function CompanyTabNavigator() {
       </View>
     );
   }
-  
+
   return (
     <View style={{ flex: 1, backgroundColor: theme?.background || '#f8f9fa' }}>
       <Tab.Navigator

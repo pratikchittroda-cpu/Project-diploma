@@ -12,6 +12,8 @@ import {
   StatusBar,
   TextInput,
   RefreshControl,
+  SafeAreaView,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,7 +39,7 @@ export default function CompanyProfileScreen({ navigation }) {
     monthlyRevenue: 0,
   });
 
-  // Animation values - MUST be declared before any conditional returns
+  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const profileScaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -98,7 +100,7 @@ export default function CompanyProfileScreen({ navigation }) {
     };
   }, [navigation, transactions, userData]);
 
-  // Don't render until theme and auth are loaded - MOVED AFTER ALL HOOKS
+  // Don't render until theme and auth are loaded
   if (isLoading || authLoading || !theme || !user) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.background || '#f8f9fa' }}>
@@ -112,7 +114,7 @@ export default function CompanyProfileScreen({ navigation }) {
     try {
       const notifications = await AsyncStorage.getItem('company_notifications_enabled');
       const emailReports = await AsyncStorage.getItem('company_email_reports_enabled');
-      
+
       if (notifications !== null) {
         setNotificationsEnabled(JSON.parse(notifications));
       }
@@ -120,14 +122,16 @@ export default function CompanyProfileScreen({ navigation }) {
         setEmailReportsEnabled(JSON.parse(emailReports));
       }
     } catch (error) {
-      }
+      console.error("Error loading settings:", error);
+    }
   };
 
   const saveSettings = async (key, value) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
-      }
+      console.error("Error saving settings:", error);
+    }
   };
 
   const calculateCompanyStats = () => {
@@ -147,13 +151,13 @@ export default function CompanyProfileScreen({ navigation }) {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
+
     const monthlyRevenue = transactions
       .filter(t => {
         const transactionDate = new Date(t.date || t.createdAt);
-        return t.type === 'income' && 
-               transactionDate >= currentMonthStart && 
-               transactionDate <= currentMonthEnd;
+        return t.type === 'income' &&
+          transactionDate >= currentMonthStart &&
+          transactionDate <= currentMonthEnd;
       })
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -171,7 +175,8 @@ export default function CompanyProfileScreen({ navigation }) {
       await refreshTransactions();
       calculateCompanyStats();
     } catch (error) {
-      } finally {
+      console.error("Error refreshing:", error);
+    } finally {
       setRefreshing(false);
     }
   };
@@ -196,8 +201,8 @@ export default function CompanyProfileScreen({ navigation }) {
       'Are you sure you want to sign out?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
+        {
+          text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -213,21 +218,23 @@ export default function CompanyProfileScreen({ navigation }) {
   };
 
   const formatCurrency = (amount) => {
-    return `₹${amount.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,')}`;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   const renderProfileHeader = () => (
     <Animated.View style={[
       styles.profileHeader,
-      { 
+      {
         opacity: fadeAnim,
         transform: [{ scale: profileScaleAnim }]
       }
     ]}>
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        style={styles.profileGradient}
-      >
+      <View style={styles.profileGradient}>
         <View style={styles.profileInfo}>
           <View style={styles.avatarContainer}>
             <Icon name="office-building" size={40} color="white" />
@@ -247,10 +254,10 @@ export default function CompanyProfileScreen({ navigation }) {
             style={styles.editButton}
             onPress={() => setIsEditing(!isEditing)}
           >
-            <Icon name={isEditing ? "close" : "pencil"} size={20} color="white" />
+            <Icon name={isEditing ? "close" : "pencil"} size={20} color={theme.primary} />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 
@@ -291,7 +298,7 @@ export default function CompanyProfileScreen({ navigation }) {
       { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
     ]}>
       <Text style={styles.sectionTitle}>Company Information</Text>
-      
+
       {isEditing ? (
         <View style={styles.editForm}>
           <View style={styles.inputGroup}>
@@ -299,70 +306,70 @@ export default function CompanyProfileScreen({ navigation }) {
             <TextInput
               style={styles.textInput}
               value={editedData.companyName}
-              onChangeText={(text) => setEditedData({...editedData, companyName: text})}
+              onChangeText={(text) => setEditedData({ ...editedData, companyName: text })}
               placeholder="Enter company name"
-              placeholderTextColor={theme.textLight}
+              placeholderTextColor="rgba(255,255,255,0.5)"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Contact Person</Text>
             <TextInput
               style={styles.textInput}
               value={editedData.contactPerson}
-              onChangeText={(text) => setEditedData({...editedData, contactPerson: text})}
+              onChangeText={(text) => setEditedData({ ...editedData, contactPerson: text })}
               placeholder="Enter contact person name"
-              placeholderTextColor={theme.textLight}
+              placeholderTextColor="rgba(255,255,255,0.5)"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Phone Number</Text>
             <TextInput
               style={styles.textInput}
               value={editedData.phone}
-              onChangeText={(text) => setEditedData({...editedData, phone: text})}
+              onChangeText={(text) => setEditedData({ ...editedData, phone: text })}
               placeholder="Enter phone number"
-              placeholderTextColor={theme.textLight}
+              placeholderTextColor="rgba(255,255,255,0.5)"
               keyboardType="phone-pad"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Industry</Text>
             <TextInput
               style={styles.textInput}
               value={editedData.industry}
-              onChangeText={(text) => setEditedData({...editedData, industry: text})}
+              onChangeText={(text) => setEditedData({ ...editedData, industry: text })}
               placeholder="Enter industry"
-              placeholderTextColor={theme.textLight}
+              placeholderTextColor="rgba(255,255,255,0.5)"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Employee Count</Text>
             <TextInput
               style={styles.textInput}
               value={editedData.employeeCount?.toString()}
-              onChangeText={(text) => setEditedData({...editedData, employeeCount: parseInt(text) || 0})}
+              onChangeText={(text) => setEditedData({ ...editedData, employeeCount: parseInt(text) || 0 })}
               placeholder="Enter employee count"
-              placeholderTextColor={theme.textLight}
+              placeholderTextColor="rgba(255,255,255,0.5)"
               keyboardType="numeric"
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Active Projects</Text>
             <TextInput
               style={styles.textInput}
               value={editedData.activeProjects?.toString()}
-              onChangeText={(text) => setEditedData({...editedData, activeProjects: parseInt(text) || 0})}
+              onChangeText={(text) => setEditedData({ ...editedData, activeProjects: parseInt(text) || 0 })}
               placeholder="Enter active projects count"
-              placeholderTextColor={theme.textLight}
+              placeholderTextColor="rgba(255,255,255,0.5)"
               keyboardType="numeric"
             />
           </View>
-          
+
           <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
             <LinearGradient
               colors={[theme.primary, theme.primaryLight]}
@@ -405,10 +412,12 @@ export default function CompanyProfileScreen({ navigation }) {
       { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
     ]}>
       <Text style={styles.sectionTitle}>Settings</Text>
-      
+
       <View style={styles.settingItem}>
         <View style={styles.settingInfo}>
-          <Icon name="bell" size={20} color={theme.primary} />
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(33, 150, 243, 0.2)' }]}>
+            <Icon name="bell" size={20} color="#2196F3" />
+          </View>
           <Text style={styles.settingLabel}>Push Notifications</Text>
         </View>
         <Switch
@@ -417,14 +426,16 @@ export default function CompanyProfileScreen({ navigation }) {
             setNotificationsEnabled(value);
             saveSettings('company_notifications_enabled', value);
           }}
-          trackColor={{ false: theme.border, true: theme.primaryLight }}
-          thumbColor={notificationsEnabled ? theme.primary : theme.textLight}
+          trackColor={{ false: 'rgba(255,255,255,0.2)', true: theme.primary }}
+          thumbColor={notificationsEnabled ? '#fff' : '#f4f3f4'}
         />
       </View>
-      
+
       <View style={styles.settingItem}>
         <View style={styles.settingInfo}>
-          <Icon name="email" size={20} color={theme.primary} />
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
+            <Icon name="email" size={20} color="#4CAF50" />
+          </View>
           <Text style={styles.settingLabel}>Email Reports</Text>
         </View>
         <Switch
@@ -433,21 +444,23 @@ export default function CompanyProfileScreen({ navigation }) {
             setEmailReportsEnabled(value);
             saveSettings('company_email_reports_enabled', value);
           }}
-          trackColor={{ false: theme.border, true: theme.primaryLight }}
-          thumbColor={emailReportsEnabled ? theme.primary : theme.textLight}
+          trackColor={{ false: 'rgba(255,255,255,0.2)', true: theme.primary }}
+          thumbColor={emailReportsEnabled ? '#fff' : '#f4f3f4'}
         />
       </View>
-      
+
       <View style={styles.settingItem}>
         <View style={styles.settingInfo}>
-          <Icon name="theme-light-dark" size={20} color={theme.primary} />
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(158, 158, 158, 0.2)' }]}>
+            <Icon name="theme-light-dark" size={20} color="#9E9E9E" />
+          </View>
           <Text style={styles.settingLabel}>Dark Mode</Text>
         </View>
         <Switch
           value={isDarkMode}
           onValueChange={toggleTheme}
-          trackColor={{ false: theme.border, true: theme.primaryLight }}
-          thumbColor={isDarkMode ? theme.primary : theme.textLight}
+          trackColor={{ false: 'rgba(255,255,255,0.2)', true: theme.primary }}
+          thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
         />
       </View>
     </Animated.View>
@@ -459,27 +472,43 @@ export default function CompanyProfileScreen({ navigation }) {
       { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
     ]}>
       <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('CompanyReportsDetail')}>
-        <Icon name="chart-line" size={20} color={theme.primary} />
-        <Text style={styles.actionText}>View Reports</Text>
-        <Icon name="chevron-right" size={20} color={theme.textLight} />
+        <View style={styles.actionButtonLeft}>
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(255, 152, 0, 0.2)' }]}>
+            <Icon name="chart-line" size={20} color="#FF9800" />
+          </View>
+          <Text style={styles.actionText}>View Reports</Text>
+        </View>
+        <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.5)" />
       </TouchableOpacity>
-      
+
       <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('TeamManagementDetail')}>
-        <Icon name="account-group" size={20} color={theme.primary} />
-        <Text style={styles.actionText}>Manage Team</Text>
-        <Icon name="chevron-right" size={20} color={theme.textLight} />
+        <View style={styles.actionButtonLeft}>
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(33, 150, 243, 0.2)' }]}>
+            <Icon name="account-group" size={20} color="#2196F3" />
+          </View>
+          <Text style={styles.actionText}>Manage Team</Text>
+        </View>
+        <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.5)" />
       </TouchableOpacity>
-      
+
       <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('CompanyBudgetDetail')}>
-        <Icon name="calculator" size={20} color={theme.primary} />
-        <Text style={styles.actionText}>Budget Management</Text>
-        <Icon name="chevron-right" size={20} color={theme.textLight} />
+        <View style={styles.actionButtonLeft}>
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(156, 39, 176, 0.2)' }]}>
+            <Icon name="calculator" size={20} color="#9C27B0" />
+          </View>
+          <Text style={styles.actionText}>Budget Management</Text>
+        </View>
+        <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.5)" />
       </TouchableOpacity>
-      
+
       <TouchableOpacity style={[styles.actionButton, styles.signOutButton]} onPress={handleSignOut}>
-        <Icon name="logout" size={20} color="#FF5252" />
-        <Text style={[styles.actionText, { color: '#FF5252' }]}>Sign Out</Text>
-        <Icon name="chevron-right" size={20} color={theme.textLight} />
+        <View style={styles.actionButtonLeft}>
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(255, 82, 82, 0.2)' }]}>
+            <Icon name="logout" size={20} color="#FF5252" />
+          </View>
+          <Text style={[styles.actionText, { color: '#FF5252' }]}>Sign Out</Text>
+        </View>
+        <Icon name="chevron-right" size={20} color="#FF5252" />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -488,37 +517,43 @@ export default function CompanyProfileScreen({ navigation }) {
 
   return (
     <UserTypeGuard requiredUserType="company" navigation={navigation}>
-      <StatusBar backgroundColor={theme.background} barStyle={theme.statusBarStyle} />
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-left" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Company Profile</Text>
-          <View style={styles.placeholder} />
-        </View>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+        <LinearGradient
+          colors={[theme.primary, theme.primaryLight]}
+          style={styles.background}
+        />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Icon name="arrow-left" size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Company Profile</Text>
+            <View style={styles.placeholder} />
+          </View>
 
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={[theme.primary]}
-              tintColor={theme.primary}
-            />
-          }
-        >
-          {renderProfileHeader()}
-          {renderCompanyStats()}
-          {renderEditableInfo()}
-          {renderSettings()}
-          {renderActions()}
-        </ScrollView>
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor="white"
+              />
+            }
+          >
+            {renderProfileHeader()}
+            {renderCompanyStats()}
+            {renderEditableInfo()}
+            {renderSettings()}
+            {renderActions()}
+          </ScrollView>
+        </SafeAreaView>
       </View>
     </UserTypeGuard>
   );
@@ -527,34 +562,38 @@ export default function CompanyProfileScreen({ navigation }) {
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: theme.primary,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
     paddingBottom: 20,
-    backgroundColor: theme.background,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
   },
   placeholder: {
     width: 40,
@@ -562,43 +601,43 @@ const createStyles = (theme) => StyleSheet.create({
   content: {
     flex: 1,
   },
-  
+  scrollContent: {
+    paddingBottom: 40,
+  },
+
   // Profile Header Styles
   profileHeader: {
     marginHorizontal: 20,
     marginBottom: 20,
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   profileGradient: {
-    padding: 20,
-  },
-  profileInfo: {
-    flexDirection: 'row',
+    padding: 10,
     alignItems: 'center',
   },
+  profileInfo: {
+    alignItems: 'center',
+    width: '100%',
+  },
   avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    borderWidth: 4,
+    borderColor: 'white',
+    marginBottom: 15,
   },
   profileDetails: {
-    flex: 1,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   companyName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 4,
+    marginBottom: 5,
   },
   adminName: {
     fontSize: 16,
@@ -610,14 +649,22 @@ const createStyles = (theme) => StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
   editButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: 'black',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  
+
   // Stats Section Styles
   statsSection: {
     marginHorizontal: 20,
@@ -626,8 +673,11 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.2)',
+    paddingBottom: 10,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -636,73 +686,65 @@ const createStyles = (theme) => StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   statValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginTop: 8,
     marginBottom: 4,
+    textAlign: 'center',
   },
   statLabel: {
     fontSize: 12,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
   },
-  
+
   // Info Section Styles
   infoSection: {
     marginHorizontal: 20,
     marginBottom: 20,
   },
   infoGrid: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   infoLabel: {
     fontSize: 14,
-    color: theme.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
     marginLeft: 12,
     flex: 1,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: theme.text,
+    color: 'white',
   },
-  
+
   // Edit Form Styles
   editForm: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   inputGroup: {
     marginBottom: 16,
@@ -710,17 +752,17 @@ const createStyles = (theme) => StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: theme.text,
+    color: 'white',
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: theme.background,
+    backgroundColor: 'rgba(0,0,0,0.2)',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: theme.text,
+    color: 'white',
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   saveButton: {
     marginTop: 10,
@@ -730,13 +772,14 @@ const createStyles = (theme) => StyleSheet.create({
   saveGradient: {
     paddingVertical: 12,
     alignItems: 'center',
+    backgroundColor: 'white', // Fallback
   },
   saveButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  
+
   // Settings Section Styles
   settingsSection: {
     marginHorizontal: 20,
@@ -746,15 +789,12 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 8,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   settingInfo: {
     flexDirection: 'row',
@@ -763,10 +803,17 @@ const createStyles = (theme) => StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
-    color: theme.text,
+    color: 'white',
     marginLeft: 12,
   },
-  
+  menuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   // Actions Section Styles
   actionsSection: {
     marginHorizontal: 20,
@@ -775,23 +822,27 @@ const createStyles = (theme) => StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 8,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  actionButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   actionText: {
     fontSize: 16,
-    color: theme.text,
+    color: 'white',
     marginLeft: 12,
-    flex: 1,
+    fontWeight: '600',
   },
   signOutButton: {
     marginTop: 10,
+    borderColor: 'rgba(255, 82, 82, 0.5)',
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
   },
 });

@@ -12,6 +12,7 @@ import {
   StatusBar,
   SafeAreaView,
   Platform,
+  Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,64 @@ export default function ProfileScreen({ navigation, onClose }) {
   const { isDarkMode, theme, toggleTheme, isLoading } = useTheme();
   const { user, userData } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // Animations
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(50)).current;
+  const profileScaleAnim = React.useRef(new Animated.Value(0.8)).current;
+
+  // Effects
+  useEffect(() => {
+    // Entrance animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 80,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.spring(profileScaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const parent = navigation.getParent();
+    if (parent) parent.setOptions({ tabBarStyle: { display: 'none' } });
+    trackScreenVisit();
+    const unsubscribe = navigation.addListener('focus', trackScreenVisit);
+    return () => {
+      unsubscribe();
+      if (parent) {
+        parent.setOptions({
+          tabBarStyle: {
+            backgroundColor: isDarkMode ? '#1e1e1e' : 'white',
+            borderTopWidth: 0,
+            elevation: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.1,
+            paddingBottom: 10,
+            paddingTop: 15,
+            height: 75,
+            borderTopLeftRadius: 25,
+            borderTopRightRadius: 25,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+          },
+        });
+      }
+    };
+  }, [navigation, isDarkMode]);
 
   // Loading guard
   if (isLoading || !theme) {
@@ -138,38 +197,6 @@ export default function ProfileScreen({ navigation, onClose }) {
     ]);
   };
 
-  // Effects
-  useEffect(() => {
-    const parent = navigation.getParent();
-    if (parent) parent.setOptions({ tabBarStyle: { display: 'none' } });
-    trackScreenVisit();
-    const unsubscribe = navigation.addListener('focus', trackScreenVisit);
-    return () => {
-      unsubscribe();
-      if (parent) {
-        parent.setOptions({
-          tabBarStyle: {
-            backgroundColor: isDarkMode ? '#1e1e1e' : 'white',
-            borderTopWidth: 0,
-            elevation: 20,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.1,
-            paddingBottom: 10,
-            paddingTop: 15,
-            height: 75,
-            borderTopLeftRadius: 25,
-            borderTopRightRadius: 25,
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-          },
-        });
-      }
-    };
-  }, [navigation, isDarkMode]);
-
   // Render helpers
   const renderProfileHeader = () => (
     <View style={styles.profileHeader}>
@@ -177,14 +204,19 @@ export default function ProfileScreen({ navigation, onClose }) {
         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
           <Icon name="arrow-left" size={24} color="white" />
         </TouchableOpacity>
-        <View style={styles.profileImageContainer}>
+        <Animated.View
+          style={[
+            styles.profileImageContainer,
+            { transform: [{ scale: profileScaleAnim }] }
+          ]}
+        >
           <View style={styles.profileImage}>
             <Icon name="account" size={60} color="white" />
           </View>
           <TouchableOpacity style={styles.editImageButton}>
             <Icon name="camera" size={16} color={theme.primary} />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
         <Text style={styles.profileName}>{userInfo.name}</Text>
         <Text style={styles.profileEmail}>{userInfo.email}</Text>
         <View style={styles.statsRow}>
@@ -331,153 +363,167 @@ export default function ProfileScreen({ navigation, onClose }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <LinearGradient
         colors={[theme.primary, theme.primaryLight]}
         style={styles.background}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       />
       <SafeAreaView style={styles.safeArea}>
-        {renderProfileHeader()}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {renderAccountInfo()}
-          {renderMenuButtons()}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {renderProfileHeader()}
+          <Animated.View
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            {renderAccountInfo()}
+            {renderMenuButtons()}
+          </Animated.View>
         </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
 
-const createStyles = (theme) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.primary,
-    },
-    background: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
-    },
-    safeArea: {
-      flex: 1,
-    },
-    // Profile Header
-    profileHeader: {
-      borderBottomLeftRadius: 30,
-      borderBottomRightRadius: 30,
-      overflow: 'hidden',
-      // Transparent to let gradient show through
-    },
-    profileGradient: {
-      paddingTop: Platform.OS === 'android' ? 20 : 10,
-      paddingBottom: 30,
-      paddingHorizontal: 20,
-      alignItems: 'center',
-    },
-    backButton: {
-      position: 'absolute',
-      top: Platform.OS === 'android' ? 20 : 10,
-      left: 20,
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    profileImageContainer: {
-      position: 'relative',
-      marginTop: 20,
-      marginBottom: 15,
-    },
-    profileImage: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 4,
-      borderColor: 'white',
-    },
-    editImageButton: {
-      position: 'absolute',
-      bottom: 0,
-      right: 0,
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: theme.surface,
-      justifyContent: 'center',
-      alignItems: 'center',
-      elevation: 4,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-    },
-    profileName: { fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 },
-    profileEmail: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginBottom: 20 },
-    statsRow: { flexDirection: 'row', alignItems: 'center' },
-    statItem: { alignItems: 'center', paddingHorizontal: 20 },
-    statNumber: { fontSize: 20, fontWeight: 'bold', color: 'white' },
-    statLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-    statDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.3)' },
-    // Content
-    content: { flex: 1 },
-    scrollContent: { paddingBottom: 30 },
-    section: { marginTop: 20, paddingHorizontal: 20 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: 'white', borderBottomColor: 'rgba(255,255,255,0.2)' },
-    infoCard: {
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      borderRadius: 15,
-      padding: 20,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.2)',
-      elevation: 3,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-    },
-    infoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    infoContent: { marginLeft: 15, flex: 1 },
-    infoLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 2 },
-    infoValue: { fontSize: 16, color: 'white', fontWeight: '500' },
-    // Menu Buttons
-    menuButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      borderRadius: 16,
-      padding: 18,
-      marginBottom: 12,
-      elevation: 4,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 6,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.2)',
-    },
-    menuButtonLeft: { flexDirection: 'row', alignItems: 'center' },
-    menuIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 16,
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-    },
-    menuButtonText: { fontSize: 17, color: 'white', fontWeight: '600', letterSpacing: 0.3 },
-    logoutButton: { marginTop: 15, backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' },
-    logoutText: { color: 'white', fontWeight: '600' },
-  });
+const createStyles = (theme) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.primary,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  // Profile Header
+  profileHeader: {
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: 'hidden',
+    // Transparent to let gradient show through
+  },
+  profileGradient: {
+    paddingTop: Platform.OS === 'android' ? 20 : 10,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 20 : 10,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImageContainer: {
+    position: 'relative',
+    marginTop: 20,
+    marginBottom: 15,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: 'white',
+  },
+  editImageButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: theme.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  profileName: { fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 },
+  profileEmail: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginBottom: 20 },
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  statItem: { alignItems: 'center', paddingHorizontal: 20 },
+  statNumber: { fontSize: 20, fontWeight: 'bold', color: 'white' },
+  statLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  statDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.3)' },
+  // Content
+  content: { flex: 1 },
+  scrollContent: { paddingBottom: 30 },
+  section: { marginTop: 20, paddingHorizontal: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: 'white', borderBottomColor: 'rgba(255,255,255,0.2)' },
+  infoCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 15,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  infoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  infoContent: { marginLeft: 15, flex: 1 },
+  infoLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 2 },
+  infoValue: { fontSize: 16, color: 'white', fontWeight: '500' },
+  // Menu Buttons
+  menuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  menuButtonLeft: { flexDirection: 'row', alignItems: 'center' },
+  menuIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  menuButtonText: { fontSize: 17, color: 'white', fontWeight: '600', letterSpacing: 0.3 },
+  logoutButton: { marginTop: 15, backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' },
+  logoutText: { color: 'white', fontWeight: '600' },
+});

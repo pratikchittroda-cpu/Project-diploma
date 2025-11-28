@@ -8,23 +8,29 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
+  Dimensions,
+  SafeAreaView,
+  RefreshControl,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { LineChart, PieChart } from 'react-native-chart-kit';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 import UserTypeGuard from '../components/UserTypeGuard';
 
-// Dimensions removed as not used
+const { width } = Dimensions.get('window');
 
 export default function CompanyReportsScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
   const { userData } = useAuth();
-  const { transactions, loading: transactionsLoading } = useTransactions();
-  const [selectedPeriod, setSelectedPeriod] = useState('This Month');
-  const [selectedReport, setSelectedReport] = useState('overview');
+  const { transactions, loading: transactionsLoading, refresh: refreshTransactions } = useTransactions();
+
+  const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
+  const [refreshing, setRefreshing] = useState(false);
   const [reportData, setReportData] = useState({
     overview: {
       totalRevenue: 0,
@@ -34,7 +40,10 @@ export default function CompanyReportsScreen({ navigation }) {
       growth: 0,
     },
     departments: [],
-    monthlyTrends: [],
+    monthlyTrends: {
+      labels: [],
+      datasets: [{ data: [0] }]
+    },
     topExpenses: []
   });
 
@@ -45,9 +54,8 @@ export default function CompanyReportsScreen({ navigation }) {
   // Don't render until theme is loaded
   if (isLoading || !theme) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.background || '#f8f9fa', paddingTop: StatusBar.currentHeight || 0 }}>
-        <StatusBar backgroundColor={theme?.background || '#f8f9fa'} barStyle={theme?.statusBarStyle || 'dark-content'} />
-        <ActivityIndicator size="large" color={theme?.primary || '#667eea'} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <ActivityIndicator size="large" color="#667eea" />
       </View>
     );
   }
@@ -56,56 +64,49 @@ export default function CompanyReportsScreen({ navigation }) {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
-        tension: 80,
+        tension: 60,
         friction: 8,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Track this screen visit
     trackScreenVisit();
 
-    // Listen for navigation focus to track tab bar navigation
     const unsubscribe = navigation.addListener('focus', () => {
       trackScreenVisit();
+      refreshTransactions();
     });
 
     return unsubscribe;
   }, [navigation]);
 
-  // Auto-refresh functionality
   useEffect(() => {
-    // Auto-refresh every 30 seconds
-    const autoRefreshInterval = setInterval(() => {
-      // Refresh transactions data automatically
-      if (transactions) {
-        // Data will be automatically recalculated when transactions change
-      }
-    }, 30000);
+    if (!transactionsLoading && transactions) {
+      calculateReportData();
+    }
+  }, [transactions, selectedPeriod, transactionsLoading]);
 
-    // Listen for navigation focus to refresh data
-    const unsubscribe = navigation.addListener('focus', () => {
-      // Data will be automatically refreshed when screen comes into focus
-    });
-
-    return () => {
-      clearInterval(autoRefreshInterval);
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [navigation]);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshTransactions();
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const trackScreenVisit = async () => {
     try {
       const stored = await AsyncStorage.getItem('company_recent_actions');
       let recentActions = stored ? JSON.parse(stored) : [];
-      
+
       const newAction = {
         id: 'reports',
         name: 'Reports',
@@ -113,403 +114,209 @@ export default function CompanyReportsScreen({ navigation }) {
         color: '#4CAF50',
         timestamp: Date.now()
       };
-      
+
       recentActions = recentActions.filter(action => action.id !== 'reports');
       recentActions.unshift(newAction);
       recentActions = recentActions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('company_recent_actions', JSON.stringify(recentActions));
     } catch (error) {
-      }
+      console.error('Error tracking screen visit:', error);
+    }
   };
 
-  // Calculate real report data from transactions
-  useEffect(() => {
-    const calculateReportData = () => {
-      if (!transactions || transactions.length === 0) {
-        return;
+  const calculateReportData = () => {
+    if (!transactions || transactions.length === 0) return;
+
+    try {
+      const now = new Date();
+      let startDate, endDate;
+
+      switch (selectedPeriod) {
+        case 'Weekly':
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          startDate = startOfWeek;
+          endDate = new Date(now);
+          break;
+        case 'Yearly':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
+        default: // Monthly
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       }
 
-      try {
-        // Get current period data based on selected period
-        const now = new Date();
-        let startDate, endDate;
+      const periodTransactions = transactions.filter(t => {
+        const transactionDate = new Date(t.date || t.createdAt);
+        return transactionDate >= startDate && transactionDate <= endDate;
+      });
 
-        switch (selectedPeriod) {
-          case 'This Week':
-            const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay());
-            startDate = startOfWeek;
-            endDate = new Date(now);
-            break;
-          case 'This Month':
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            break;
-          case 'This Year':
-            startDate = new Date(now.getFullYear(), 0, 1);
-            endDate = new Date(now.getFullYear(), 11, 31);
-            break;
-          default:
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        }
+      // Overview Stats
+      const totalRevenue = periodTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-        const periodTransactions = transactions.filter(t => {
-          const transactionDate = new Date(t.date || t.createdAt);
-          return transactionDate >= startDate && transactionDate <= endDate;
+      const totalExpenses = periodTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      // Department Analysis
+      const departmentTotals = {};
+      periodTransactions
+        .filter(t => t.type === 'expense')
+        .forEach(t => {
+          const dept = t.department || 'General';
+          departmentTotals[dept] = (departmentTotals[dept] || 0) + t.amount;
         });
 
-        // Calculate overview data
-        const totalRevenue = periodTransactions
-          .filter(t => t.type === 'income')
-          .reduce((sum, t) => sum + t.amount, 0);
+      const departments = Object.entries(departmentTotals)
+        .map(([name, spent], index) => {
+          const colors = ['#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#607D8B'];
+          const budget = spent * 1.3; // Simulated budget for now
+          return {
+            name,
+            budget,
+            spent,
+            percentage: Math.round((spent / budget) * 100),
+            color: colors[index % colors.length]
+          };
+        })
+        .sort((a, b) => b.spent - a.spent)
+        .slice(0, 5);
 
-        const totalExpenses = periodTransactions
-          .filter(t => t.type === 'expense')
-          .reduce((sum, t) => sum + t.amount, 0);
+      // Monthly Trends (Revenue vs Expenses)
+      const trendLabels = [];
+      const revenueData = [];
+      const expenseData = [];
 
-        const netProfit = totalRevenue - totalExpenses;
-        const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+      if (selectedPeriod === 'Weekly') {
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(now.getDate() - i);
+          const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
 
-        // Calculate department data
-        const departmentTotals = {};
-        periodTransactions
-          .filter(t => t.type === 'expense')
-          .forEach(t => {
-            const dept = t.department || 'General';
-            departmentTotals[dept] = (departmentTotals[dept] || 0) + t.amount;
+          const dayTrans = transactions.filter(t => {
+            const tDate = new Date(t.date || t.createdAt);
+            return tDate >= dayStart && tDate <= dayEnd;
           });
 
-        const departments = Object.entries(departmentTotals)
-          .map(([name, spent], index) => {
-            const colors = ['#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#607D8B'];
-            const budget = spent * 1.3; // Assume budget is 30% more than spent
-            return {
-              name,
-              budget,
-              spent,
-              percentage: Math.round((spent / budget) * 100),
-              color: colors[index % colors.length]
-            };
-          })
-          .slice(0, 5);
+          const dayRev = dayTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+          const dayExp = dayTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
 
-        // Calculate monthly trends (last 3 months)
-        const monthlyTrends = [];
-        for (let i = 2; i >= 0; i--) {
-          const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-          const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-          
-          const monthTransactions = transactions.filter(t => {
-            const transactionDate = new Date(t.date || t.createdAt);
-            return transactionDate >= monthStart && transactionDate <= monthEnd;
-          });
-
-          const monthRevenue = monthTransactions
-            .filter(t => t.type === 'income')
-            .reduce((sum, t) => sum + t.amount, 0);
-          
-          const monthExpenses = monthTransactions
-            .filter(t => t.type === 'expense')
-            .reduce((sum, t) => sum + t.amount, 0);
-
-          monthlyTrends.push({
-            month: monthDate.toLocaleDateString('en-US', { month: 'short' }),
-            revenue: monthRevenue,
-            expenses: monthExpenses
-          });
+          trendLabels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+          revenueData.push(dayRev);
+          expenseData.push(dayExp);
         }
+      } else {
+        // Monthly/Yearly - show last 6 months
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
+          const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
 
-        // Calculate top expenses by category
-        const categoryTotals = {};
-        periodTransactions
-          .filter(t => t.type === 'expense')
-          .forEach(t => {
-            const category = t.category || 'Others';
-            categoryTotals[category] = (categoryTotals[category] || 0) + t.amount;
+          const mTrans = transactions.filter(t => {
+            const tDate = new Date(t.date || t.createdAt);
+            return tDate >= mStart && tDate <= mEnd;
           });
 
-        const topExpenses = Object.entries(categoryTotals)
-          .map(([category, amount]) => ({
-            category: getCategoryName(category),
+          const mRev = mTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+          const mExp = mTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+          trendLabels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+          revenueData.push(mRev);
+          expenseData.push(mExp);
+        }
+      }
+
+      // Top Expenses for Pie Chart
+      const categoryTotals = {};
+      periodTransactions
+        .filter(t => t.type === 'expense')
+        .forEach(t => {
+          const category = t.category || 'Others';
+          categoryTotals[category] = (categoryTotals[category] || 0) + t.amount;
+        });
+
+      const topExpenses = Object.entries(categoryTotals)
+        .map(([name, amount], index) => {
+          const colors = ['#FF9800', '#2196F3', '#E91E63', '#9C27B0', '#F44336', '#4CAF50', '#607D8B'];
+          return {
+            name: getCategoryName(name),
             amount,
-            percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
-          }))
-          .sort((a, b) => b.amount - a.amount)
-          .slice(0, 5);
+            population: amount,
+            color: colors[index % colors.length],
+            legendFontColor: 'white',
+            legendFontSize: 12
+          };
+        })
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
 
-        setReportData({
-          overview: {
-            totalRevenue,
-            totalExpenses,
-            netProfit,
-            profitMargin,
-            growth: 12.5, // This would need historical data to calculate properly
-          },
-          departments,
-          monthlyTrends,
-          topExpenses
-        });
-      } catch (error) {
-        }
-    };
+      setReportData({
+        overview: {
+          totalRevenue,
+          totalExpenses,
+          netProfit,
+          profitMargin,
+          growth: 12.5, // Placeholder
+        },
+        departments,
+        monthlyTrends: {
+          labels: trendLabels,
+          datasets: [
+            {
+              data: revenueData.length > 0 ? revenueData : [0],
+              color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`, // Green for revenue
+              strokeWidth: 2
+            },
+            {
+              data: expenseData.length > 0 ? expenseData : [0],
+              color: (opacity = 1) => `rgba(244, 67, 54, ${opacity})`, // Red for expenses
+              strokeWidth: 2
+            }
+          ],
+          legend: ["Revenue", "Expenses"]
+        },
+        topExpenses
+      });
 
-    calculateReportData();
-  }, [transactions, selectedPeriod]);
+    } catch (error) {
+      console.error('Error calculating report data:', error);
+    }
+  };
 
   const getCategoryName = (categoryId) => {
     const categoryMap = {
-      office: 'Office Supplies',
-      software: 'Software',
-      marketing: 'Marketing',
-      utilities: 'Utilities',
-      salaries: 'Salaries',
-      rent: 'Office Rent',
-      meals: 'Meals & Entertainment',
-      transport: 'Transportation',
-      others: 'Others'
+      'office-supplies': 'Office',
+      'software': 'Software',
+      'marketing': 'Marketing',
+      'utilities': 'Utilities',
+      'salaries': 'Salaries',
+      'rent': 'Rent',
+      'meals': 'Meals',
+      'transport': 'Transport',
+      'travel': 'Travel',
+      'equipment': 'Equipment',
+      'professional-services': 'Services',
+      'insurance': 'Insurance',
+      'other': 'Others'
     };
     return categoryMap[categoryId] || categoryId;
   };
 
-  const periods = ['This Week', 'This Month', 'This Year'];
-  const reportTypes = [
-    { id: 'overview', name: 'Overview', icon: 'chart-pie' },
-    { id: 'departments', name: 'Departments', icon: 'office-building' },
-    { id: 'trends', name: 'Trends', icon: 'trending-up' },
-    { id: 'expenses', name: 'Expenses', icon: 'wallet' },
-  ];
-
   const formatCurrency = (amount) => {
-    return `₹${amount.toFixed(2).replace(/\\d(?=(\\d{3})+\\.)/g, '$&,')}`;
-  };
-
-  const renderHeader = () => (
-    <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-      <TouchableOpacity 
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Icon name="arrow-left" size={24} color={theme.text} />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>Company Reports</Text>
-      <TouchableOpacity style={styles.exportButton}>
-        <Icon name="download" size={20} color={theme.primary} />
-      </TouchableOpacity>
-    </Animated.View>
-  );
-
-  const renderPeriodSelector = () => (
-    <Animated.View style={[styles.periodSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.periodScrollContent}>
-        {periods.map((period) => (
-          <TouchableOpacity
-            key={period}
-            style={[
-              styles.periodButton,
-              selectedPeriod === period && styles.periodButtonActive
-            ]}
-            onPress={() => setSelectedPeriod(period)}
-          >
-            <Text style={[
-              styles.periodButtonText,
-              selectedPeriod === period && styles.periodButtonTextActive
-            ]}>
-              {period}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </Animated.View>
-  );
-
-  const renderReportTypeSelector = () => (
-    <Animated.View style={[styles.reportTypeSelector, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reportTypeScrollContent}>
-        {reportTypes.map((type) => (
-          <TouchableOpacity
-            key={type.id}
-            style={[
-              styles.reportTypeButton,
-              selectedReport === type.id && styles.reportTypeButtonActive
-            ]}
-            onPress={() => setSelectedReport(type.id)}
-          >
-            <Icon 
-              name={type.icon} 
-              size={20} 
-              color={selectedReport === type.id ? 'white' : theme.primary} 
-            />
-            <Text style={[
-              styles.reportTypeButtonText,
-              selectedReport === type.id && styles.reportTypeButtonTextActive
-            ]}>
-              {type.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </Animated.View>
-  );
-
-  const renderOverviewReport = () => (
-    <Animated.View style={[styles.reportContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {/* Key Metrics Cards */}
-      <View style={styles.metricsGrid}>
-        <View style={[styles.metricCard, { backgroundColor: '#E8F5E8' }]}>
-          <Icon name="trending-up" size={24} color="#4CAF50" />
-          <Text style={styles.metricValue}>{formatCurrency(reportData.overview.totalRevenue)}</Text>
-          <Text style={styles.metricLabel}>Total Revenue</Text>
-        </View>
-
-        <View style={[styles.metricCard, { backgroundColor: '#FFF3E0' }]}>
-          <Icon name="trending-down" size={24} color="#FF9800" />
-          <Text style={styles.metricValue}>{formatCurrency(reportData.overview.totalExpenses)}</Text>
-          <Text style={styles.metricLabel}>Total Expenses</Text>
-        </View>
-
-        <View style={[styles.metricCard, { backgroundColor: '#E3F2FD' }]}>
-          <Icon name="cash-multiple" size={24} color="#2196F3" />
-          <Text style={styles.metricValue}>{formatCurrency(reportData.overview.netProfit)}</Text>
-          <Text style={styles.metricLabel}>Net Profit</Text>
-        </View>
-
-        <View style={[styles.metricCard, { backgroundColor: '#F3E5F5' }]}>
-          <Icon name="percent" size={24} color="#9C27B0" />
-          <Text style={styles.metricValue}>{reportData.overview.profitMargin}%</Text>
-          <Text style={styles.metricLabel}>Profit Margin</Text>
-        </View>
-      </View>
-
-      {/* Growth Indicator */}
-      <View style={styles.growthCard}>
-        <LinearGradient colors={['#4CAF50', '#66BB6A']} style={styles.growthGradient}>
-          <Icon name="trending-up" size={32} color="white" />
-          <View style={styles.growthContent}>
-            <Text style={styles.growthValue}>+{reportData.overview.growth}%</Text>
-            <Text style={styles.growthLabel}>Growth vs Last Period</Text>
-          </View>
-        </LinearGradient>
-      </View>
-    </Animated.View>
-  );
-
-  const renderDepartmentsReport = () => (
-    <Animated.View style={[styles.reportContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.reportSectionTitle}>Department Budget Analysis</Text>
-      {reportData.departments.map((dept, index) => (
-        <View key={index} style={styles.departmentCard}>
-          <View style={styles.departmentHeader}>
-            <View style={styles.departmentInfo}>
-              <View style={[styles.departmentColorDot, { backgroundColor: dept.color }]} />
-              <Text style={styles.departmentName}>{dept.name}</Text>
-            </View>
-            <Text style={styles.departmentPercentage}>{dept.percentage}%</Text>
-          </View>
-          
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarBackground}>
-              <Animated.View 
-                style={[
-                  styles.progressBarFill, 
-                  { width: `${dept.percentage}%`, backgroundColor: dept.color }
-                ]} 
-              />
-            </View>
-          </View>
-          
-          <View style={styles.departmentBudgetDetails}>
-            <Text style={styles.budgetSpent}>Spent: {formatCurrency(dept.spent)}</Text>
-            <Text style={styles.budgetTotal}>Budget: {formatCurrency(dept.budget)}</Text>
-          </View>
-        </View>
-      ))}
-    </Animated.View>
-  );
-
-  const renderTrendsReport = () => (
-    <Animated.View style={[styles.reportContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.reportSectionTitle}>Monthly Trends</Text>
-      {reportData.monthlyTrends.map((month, index) => (
-        <View key={index} style={styles.trendCard}>
-          <Text style={styles.trendMonth}>{month.month}</Text>
-          <View style={styles.trendBars}>
-            <View style={styles.trendBarContainer}>
-              <Text style={styles.trendLabel}>Revenue</Text>
-              <View style={styles.trendBar}>
-                <View 
-                  style={[
-                    styles.trendBarFill, 
-                    { 
-                      width: `${(month.revenue / 130000) * 100}%`,
-                      backgroundColor: '#4CAF50'
-                    }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.trendValue}>{formatCurrency(month.revenue)}</Text>
-            </View>
-            <View style={styles.trendBarContainer}>
-              <Text style={styles.trendLabel}>Expenses</Text>
-              <View style={styles.trendBar}>
-                <View 
-                  style={[
-                    styles.trendBarFill, 
-                    { 
-                      width: `${(month.expenses / 50000) * 100}%`,
-                      backgroundColor: '#FF9800'
-                    }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.trendValue}>{formatCurrency(month.expenses)}</Text>
-            </View>
-          </View>
-        </View>
-      ))}
-    </Animated.View>
-  );
-
-  const renderExpensesReport = () => (
-    <Animated.View style={[styles.reportContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.reportSectionTitle}>Top Expense Categories</Text>
-      {reportData.topExpenses.map((expense, index) => (
-        <View key={index} style={styles.expenseCard}>
-          <View style={styles.expenseHeader}>
-            <Text style={styles.expenseCategory}>{expense.category}</Text>
-            <Text style={styles.expenseAmount}>{formatCurrency(expense.amount)}</Text>
-          </View>
-          <View style={styles.expenseProgressContainer}>
-            <View style={styles.expenseProgressBackground}>
-              <Animated.View 
-                style={[
-                  styles.expenseProgressFill, 
-                  { width: `${expense.percentage}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.expensePercentage}>{expense.percentage}%</Text>
-          </View>
-        </View>
-      ))}
-    </Animated.View>
-  );
-
-  const renderReportContent = () => {
-    switch (selectedReport) {
-      case 'overview':
-        return renderOverviewReport();
-      case 'departments':
-        return renderDepartmentsReport();
-      case 'trends':
-        return renderTrendsReport();
-      case 'expenses':
-        return renderExpensesReport();
-      default:
-        return renderOverviewReport();
-    }
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   const styles = createStyles(theme);
@@ -517,24 +324,175 @@ export default function CompanyReportsScreen({ navigation }) {
   return (
     <UserTypeGuard requiredUserType="company" navigation={navigation}>
       <View style={styles.container}>
-        {renderHeader()}
-        {renderPeriodSelector()}
-        {renderReportTypeSelector()}
-        
-        <ScrollView 
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {transactionsLoading ? (
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+        <LinearGradient
+          colors={[theme.primary, theme.primaryLight]}
+          style={styles.background}
+        />
+
+        <SafeAreaView style={styles.safeArea}>
+          {/* Header */}
+          <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
+              <Icon name="arrow-left" size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Company Reports</Text>
+            <TouchableOpacity onPress={onRefresh} style={styles.iconButton}>
+              <Icon name="refresh" size={24} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Period Selector */}
+          <View style={styles.periodSelectorContainer}>
+            <View style={styles.periodSelector}>
+              {['Weekly', 'Monthly', 'Yearly'].map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  style={[styles.periodButton, selectedPeriod === p && styles.periodButtonActive]}
+                  onPress={() => setSelectedPeriod(p)}
+                >
+                  <Text style={[styles.periodText, selectedPeriod === p && styles.periodTextActive]}>
+                    {p}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {transactionsLoading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.primary} />
+              <ActivityIndicator size="large" color="white" />
               <Text style={styles.loadingText}>Loading reports...</Text>
             </View>
           ) : (
-            renderReportContent()
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="white" />
+              }
+            >
+              <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+
+                {/* Overview Cards */}
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricCard}>
+                    <View style={[styles.iconContainer, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
+                      <Icon name="trending-up" size={24} color="#4CAF50" />
+                    </View>
+                    <Text style={styles.metricLabel}>Revenue</Text>
+                    <Text style={styles.metricValue}>{formatCurrency(reportData.overview.totalRevenue)}</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <View style={[styles.iconContainer, { backgroundColor: 'rgba(244, 67, 54, 0.2)' }]}>
+                      <Icon name="trending-down" size={24} color="#F44336" />
+                    </View>
+                    <Text style={styles.metricLabel}>Expenses</Text>
+                    <Text style={styles.metricValue}>{formatCurrency(reportData.overview.totalExpenses)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.bigCard}>
+                  <View style={styles.rowBetween}>
+                    <View>
+                      <Text style={styles.metricLabel}>Net Profit</Text>
+                      <Text style={styles.bigMetricValue}>{formatCurrency(reportData.overview.netProfit)}</Text>
+                    </View>
+                    <View style={styles.profitBadge}>
+                      <Icon name="chart-line" size={16} color="white" />
+                      <Text style={styles.profitText}>{reportData.overview.profitMargin.toFixed(1)}% Margin</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Revenue vs Expenses Chart */}
+                <View style={styles.chartCard}>
+                  <Text style={styles.chartTitle}>Financial Performance</Text>
+                  {reportData.monthlyTrends.datasets[0].data.length > 0 ? (
+                    <LineChart
+                      data={reportData.monthlyTrends}
+                      width={width - 64}
+                      height={220}
+                      yAxisLabel={"\u20B9"}
+                      chartConfig={{
+                        backgroundColor: 'transparent',
+                        backgroundGradientFrom: '#ffffff',
+                        backgroundGradientFromOpacity: 0,
+                        backgroundGradientTo: '#ffffff',
+                        backgroundGradientToOpacity: 0,
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                        labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                        style: { borderRadius: 16 },
+                        propsForDots: { r: '4', strokeWidth: '2', stroke: '#fff' }
+                      }}
+                      bezier
+                      style={styles.chart}
+                    />
+                  ) : (
+                    <Text style={styles.noDataText}>No trend data available</Text>
+                  )}
+                </View>
+
+                {/* Expense Breakdown Pie Chart */}
+                <View style={styles.chartCard}>
+                  <Text style={styles.chartTitle}>Expense Breakdown</Text>
+                  {reportData.topExpenses.length > 0 ? (
+                    <PieChart
+                      data={reportData.topExpenses}
+                      width={width - 64}
+                      height={220}
+                      chartConfig={{
+                        color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                      }}
+                      accessor={"population"}
+                      backgroundColor={"transparent"}
+                      paddingLeft={"15"}
+                      absolute
+                    />
+                  ) : (
+                    <View style={styles.noDataContainer}>
+                      <Text style={styles.noDataText}>No expense data for this period</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Department Analysis */}
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Department Analysis</Text>
+                  {reportData.departments.map((dept, index) => (
+                    <View key={index} style={styles.departmentCard}>
+                      <View style={styles.departmentHeader}>
+                        <View style={styles.departmentInfo}>
+                          <View style={[styles.departmentIcon, { backgroundColor: `${dept.color}20` }]}>
+                            <Icon name="office-building" size={20} color={dept.color} />
+                          </View>
+                          <Text style={styles.departmentName}>{dept.name}</Text>
+                        </View>
+                        <Text style={[styles.departmentPercentage, { color: dept.color }]}>
+                          {dept.percentage}%
+                        </Text>
+                      </View>
+                      <View style={styles.progressBarBg}>
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            { width: `${Math.min(100, dept.percentage)}%`, backgroundColor: dept.color }
+                          ]}
+                        />
+                      </View>
+                      <View style={styles.departmentFooter}>
+                        <Text style={styles.departmentValue}>{formatCurrency(dept.spent)}</Text>
+                        <Text style={styles.departmentLabel}>of {formatCurrency(dept.budget)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+              </Animated.View>
+            </ScrollView>
           )}
-        </ScrollView>
+        </SafeAreaView>
       </View>
     </UserTypeGuard>
   );
@@ -543,191 +501,190 @@ export default function CompanyReportsScreen({ navigation }) {
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: theme.primary,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    marginTop: 10,
+    fontSize: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: (StatusBar.currentHeight || 0) + 20,
-    paddingBottom: 20,
-    backgroundColor: theme.headerBackground || theme.background,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
+    paddingBottom: 10,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.text,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.5,
   },
-  exportButton: {
+  iconButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
-
-  // Period Selector Styles
-  periodSelector: {
+  periodSelectorContainer: {
     paddingHorizontal: 20,
-    marginBottom: 15,
+    marginBottom: 20,
   },
-  periodScrollContent: {
-    gap: 10,
+  periodSelector: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   periodButton: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: theme.border,
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   periodButtonActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
+    backgroundColor: 'white',
   },
-  periodButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: theme.text,
-  },
-  periodButtonTextActive: {
-    color: 'white',
-  },
-
-  // Report Type Selector Styles
-  reportTypeSelector: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  reportTypeScrollContent: {
-    gap: 12,
-  },
-  reportTypeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  reportTypeButtonActive: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
-  },
-  reportTypeButtonText: {
+  periodText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.text,
-    marginLeft: 8,
-  },
-  reportTypeButtonTextActive: {
-    color: 'white',
-  },
-
-  // Content Styles
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  reportContent: {
-    marginBottom: 20,
-  },
-  reportSectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 15,
-  },
-
-  // Overview Report Styles
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  metricCard: {
-    width: '48%',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.text,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    textAlign: 'center',
-  },
-  growthCard: {
-    borderRadius: 15,
-    overflow: 'hidden',
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  growthGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  growthContent: {
-    marginLeft: 15,
-  },
-  growthValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  growthLabel: {
-    fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
   },
-
-  // Department Report Styles
-  departmentCard: {
-    backgroundColor: theme.cardBackground,
+  periodTextActive: {
+    color: theme.primary,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 15,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  bigCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  metricLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  metricValue: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  bigMetricValue: {
+    color: 'white',
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  profitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+  profitText: {
+    color: 'white',
+    fontWeight: '700',
+  },
+  chartCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+  },
+  chartTitle: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 16,
+    alignSelf: 'flex-start',
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  noDataContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noDataText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontStyle: 'italic',
+  },
+  sectionContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 15,
+  },
+  departmentCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   departmentHeader: {
     flexDirection: 'row',
@@ -739,155 +696,47 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  departmentColorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 10,
+  departmentIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   departmentName: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.text,
+    color: 'white',
   },
   departmentPercentage: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: theme.primary,
   },
-  progressBarContainer: {
-    marginBottom: 12,
-  },
-  progressBarBackground: {
-    height: 8,
-    backgroundColor: theme.border,
-    borderRadius: 4,
+  progressBarBg: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
     overflow: 'hidden',
+    marginBottom: 8,
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
-  departmentBudgetDetails: {
+  departmentFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
-  budgetSpent: {
+  departmentValue: {
     fontSize: 14,
-    color: theme.textSecondary,
-  },
-  budgetTotal: {
-    fontSize: 14,
-    color: theme.textSecondary,
-  },
-
-  // Trends Report Styles
-  trendCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  trendMonth: {
-    fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
-    marginBottom: 12,
+    color: 'white',
+    marginRight: 4,
   },
-  trendBars: {
-    gap: 12,
-  },
-  trendBarContainer: {
-    gap: 6,
-  },
-  trendLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: theme.textSecondary,
-  },
-  trendBar: {
-    height: 8,
-    backgroundColor: theme.border,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  trendBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  trendValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
-  },
-
-  // Expenses Report Styles
-  expenseCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  expenseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  expenseCategory: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.text,
-  },
-  expenseAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.primary,
-  },
-  expenseProgressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  expenseProgressBackground: {
-    flex: 1,
-    height: 8,
-    backgroundColor: theme.border,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  expenseProgressFill: {
-    height: '100%',
-    backgroundColor: theme.primary,
-    borderRadius: 4,
-  },
-  expensePercentage: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.textSecondary,
-    minWidth: 40,
-  },
-
-  // Loading styles
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 50,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: theme.textSecondary,
-    marginTop: 15,
+  departmentLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
   },
 });

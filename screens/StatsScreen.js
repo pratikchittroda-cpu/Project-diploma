@@ -86,18 +86,18 @@ export default function StatsScreen({ navigation }) {
     }
   }, [transactions, selectedPeriod, transactionsLoading]);
 
-  // User Type Check
-  useEffect(() => {
-    if (!authLoading && userData) {
-      if (userData.userType !== 'personal') {
-        Alert.alert(
-          'Access Restricted',
-          'This feature is for Personal accounts only.',
-          [{ text: 'Go Back', onPress: () => navigation.goBack() }]
-        );
-      }
-    }
-  }, [userData, authLoading]);
+  // User Type Check removed to allow company users access
+  // useEffect(() => {
+  //   if (!authLoading && userData) {
+  //     if (userData.userType !== 'personal') {
+  //       Alert.alert(
+  //         'Access Restricted',
+  //         'This feature is for Personal accounts only.',
+  //         [{ text: 'Go Back', onPress: () => navigation.goBack() }]
+  //       );
+  //     }
+  //   }
+  // }, [userData, authLoading]);
 
   const onRefresh = async () => {
     setRefreshing(true);

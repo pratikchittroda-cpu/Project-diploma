@@ -8,6 +8,9 @@ const UserTypeGuard = ({ children, requiredUserType, navigation }) => {
   const { userData } = useAuth();
   const { theme } = useTheme();
 
+  // TEMPORARILY DISABLED: Allow all users to access all features
+  // If we want to re-enable, uncomment the logic below
+  /*
   // If user type doesn't match required type, show access denied
   if (userData && userData.userType !== requiredUserType) {
     const isPersonalTryingCompany = userData.userType === 'personal' && requiredUserType === 'company';
@@ -57,6 +60,7 @@ const UserTypeGuard = ({ children, requiredUserType, navigation }) => {
       </View>
     );
   }
+  */
 
   // If user type matches or no restriction needed, render children
   return children;
