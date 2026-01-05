@@ -14,9 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.nustudent.expenzo",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to scan receipts.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to select receipts."
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to select receipts.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -34,6 +36,11 @@
     "scheme": "Expenzo",
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9841edbd-f161-4d8b-95b3-867f45d42ccf"
+      }
+    }
   }
 }

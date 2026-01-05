@@ -150,18 +150,22 @@ Example: [{"description": "Coffee", "amount": 5.00}, {"description": "Pizza", "a
     /**
      * Get budget recommendations based on spending patterns
      */
+    /**
+     * Get budget recommendations based on spending patterns
+     */
+    /**
+     * Get budget recommendations based on spending patterns
+     */
     getBudgetRecommendations(transactions, budgets, currentMonth) {
         const recommendations = [];
 
-        // Calculate spending by category
-        const spending = this.calculateSpending(transactions, currentMonth);
+        // 1. Budget Alerts (Strictly Current Month)
+        const currentMonthSpending = this.calculateSpending(transactions, currentMonth);
 
-        // Check each budget
         for (const [category, budget] of Object.entries(budgets)) {
-            const spent = spending[category] || 0;
+            const spent = currentMonthSpending[category] || 0;
             const percentage = budget > 0 ? spent / budget : 0;
 
-            // Budget warnings
             if (percentage >= AI_CONFIG.BUDGET_THRESHOLDS.EXCEEDED) {
                 recommendations.push(this.createExceededAlert(category, spent, budget));
             } else if (percentage >= AI_CONFIG.BUDGET_THRESHOLDS.CRITICAL) {
@@ -171,32 +175,90 @@ Example: [{"description": "Coffee", "amount": 5.00}, {"description": "Pizza", "a
             }
         }
 
-        // Analyze non-essential spending
-        const nonEssentialAnalysis = this.analyzeNonEssentials(transactions, currentMonth);
-        if (nonEssentialAnalysis.totalAmount >= AI_CONFIG.RECOMMENDATIONS.MIN_SAVINGS_AMOUNT) {
-            recommendations.push(this.createSavingsTip(nonEssentialAnalysis));
+        // 2. Savings Opportunities (Rolling 30 Days)
+        const lookbackDays = AI_CONFIG.RECOMMENDATIONS.LOOKBACK_DAYS || 30;
+        const nonEssentialAnalysis = this.analyzeNonEssentials(transactions, lookbackDays);
+
+        // Check ALL non-essential categories, not just the top one
+        Object.entries(nonEssentialAnalysis.breakdown)
+            .sort((a, b) => b[1] - a[1]) // Sort by amount desc
+            .forEach(([type, amount]) => {
+                // Minimum threshold per category to be worth mentioning (e.g., ₹200)
+                if (amount >= (AI_CONFIG.RECOMMENDATIONS.MIN_SAVINGS_AMOUNT || 100)) {
+                    recommendations.push(this.createSavingsTip(type, amount));
+                }
+            });
+
+        // 3. Fallback: Monthly Review / General Insight
+        // If we have few recommendations, fill with general insights
+        if (recommendations.length < (AI_CONFIG.RECOMMENDATIONS.MAX_SUGGESTIONS || 3)) {
+            const lastMonth = this.getPreviousMonth(currentMonth);
+            const lastMonthSpending = this.calculateSpending(transactions, lastMonth);
+
+            let maxCategory = null;
+            let maxAmount = 0;
+
+            Object.entries(lastMonthSpending).forEach(([cat, amount]) => {
+                if (amount > maxAmount) {
+                    maxAmount = amount;
+                    maxCategory = cat;
+                }
+            });
+
+            if (maxCategory && maxAmount > 0) {
+                recommendations.push({
+                    type: 'tip',
+                    title: 'Spending Pattern',
+                    message: `In ${this.getMonthName(lastMonth)}, spending was highest in ${maxCategory} (₹${maxAmount.toFixed(0)}).`,
+                    icon: '📊', // changed icon to chart
+                    suggestions: [
+                        `Review your ${maxCategory} expenses`,
+                        `Try to keep it under ₹${(maxAmount * 0.9).toFixed(0)} this month`
+                    ]
+                });
+            }
         }
 
-        // Sort by priority (critical > warning > tip)
+        // Sort by priority
         recommendations.sort((a, b) => {
             const priority = { critical: 3, warning: 2, tip: 1 };
             return (priority[b.type] || 0) - (priority[a.type] || 0);
         });
 
+        // Ensure we don't return duplicates or too many
         return recommendations.slice(0, AI_CONFIG.RECOMMENDATIONS.MAX_SUGGESTIONS);
     }
 
     /**
-     * Calculate spending by category for current month
+     * Get previous month string YYYY-MM
      */
-    calculateSpending(transactions, currentMonth) {
+    getPreviousMonth(currentMonth) {
+        const [year, month] = currentMonth.split('-').map(Number);
+        const date = new Date(year, month - 2, 1); // month is 1-based, so month-2 gives previous month index
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    /**
+     * Get month name
+     */
+    getMonthName(monthStr) {
+        const [year, month] = monthStr.split('-').map(Number);
+        const date = new Date(year, month - 1, 1);
+        return date.toLocaleString('default', { month: 'long' });
+    }
+
+    /**
+     * Calculate spending by category for specific month
+     */
+    calculateSpending(transactions, targetMonth) {
         const spending = {};
 
         transactions.forEach(transaction => {
-            const transactionDate = new Date(transaction.date);
-            const transactionMonth = `${transactionDate.getFullYear()}-${String(transactionDate.getMonth() + 1).padStart(2, '0')}`;
+            // Handle both date object and string formats
+            const tDate = new Date(transaction.date || transaction.createdAt);
+            const tMonth = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}`;
 
-            if (transactionMonth === currentMonth && transaction.type === 'expense') {
+            if (tMonth === targetMonth && transaction.type === 'expense') {
                 const category = transaction.category || 'other';
                 spending[category] = (spending[category] || 0) + transaction.amount;
             }
@@ -206,18 +268,22 @@ Example: [{"description": "Coffee", "amount": 5.00}, {"description": "Pizza", "a
     }
 
     /**
-     * Analyze non-essential spending
+     * Analyze non-essential spending for last N days
      */
-    analyzeNonEssentials(transactions, currentMonth) {
+    analyzeNonEssentials(transactions, lookbackDays) {
         const breakdown = {};
         let totalAmount = 0;
 
-        transactions.forEach(transaction => {
-            const transactionDate = new Date(transaction.date);
-            const transactionMonth = `${transactionDate.getFullYear()}-${String(transactionDate.getMonth() + 1).padStart(2, '0')}`;
+        // Calculate cutoff date
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - lookbackDays);
 
-            if (transactionMonth === currentMonth && transaction.type === 'expense') {
-                const desc = transaction.description.toLowerCase();
+        transactions.forEach(transaction => {
+            const tDate = new Date(transaction.date || transaction.createdAt);
+
+            // Check if transaction is within lookback period
+            if (tDate >= cutoffDate && transaction.type === 'expense') {
+                const desc = (transaction.description || '').toLowerCase();
 
                 // Check against non-essential keywords
                 for (const [type, keywords] of Object.entries(AI_CONFIG.NON_ESSENTIAL_KEYWORDS)) {
@@ -286,20 +352,31 @@ Example: [{"description": "Coffee", "amount": 5.00}, {"description": "Pizza", "a
     /**
      * Create savings tip
      */
-    createSavingsTip(analysis) {
-        const topCategory = Object.entries(analysis.breakdown)
-            .sort((a, b) => b[1] - a[1])[0];
-
-        const [type, amount] = topCategory;
+    createSavingsTip(type, amount) {
         const potentialSavings = (amount * 0.5).toFixed(0);
+
+        // Improve titles based on type
+        const titles = {
+            coffee: 'Caffeine Curb',
+            diningOut: 'Home Cooking',
+            snacks: 'Snack Attack',
+            coldDrinks: 'Drink Water',
+            alcohol: 'Sober Savings',
+            shopping: 'Smart Shopper',
+            electronics: 'Tech Diet',
+            entertainment: 'Entertainment Check',
+            subscriptions: 'Sub Switch',
+            personalCare: 'Grooming Goals',
+            travel: 'Travel Thrifty'
+        };
 
         return {
             type: 'tip',
-            title: 'Savings Opportunity',
-            message: `You've spent ₹${amount.toFixed(0)} on ${type} this month`,
+            title: titles[type] || 'Savings Opportunity',
+            message: `You've spent ₹${amount.toFixed(0)} on ${type} recently.`,
             icon: '💰',
             suggestions: [
-                `Cut ${type} expenses by 50% to save ₹${potentialSavings}`,
+                `Cut ${type} expenses to save ₹${potentialSavings}`,
                 this.getAlternativeSuggestion(type)
             ]
         };

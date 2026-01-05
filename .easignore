@@ -1,0 +1,22 @@
+# EAS Build Ignore File
+# This file tells EAS what NOT to upload.
+# Unlike .gitignore, we typically WANT to upload configuration files to the build server.
+
+# Standard ignores
+node_modules/
+.expo/
+.expo-shared/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+dist/
+.DS_Store
+.metro-health-check*
+
+# Note: We are NOT ignoring .env, config/aiConfig.js, or config/ocrConfig.js
+# This ensures they are uploaded to the builder so the app works.
