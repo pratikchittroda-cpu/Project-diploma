@@ -10,13 +10,18 @@
 2. **Add your API keys to `.env`:**
    ```
    HUGGINGFACE_API_KEY=your_actual_key_here
-   OCR_SPACE_API_KEY=your_actual_key_here
+   FIREBASE_API_KEY=your_firebase_api_key
+   FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+   FIREBASE_PROJECT_ID=your_project_id
+   FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+   FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+   FIREBASE_APP_ID=your_app_id
+   FIREBASE_MEASUREMENT_ID=your_measurement_id
    ```
 
 3. **Copy config templates:**
    ```bash
    cp config/aiConfig.example.js config/aiConfig.js
-   cp config/ocrConfig.example.js config/ocrConfig.js
    ```
 
 4. **Restart the development server:**
@@ -33,11 +38,12 @@
 4. Create a new token with "Read" permission
 5. Copy the token (starts with `hf_`)
 
-### OCR.space API Key
-1. Go to https://ocr.space/ocrapi
-2. Sign up for free tier (500 requests/day)
-3. Get your API key from the dashboard
-4. Use the key in `.env`
+### Firebase Configuration
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project (if not already done)
+3. Add a Web App to your project
+4. Copy the `firebaseConfig` object values into your `.env` file
+
 
 ## 🔒 Security
 
@@ -51,12 +57,10 @@
 **Never commit these files:**
 - `.env`
 - `config/aiConfig.js`
-- `config/ocrConfig.js`
 
 **Safe to commit:**
 - `.env.example`
 - `config/aiConfig.example.js`
-- `config/ocrConfig.example.js`
 
 ## 🐛 Troubleshooting
 

@@ -20,4 +20,3 @@ dist/
 # API Keys and Sensitive Config
 .env
 config/aiConfig.js
-config/ocrConfig.js

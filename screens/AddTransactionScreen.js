@@ -34,28 +34,12 @@ export default function AddTransactionScreen({ navigation, route }) {
   const [selectedType, setSelectedType] = useState('expense');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [isScanned, setIsScanned] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    // Handle scanned data from ReceiptScanner
-    if (route?.params?.scannedData) {
-      const { amount: scannedAmount, description: scannedDesc, category, merchant } = route.params.scannedData;
-
-      if (scannedAmount) setAmount(scannedAmount);
-      if (scannedDesc) setDescription(scannedDesc);
-      if (category) setSelectedCategory(category);
-      if (merchant && !scannedDesc) setDescription(`Purchase at ${merchant}`);
-
-      setIsScanned(true);
-
-      // Clear the params to avoid re-filling on subsequent renders
-      navigation.setParams({ scannedData: null });
-    }
-
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -415,12 +399,7 @@ export default function AddTransactionScreen({ navigation, route }) {
               Welcome, {userData?.fullName || 'User'}!
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.scanButton}
-            onPress={() => navigation.navigate('ReceiptScanner')}
-          >
-            <Icon name="camera" size={24} color="white" />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
         </Animated.View>
 
         <KeyboardAvoidingView
@@ -435,12 +414,6 @@ export default function AddTransactionScreen({ navigation, route }) {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-            {isScanned && (
-              <Animated.View style={[styles.scannedBadge, { opacity: fadeAnim }]}>
-                <Icon name="camera-check" size={16} color="white" />
-                <Text style={styles.scannedBadgeText}>Scanned from receipt</Text>
-              </Animated.View>
-            )}
             {renderTypeSelector()}
             {renderAmountInput()}
             {renderDescriptionInput()}

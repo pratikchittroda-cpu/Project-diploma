@@ -25,8 +25,6 @@ import ThemesScreen from '../screens/ThemesScreen';
 import EditCompanyProfileScreen from '../screens/EditCompanyProfileScreen';
 import CompanySettingsScreen from '../screens/CompanySettingsScreen';
 import BillingSubscriptionScreen from '../screens/BillingSubscriptionScreen';
-import ReceiptScannerScreen from '../screens/ReceiptScannerScreen';
-import ReceiptReviewScreen from '../screens/ReceiptReviewScreen';
 import CompanyTabNavigator from './CompanyTabNavigator';
 import TabNavigator from './TabNavigator';
 import { screenAnimations } from './AnimationConfig';
@@ -119,23 +117,7 @@ export default function AppNavigator() {
             animationDuration: 300,
           }}
         />
-        <Stack.Screen
-          name="ReceiptScanner"
-          component={ReceiptScannerScreen}
-          options={{
-            animation: 'slide_from_bottom',
-            animationDuration: 300,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="ReceiptReview"
-          component={ReceiptReviewScreen}
-          options={{
-            animation: 'slide_from_right',
-            animationDuration: 300,
-          }}
-        />
+
         <Stack.Screen
           name="CompanyDashboard"
           component={CompanyTabNavigator}
