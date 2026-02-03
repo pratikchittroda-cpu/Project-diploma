@@ -7,14 +7,14 @@ import {
   Animated,
   TouchableOpacity,
   Switch,
-  Alert,
-  StatusBar,
-  TextInput,
   SafeAreaView,
+  StatusBar,
   Platform,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -25,7 +25,6 @@ export default function SecuritySettingsScreen({ navigation }) {
     twoFactorAuth: false,
     loginAlerts: true,
     autoLock: true,
-    sessionTimeout: '15',
   });
 
   // Animation values
@@ -85,69 +84,70 @@ export default function SecuritySettingsScreen({ navigation }) {
   };
 
   const handleChangePassword = () => {
-    Alert.prompt(
+    MessageService.showPrompt(
       'Change Password',
       'Enter your current password:',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Next',
-          onPress: (currentPassword) => {
-            if (!currentPassword) {
-              Alert.alert('Error', 'Please enter your current password');
+      (currentPassword) => {
+        if (!currentPassword) {
+          MessageService.showError('Error', 'Please enter your current password');
+          return;
+        }
+
+        // Prompt for new password
+        MessageService.showPrompt(
+          'New Password',
+          'Enter your new password (minimum 6 characters):',
+          async (newPassword) => {
+            if (!newPassword || newPassword.length < 6) {
+              MessageService.showError('Error', 'New password must be at least 6 characters long');
               return;
             }
 
-            // Prompt for new password
-            Alert.prompt(
-              'New Password',
-              'Enter your new password (minimum 6 characters):',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Change Password',
-                  onPress: async (newPassword) => {
-                    if (!newPassword || newPassword.length < 6) {
-                      Alert.alert('Error', 'New password must be at least 6 characters long');
-                      return;
-                    }
-
-                    try {
-                      Alert.alert(
-                        'Success!',
-                        'Your password has been changed successfully. Please log in again with your new password.',
-                        [{ text: 'OK' }]
-                      );
-                    } catch (error) {
-                      Alert.alert('Error', 'Failed to change password. Please try again.');
-                    }
-                  },
-                },
-              ],
-              'secure-text'
-            );
+            try {
+              // Note: The actual password change logic was missing in the original code
+              MessageService.showSuccess(
+                'Success!',
+                'Your password has been changed successfully. Please log in again.'
+              );
+            } catch (error) {
+              MessageService.showError('Error', 'Failed to change password.');
+            }
           },
-        },
-      ],
-      'secure-text'
+          () => { },
+          {
+            placeholder: 'New Password',
+            secureTextEntry: true,
+            confirmButtonText: 'Change Password'
+          }
+        );
+      },
+      () => { },
+      {
+        placeholder: 'Current Password',
+        secureTextEntry: true,
+        confirmButtonText: 'Next'
+      }
     );
   };
 
   const renderSecurityOption = (title, subtitle, icon, setting, isSwitch = true) => (
     <Animated.View style={[styles.optionItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      {Platform.OS === 'android' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+      ) : (
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       <View style={styles.optionLeft}>
         <View style={styles.optionIcon}>
-          <Icon name={icon} size={22} color="white" />
+          <Icon name={icon} size={22} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
         </View>
         <View style={styles.optionContent}>
-          <Text style={styles.optionTitle}>{title}</Text>
-          <Text style={styles.optionSubtitle}>{subtitle}</Text>
+          <Text style={[styles.optionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
+          <Text style={[styles.optionSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
         </View>
       </View>
       {isSwitch ? (
@@ -158,7 +158,7 @@ export default function SecuritySettingsScreen({ navigation }) {
           thumbColor={securitySettings[setting] ? '#fff' : '#f4f3f4'}
         />
       ) : (
-        <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
+        <Icon name="chevron-right" size={20} color={theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)'} />
       )}
     </Animated.View>
   );
@@ -166,23 +166,32 @@ export default function SecuritySettingsScreen({ navigation }) {
   const renderActionButton = (title, subtitle, icon, onPress) => (
     <TouchableOpacity onPress={onPress}>
       <Animated.View style={[styles.optionItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.optionLeft}>
           <View style={styles.optionIcon}>
-            <Icon name={icon} size={22} color="white" />
+            <Icon name={icon} size={22} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
           </View>
           <View style={styles.optionContent}>
-            <Text style={styles.optionTitle}>{title}</Text>
-            <Text style={styles.optionSubtitle}>{subtitle}</Text>
+            <Text style={[styles.optionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
+            <Text style={[styles.optionSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
           </View>
         </View>
-        <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
+        <Icon name="chevron-right" size={20} color={theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)'} />
       </Animated.View>
     </TouchableOpacity>
   );
 
   const renderSection = (title, children) => (
     <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
       {children}
     </Animated.View>
   );
@@ -254,29 +263,7 @@ export default function SecuritySettingsScreen({ navigation }) {
             </>
           ))}
 
-          {renderSection('Session Management', (
-            <Animated.View style={[styles.optionItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-              <View style={styles.optionLeft}>
-                <View style={styles.optionIcon}>
-                  <Icon name="timer" size={22} color="white" />
-                </View>
-                <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>Session Timeout</Text>
-                  <Text style={styles.optionSubtitle}>Minutes before auto-logout</Text>
-                </View>
-              </View>
-              <View style={styles.timeoutInput}>
-                <TextInput
-                  style={styles.timeoutText}
-                  value={securitySettings.sessionTimeout}
-                  onChangeText={(value) => handleSettingChange('sessionTimeout', value)}
-                  keyboardType="numeric"
-                  maxLength={3}
-                />
-                <Text style={styles.timeoutLabel}>min</Text>
-              </View>
-            </Animated.View>
-          ))}
+
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -316,7 +303,7 @@ const createStyles = (theme) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
   },
   headerSpacer: {
     width: 40,
@@ -334,19 +321,18 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'white',
     marginBottom: 15,
   },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   optionLeft: {
     flexDirection: 'row',
@@ -368,33 +354,10 @@ const createStyles = (theme) => StyleSheet.create({
   optionTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: 'white',
     marginBottom: 2,
   },
   optionSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
   },
-  timeoutInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  timeoutText: {
-    fontSize: 16,
-    color: 'white',
-    fontWeight: '600',
-    minWidth: 30,
-    textAlign: 'center',
-  },
-  timeoutLabel: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-    marginLeft: 4,
-  },
+
 });

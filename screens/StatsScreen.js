@@ -12,10 +12,10 @@ import {
   SafeAreaView,
   RefreshControl,
   Platform,
-  Alert
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import { useTheme } from '../contexts/ThemeContext';
@@ -87,17 +87,7 @@ export default function StatsScreen({ navigation }) {
   }, [transactions, selectedPeriod, transactionsLoading]);
 
   // User Type Check removed to allow company users access
-  // useEffect(() => {
-  //   if (!authLoading && userData) {
-  //     if (userData.userType !== 'personal') {
-  //       Alert.alert(
-  //         'Access Restricted',
-  //         'This feature is for Personal accounts only.',
-  //         [{ text: 'Go Back', onPress: () => navigation.goBack() }]
-  //       );
-  //     }
-  //   }
-  // }, [userData, authLoading]);
+
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -361,26 +351,47 @@ export default function StatsScreen({ navigation }) {
             <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
               <View style={styles.grid}>
                 <View style={styles.card}>
+                  <BlurView
+                    intensity={theme.isDarkMode ? 30 : 60}
+                    tint={theme.isDarkMode ? 'dark' : 'light'}
+                    experimentalBlurMethod="dimmer"
+                    style={StyleSheet.absoluteFill}
+                  />
                   <View style={[styles.iconContainer, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
                     <Icon name="arrow-down-circle" size={24} color="#4CAF50" />
                   </View>
-                  <Text style={styles.cardLabel}>Income</Text>
-                  <Text style={styles.cardValue}>{formatCurrency(statsData.overview.totalIncome)}</Text>
+                  <Text style={[styles.cardLabel, { color: 'rgba(255,255,255,0.7)' }]}>Income</Text>
+                  <Text style={[styles.cardValue, { color: 'white' }]}>{formatCurrency(statsData.overview.totalIncome)}</Text>
                 </View>
                 <View style={styles.card}>
+                  <BlurView
+                    intensity={theme.isDarkMode ? 30 : 60}
+                    tint={theme.isDarkMode ? 'dark' : 'light'}
+                    experimentalBlurMethod="dimmer"
+                    style={StyleSheet.absoluteFill}
+                  />
                   <View style={[styles.iconContainer, { backgroundColor: 'rgba(255, 152, 0, 0.2)' }]}>
                     <Icon name="arrow-up-circle" size={24} color="#FF9800" />
                   </View>
-                  <Text style={styles.cardLabel}>Expenses</Text>
-                  <Text style={styles.cardValue}>{formatCurrency(statsData.overview.totalExpenses)}</Text>
+                  <Text style={[styles.cardLabel, { color: 'rgba(255,255,255,0.7)' }]}>Expenses</Text>
+                  <Text style={[styles.cardValue, { color: 'white' }]}>{formatCurrency(statsData.overview.totalExpenses)}</Text>
                 </View>
               </View>
 
               <View style={styles.bigCard}>
+                {Platform.OS === 'android' ? (
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]} />
+                ) : (
+                  <BlurView
+                    intensity={theme.isDarkMode ? 30 : 60}
+                    tint={theme.isDarkMode ? 'dark' : 'light'}
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
                 <View style={styles.rowBetween}>
                   <View>
-                    <Text style={styles.cardLabel}>Net Savings</Text>
-                    <Text style={styles.bigCardValue}>{formatCurrency(statsData.overview.netSavings)}</Text>
+                    <Text style={[styles.cardLabel, { color: 'rgba(255,255,255,0.7)' }]}>Net Savings</Text>
+                    <Text style={[styles.bigCardValue, { color: 'white' }]}>{formatCurrency(statsData.overview.netSavings)}</Text>
                   </View>
                   <View style={styles.savingsBadge}>
                     <Icon name="piggy-bank" size={16} color="white" />
@@ -395,7 +406,16 @@ export default function StatsScreen({ navigation }) {
 
               {/* Expense Trend */}
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Expense Trend</Text>
+                {Platform.OS === 'android' ? (
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+                ) : (
+                  <BlurView
+                    intensity={theme.isDarkMode ? 30 : 60}
+                    tint={theme.isDarkMode ? 'dark' : 'light'}
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
+                <Text style={[styles.chartTitle, { color: 'white' }]}>Expense Trend</Text>
                 {statsData.monthlyTrends.datasets[0].data.length > 0 ? (
                   <LineChart
                     data={statsData.monthlyTrends}
@@ -422,13 +442,22 @@ export default function StatsScreen({ navigation }) {
                     style={styles.chart}
                   />
                 ) : (
-                  <Text style={styles.noDataText}>No trend data available</Text>
+                  <Text style={[styles.noDataText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>No trend data available</Text>
                 )}
               </View>
 
               {/* Category Breakdown */}
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Spending by Category</Text>
+                {Platform.OS === 'android' ? (
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+                ) : (
+                  <BlurView
+                    intensity={theme.isDarkMode ? 30 : 60}
+                    tint={theme.isDarkMode ? 'dark' : 'light'}
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
+                <Text style={[styles.chartTitle, { color: 'white' }]}>Spending by Category</Text>
                 {statsData.categoryBreakdown.length > 0 ? (
                   <PieChart
                     data={statsData.categoryBreakdown}
@@ -441,10 +470,11 @@ export default function StatsScreen({ navigation }) {
                     backgroundColor={"transparent"}
                     paddingLeft={"15"}
                     absolute
+                    legendFontColor="white"
                   />
                 ) : (
                   <View style={styles.noDataContainer}>
-                    <Text style={styles.noDataText}>No expense data for this period</Text>
+                    <Text style={[styles.noDataText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>No expense data for this period</Text>
                   </View>
                 )}
               </View>
@@ -550,19 +580,19 @@ const createStyles = (theme) => StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   bigCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   iconContainer: {
     width: 40,
@@ -606,13 +636,13 @@ const createStyles = (theme) => StyleSheet.create({
     fontWeight: '700',
   },
   chartCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 24,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   chartTitle: {
     color: 'white',

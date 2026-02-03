@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
-  Alert,
   Switch,
   ActivityIndicator,
   StatusBar,
@@ -22,6 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 import UserTypeGuard from '../components/UserTypeGuard';
+import MessageService from '../services/MessageService';
 
 export default function CompanyProfileScreen({ navigation }) {
   const { isDarkMode, theme, toggleTheme, isLoading } = useTheme();
@@ -186,34 +186,34 @@ export default function CompanyProfileScreen({ navigation }) {
       const result = await updateUserProfile(editedData);
       if (result.success) {
         setIsEditing(false);
-        Alert.alert('Success', 'Company profile updated successfully!');
+        MessageService.showSuccess('Success', 'Company profile updated successfully!');
       } else {
-        Alert.alert('Error', result.error || 'Failed to update profile');
+        MessageService.showError('Error', result.error || 'Failed to update profile');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      MessageService.showError('Error', 'An unexpected error occurred');
     }
   };
 
   const handleSignOut = () => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Sign Out',
       'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              navigation.replace('UserType');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to sign out');
-            }
-          }
+      async () => {
+        try {
+          await signOut();
+          navigation.replace('UserType');
+        } catch (error) {
+          MessageService.showError('Error', 'Failed to sign out');
         }
-      ]
+      },
+      () => { },
+      {
+        buttons: [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', color: theme.error || '#FF5252' }
+        ]
+      }
     );
   };
 

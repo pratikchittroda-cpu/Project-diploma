@@ -11,7 +11,9 @@ import {
   SafeAreaView,
   RefreshControl,
   Modal,
+  Platform,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -19,6 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 import budgetService from '../services/budgetService';
+import MessageService from '../services/MessageService';
 import CircularProgress from '../components/budget/CircularProgress';
 import AddBudgetModal from '../components/budget/AddBudgetModal';
 import BudgetInsights from '../components/budget/BudgetInsights';
@@ -311,6 +314,9 @@ export default function BudgetScreen({ navigation }) {
           const syncedBudgets = await syncBudgetWithOtherPeriod(updatedBudgets, budgetData);
           setBudgets(syncedBudgets);
           setShowAddModal(false);
+          MessageService.showSuccess('Updated', 'Budget updated successfully');
+        } else {
+          MessageService.showError('Error', result.error || 'Failed to update budget');
         }
       } else {
         // Create new budget
@@ -323,10 +329,16 @@ export default function BudgetScreen({ navigation }) {
           const syncedBudgets = await syncBudgetWithOtherPeriod(updatedBudgets, budgetData);
           setBudgets(syncedBudgets);
           setShowAddModal(false);
+          setTimeout(() => {
+            MessageService.showSuccess('Success', 'Budget created successfully');
+          }, 500);
+        } else {
+          MessageService.showError('Error', result.error || 'Failed to create budget');
         }
       }
     } catch (error) {
       console.error('Error saving budget:', error);
+      MessageService.showError('Error', 'An unexpected error occurred');
     }
   };
 
@@ -554,14 +566,31 @@ export default function BudgetScreen({ navigation }) {
   };
 
   const handleDeleteBudget = async (budgetId) => {
-    try {
-      const result = await budgetService.deleteBudget(user.uid, budgetId);
-      if (result.success) {
-        setBudgets(budgets.filter(b => b.id !== budgetId));
+    MessageService.showConfirm(
+      'Delete Budget',
+      'Are you sure you want to delete this budget?',
+      async () => {
+        try {
+          const result = await budgetService.deleteBudget(user.uid, budgetId);
+          if (result.success) {
+            setBudgets(budgets.filter(b => b.id !== budgetId));
+            MessageService.showSuccess('Deleted', 'Budget removed successfully');
+          } else {
+            MessageService.showError('Error', result.error || 'Failed to delete budget');
+          }
+        } catch (error) {
+          console.error('Error deleting budget:', error);
+          MessageService.showError('Error', 'An unexpected error occurred');
+        }
+      },
+      () => { }, // On cancel
+      {
+        buttons: [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', color: '#FF5252' }
+        ]
       }
-    } catch (error) {
-      console.error('Error deleting budget:', error);
-    }
+    );
   };
 
   const toggleCardExpansion = (categoryId) => {
@@ -579,7 +608,7 @@ export default function BudgetScreen({ navigation }) {
       >
         <Icon name="arrow-left" size={24} color="white" />
       </TouchableOpacity>
-      <Text style={styles.headerTitle}>Budget</Text>
+      <Text style={[styles.headerTitle, { color: 'white' }]}>Budget</Text>
       <TouchableOpacity
         style={styles.actionButton}
         onPress={handleAddBudget}
@@ -671,23 +700,41 @@ export default function BudgetScreen({ navigation }) {
   const renderQuickStats = () => (
     <Animated.View style={[styles.quickStatsGrid, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={styles.quickStatCard}>
-        <Icon name="wallet-outline" size={28} color="white" style={{ marginBottom: 8 }} />
-        <Text style={styles.quickStatValue}>
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="dimmer"
+          style={StyleSheet.absoluteFill}
+        />
+        <Icon name="wallet-outline" size={28} color={theme.text} style={{ marginBottom: 8 }} />
+        <Text style={[styles.quickStatValue, { color: theme.text }]}>
           {budgetStats.totalBudget > 0 ? `${budgetStats.percentage}%` : '0%'}
         </Text>
-        <Text style={styles.quickStatLabel}>Used</Text>
+        <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Used</Text>
       </View>
 
       <View style={styles.quickStatCard}>
-        <Icon name="cash" size={28} color="white" style={{ marginBottom: 8 }} />
-        <Text style={styles.quickStatValue}>₹{budgetStats.totalRemaining.toFixed(0)}</Text>
-        <Text style={styles.quickStatLabel}>Remaining</Text>
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="dimmer"
+          style={StyleSheet.absoluteFill}
+        />
+        <Icon name="cash" size={28} color={theme.text} style={{ marginBottom: 8 }} />
+        <Text style={[styles.quickStatValue, { color: theme.text }]}>₹{budgetStats.totalRemaining.toFixed(0)}</Text>
+        <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Remaining</Text>
       </View>
 
       <View style={styles.quickStatCard}>
-        <Icon name="alert-circle" size={28} color="white" style={{ marginBottom: 8 }} />
-        <Text style={styles.quickStatValue}>{budgetStats.alerts.length}</Text>
-        <Text style={styles.quickStatLabel}>Alerts</Text>
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="dimmer"
+          style={StyleSheet.absoluteFill}
+        />
+        <Icon name="alert-circle" size={28} color={theme.text} style={{ marginBottom: 8 }} />
+        <Text style={[styles.quickStatValue, { color: theme.text }]}>{budgetStats.alerts.length}</Text>
+        <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Alerts</Text>
       </View>
     </Animated.View>
   );
@@ -708,16 +755,22 @@ export default function BudgetScreen({ navigation }) {
 
         {budgetStats.alerts.map((alert, index) => (
           <View key={index} style={styles.alertCard}>
+            <BlurView
+              intensity={theme.isDarkMode ? 30 : 60}
+              tint={theme.isDarkMode ? 'dark' : 'light'}
+              experimentalBlurMethod="dimmer"
+              style={StyleSheet.absoluteFill}
+            />
             <View style={styles.alertIconContainer}>
               <Icon
                 name={alert.severity === 'danger' ? 'alert-circle' : 'alert'}
                 size={24}
-                color="white"
+                color={alert.severity === 'danger' ? 'white' : 'white'}
               />
             </View>
             <View style={styles.alertContent}>
-              <Text style={styles.alertCategory}>{alert.category}</Text>
-              <Text style={styles.alertMessage}>{alert.message}</Text>
+              <Text style={[styles.alertCategory, { color: 'white' }]}>{alert.category}</Text>
+              <Text style={[styles.alertMessage, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }]}>{alert.message}</Text>
             </View>
             <View style={[
               styles.alertSeverityBadge,
@@ -763,7 +816,7 @@ export default function BudgetScreen({ navigation }) {
     return (
       <Animated.View style={[styles.categoriesSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Category Budgets</Text>
+          <Text style={[styles.sectionTitle, { color: 'white' }]}>Category Budgets</Text>
           <TouchableOpacity onPress={handleAddBudget}>
             <Icon name="plus-circle" size={24} color="white" />
           </TouchableOpacity>
@@ -780,14 +833,20 @@ export default function BudgetScreen({ navigation }) {
               onPress={() => toggleCardExpansion(category.id)}
               activeOpacity={0.7}
             >
+              <BlurView
+                intensity={theme.isDarkMode ? 30 : 60}
+                tint={theme.isDarkMode ? 'dark' : 'light'}
+                experimentalBlurMethod="dimmer"
+                style={StyleSheet.absoluteFill}
+              />
               <View style={styles.categoryHeader}>
                 <View style={styles.categoryInfo}>
                   <View style={styles.categoryIconContainer}>
                     <Icon name={category.icon} size={24} color="white" />
                   </View>
                   <View style={styles.categoryDetails}>
-                    <Text style={styles.categoryName}>{category.name}</Text>
-                    <Text style={styles.categoryAmount}>
+                    <Text style={[styles.categoryName, { color: 'white' }]}>{category.name}</Text>
+                    <Text style={[styles.categoryAmount, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
                       {formatCurrency(category.spent)} of {formatCurrency(category.budget)}
                     </Text>
                   </View>
@@ -1209,12 +1268,12 @@ const createStyles = (theme) => StyleSheet.create({
   },
   quickStatCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
   },
 
   quickStatValue: {
@@ -1254,12 +1313,12 @@ const createStyles = (theme) => StyleSheet.create({
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
   },
   alertIconContainer: {
     width: 48,
@@ -1310,12 +1369,12 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Category Card
   categoryCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
   },
   categoryHeader: {
     flexDirection: 'row',

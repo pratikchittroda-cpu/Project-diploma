@@ -7,12 +7,10 @@ import {
   StyleSheet,
   Animated,
   ScrollView,
-  Alert,
-  ActivityIndicator,
-  StatusBar,
   SafeAreaView,
   Platform,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -124,13 +122,13 @@ export default function AddCompanyTransactionScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!amount || !description || !selectedCategory || !selectedDepartment) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      MessageService.showError('Error', 'Please fill in all required fields');
       return;
     }
 
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      MessageService.showError('Error', 'Please enter a valid amount');
       return;
     }
 
@@ -151,21 +149,18 @@ export default function AddCompanyTransactionScreen({ navigation }) {
       const result = await addTransaction(transactionData);
 
       if (result.success) {
-        Alert.alert(
+        MessageService.showSuccess(
           'Success',
           'Transaction added successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack()
-            }
-          ]
+          {
+            onDismiss: () => navigation.goBack()
+          }
         );
       } else {
-        Alert.alert('Error', result.error || 'Failed to add transaction. Please try again.');
+        MessageService.showError('Error', result.error || 'Failed to add transaction.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to add transaction. Please try again.');
+      MessageService.showError('Error', 'Failed to add transaction.');
     } finally {
       setIsSubmitting(false);
     }

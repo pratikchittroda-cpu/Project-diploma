@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { BlurView } from 'expo-blur';
+import { AppIcons, Icon } from '../constants/Icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
@@ -189,10 +190,10 @@ export default function DashboardScreen({ navigation }) {
   // Helper for icons
   const getCategoryIcon = (category) => {
     const iconMap = {
-      food: 'food',
+      food: 'hamburger',
       transport: 'car',
       shopping: 'shopping',
-      entertainment: 'movie',
+      entertainment: 'movie-open',
       health: 'medical-bag',
       salary: 'cash',
       freelance: 'laptop',
@@ -250,31 +251,40 @@ export default function DashboardScreen({ navigation }) {
 
   const renderOverviewCard = () => (
     <Animated.View style={[styles.overviewCard, { opacity: fadeAnim, transform: [{ scale: cardScale }] }]}>
-      <View style={styles.overviewHeader}>
-        <Text style={styles.overviewTitle}>Total Balance</Text>
-        <TouchableOpacity>
-          <Icon name="eye-outline" size={20} color="rgba(255,255,255,0.8)" />
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.balanceAmount}>{formatCurrency(dashboardStats.totalBalance)}</Text>
-
-      <View style={styles.incomeExpenseRow}>
-        <View style={styles.incomeExpenseItem}>
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
-            <Icon name="arrow-down-circle" size={20} color="#4CAF50" />
-          </View>
-          <View>
-            <Text style={styles.incomeExpenseLabel}>Income</Text>
-            <Text style={styles.incomeAmount}>{formatCurrency(dashboardStats.monthlyIncome)}</Text>
-          </View>
+      {Platform.OS === 'android' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+      ) : (
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+      <View style={styles.cardContent}>
+        <View style={styles.overviewHeader}>
+          <Text style={[styles.overviewTitle, { color: 'rgba(255,255,255,0.8)' }]}>Total Balance</Text>
+          <AppIcons.Eye size={20} color="rgba(255,255,255,0.8)" />
         </View>
-        <View style={styles.incomeExpenseItem}>
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(255, 82, 82, 0.2)' }]}>
-            <Icon name="arrow-up-circle" size={20} color="#FF5252" />
+        <Text style={[styles.balanceAmount, { color: 'white' }]}>{formatCurrency(dashboardStats.totalBalance)}</Text>
+
+        <View style={styles.incomeExpenseRow}>
+          <View style={styles.incomeExpenseItem}>
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
+              <AppIcons.Income size={20} color="#4CAF50" />
+            </View>
+            <View>
+              <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.6)' }]}>Income</Text>
+              <Text style={styles.incomeAmount}>{formatCurrency(dashboardStats.monthlyIncome)}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.incomeExpenseLabel}>Expenses</Text>
-            <Text style={styles.expenseAmount}>{formatCurrency(dashboardStats.monthlyExpenses)}</Text>
+          <View style={styles.incomeExpenseItem}>
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(255, 82, 82, 0.2)' }]}>
+              <AppIcons.Expense size={20} color="#FF5252" />
+            </View>
+            <View>
+              <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.6)' }]}>Expenses</Text>
+              <Text style={styles.expenseAmount}>{formatCurrency(dashboardStats.monthlyExpenses)}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -340,7 +350,7 @@ export default function DashboardScreen({ navigation }) {
             style={styles.profileButton}
             onPress={handleProfilePress}
           >
-            <Icon name="account-circle" size={40} color="rgba(255,255,255,0.9)" />
+            <AppIcons.Profile size={40} color="rgba(255,255,255,0.9)" />
           </TouchableOpacity>
         </Animated.View>
 
@@ -373,18 +383,26 @@ export default function DashboardScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.transactionsList}>
-              {transactionsLoading ? (
-                <ActivityIndicator size="small" color="white" style={{ marginVertical: 20 }} />
-              ) : recentTransactions.length > 0 ? (
-                recentTransactions.map((transaction, index) =>
-                  renderTransactionItem(transaction, index)
-                )
-              ) : (
-                <Text style={styles.emptyText}>
-                  No transactions yet. Add your first one!
-                </Text>
-              )}
+            <View style={[styles.transactionsList, { overflow: 'hidden' }]}>
+              <BlurView
+                intensity={theme.isDarkMode ? 30 : 60}
+                tint={theme.isDarkMode ? 'dark' : 'light'}
+                experimentalBlurMethod="dimmer"
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={{ padding: 5 }}>
+                {transactionsLoading ? (
+                  <ActivityIndicator size="small" color={theme.isDarkMode ? "white" : "#333"} style={{ marginVertical: 20 }} />
+                ) : recentTransactions.length > 0 ? (
+                  recentTransactions.map((transaction, index) =>
+                    renderTransactionItem(transaction, index)
+                  )
+                ) : (
+                  <Text style={[styles.emptyText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
+                    No transactions yet. Add your first one!
+                  </Text>
+                )}
+              </View>
             </View>
           </Animated.View>
         </ScrollView>
@@ -396,7 +414,7 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#667eea',
+    // Background handled by theme in component or parent
   },
   background: {
     position: 'absolute',
@@ -445,13 +463,21 @@ const styles = StyleSheet.create({
   },
 
   // Overview Card
+  // Overview Card
   overviewCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 24,
-    padding: 24,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
     marginBottom: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  cardContent: {
+    padding: 24,
   },
   overviewHeader: {
     flexDirection: 'row',
@@ -528,9 +554,7 @@ const styles = StyleSheet.create({
 
   // Transactions List
   transactionsList: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 20,
-    padding: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },

@@ -7,15 +7,16 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  Alert,
   ActivityIndicator,
   StatusBar,
+  Platform,
   ScrollView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import MessageService from '../services/MessageService';
 
 
 const { width, height } = Dimensions.get('window');
@@ -31,6 +32,7 @@ export default function LoginScreen({ navigation, route }) {
 
     const authContext = useAuth();
     signIn = authContext.signIn;
+    const resetPassword = authContext.resetPassword;
     authLoading = authContext.loading;
   } catch (error) {
     console.error('Context error in LoginScreen:', error);
@@ -104,7 +106,7 @@ export default function LoginScreen({ navigation, route }) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      MessageService.showError('Missing Fields', 'Please fill in all fields');
       return;
     }
 
@@ -118,7 +120,7 @@ export default function LoginScreen({ navigation, route }) {
 
         // Check if user is personal type
         if (userData?.userType !== 'personal') {
-          Alert.alert('Access Denied', 'This account is not registered as a Personal account. Please use the Company login or create a Personal account.');
+          MessageService.showError('Access Denied', 'This account is not registered as a Personal account.');
           setIsLoading(false);
           return;
         }
@@ -130,71 +132,58 @@ export default function LoginScreen({ navigation, route }) {
 
         if (result.error) {
           if (result.error.includes('auth/invalid-credential')) {
-            errorMessage = 'Invalid email or password. Please check your credentials.';
+            errorMessage = 'Invalid email or password.';
           } else if (result.error.includes('auth/user-not-found')) {
-            errorMessage = 'No account found with this email. Please sign up first.';
+            errorMessage = 'No account found with this email.';
           } else if (result.error.includes('auth/wrong-password')) {
-            errorMessage = 'Incorrect password. Please try again.';
+            errorMessage = 'Incorrect password.';
           } else if (result.error.includes('auth/invalid-email')) {
             errorMessage = 'Please enter a valid email address.';
-          } else if (result.error.includes('auth/user-disabled')) {
-            errorMessage = 'This account has been disabled. Please contact support.';
-          } else if (result.error.includes('auth/too-many-requests')) {
-            errorMessage = 'Too many failed attempts. Please try again later.';
           } else {
             errorMessage = result.error;
           }
         }
 
-        Alert.alert('Login Failed', errorMessage);
-        console.error('Login error details:', result.error);
+        MessageService.showError('Login Failed', errorMessage);
       }
     } catch (error) {
-      Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
-      console.error('Login error:', error);
+      MessageService.showError('Login Error', 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    Alert.prompt(
+    MessageService.showPrompt(
       'Reset Password',
       'Enter your email address to receive a password reset link:',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Send Reset Email',
-          onPress: async (email) => {
-            if (!email || !email.includes('@')) {
-              Alert.alert('Error', 'Please enter a valid email address');
-              return;
-            }
+      async (email) => {
+        if (!email || !email.includes('@')) {
+          MessageService.showError('Error', 'Please enter a valid email address');
+          return;
+        }
 
-            try {
-              setIsLoading(true);
-              const result = await authService.resetPassword(email);
+        try {
+          setIsLoading(true);
+          const result = await resetPassword(email);
 
-              if (result.success) {
-                Alert.alert('Success!', 'Password reset email sent! Check your inbox and follow the instructions to reset your password.');
-              } else {
-                Alert.alert('Error', result.error || 'Failed to send reset email. Please try again.');
-              }
-            } catch (error) {
-              console.error('Password reset error:', error);
-              Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      '',
-      'email-address'
+          if (result.success) {
+            MessageService.showSuccess('Success!', 'Password reset email sent! Check your inbox.');
+          } else {
+            MessageService.showError('Error', result.error || 'Failed to send reset email.');
+          }
+        } catch (error) {
+          MessageService.showError('Error', 'An unexpected error occurred.');
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      () => { },
+      {
+        placeholder: 'Email Address',
+        keyboardType: 'email-address',
+        confirmButtonText: 'Send Reset Email'
+      }
     );
   };
 
@@ -203,33 +192,28 @@ export default function LoginScreen({ navigation, route }) {
     const testEmail = 'test@example.com';
     const testPassword = 'test123456';
 
-    Alert.alert(
+    MessageService.showConfirm(
       'Create Test Account',
       `This will create a test account:\nEmail: ${testEmail}\nPassword: ${testPassword}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Create',
-          onPress: async () => {
-            setIsLoading(true);
-            try {
-              // Navigate to signup with pre-filled data
-              navigation.navigate('Register', {
-                userType: 'personal',
-                testData: {
-                  email: testEmail,
-                  password: testPassword,
-                  fullName: 'Test User'
-                }
-              });
-            } catch (error) {
-              console.error('Test account creation error:', error);
-            } finally {
-              setIsLoading(false);
+      async () => {
+        setIsLoading(true);
+        try {
+          // Navigate to signup with pre-filled data
+          navigation.navigate('Register', {
+            userType: 'personal',
+            testData: {
+              email: testEmail,
+              password: testPassword,
+              fullName: 'Test User'
             }
-          }
+          });
+        } catch (error) {
+          console.error('Test account creation error:', error);
+        } finally {
+          setIsLoading(false);
         }
-      ]
+      },
+      () => { }
     );
   };
 

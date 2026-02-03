@@ -73,6 +73,27 @@ class MessageService {
     });
   }
 
+  showPrompt(title, message, onConfirm, onCancel, options = {}) {
+    this.show({
+      type: 'confirm',
+      title,
+      message,
+      showInput: true,
+      buttons: [
+        {
+          text: options.cancelButtonText || 'Cancel',
+          style: 'cancel',
+          onPress: onCancel,
+        },
+        {
+          text: options.confirmButtonText || 'OK',
+          onPress: onConfirm,
+        },
+      ],
+      ...options,
+    });
+  }
+
   showCustomButtons(title, message, buttons, options = {}) {
     this.show({
       title,
@@ -99,7 +120,9 @@ export const showSuccess = (title, message, options) => messageService.showSucce
 export const showError = (title, message, options) => messageService.showError(title, message, options);
 export const showWarning = (title, message, options) => messageService.showWarning(title, message, options);
 export const showInfo = (title, message, options) => messageService.showInfo(title, message, options);
-export const showConfirm = (title, message, onConfirm, onCancel, options) => 
+export const showConfirm = (title, message, onConfirm, onCancel, options) =>
   messageService.showConfirm(title, message, onConfirm, onCancel, options);
+export const showPrompt = (title, message, onConfirm, onCancel, options) =>
+  messageService.showPrompt(title, message, onConfirm, onCancel, options);
 export const showMessage = (config) => messageService.show(config);
 export const hideMessage = () => messageService.hide();

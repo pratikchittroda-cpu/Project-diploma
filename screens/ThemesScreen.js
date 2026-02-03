@@ -6,14 +6,15 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
-  Alert,
   StatusBar,
   Dimensions,
   SafeAreaView,
   Platform,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -102,40 +103,34 @@ export default function ThemesScreen({ navigation }) {
   const handleThemeSelect = (themeId) => {
     const selectedThemeConfig = themeOptions.find(t => t.id === themeId);
 
-    Alert.alert(
+    MessageService.showConfirm(
       'Apply Theme',
       `Apply the ${selectedThemeConfig?.name} theme? This will change the app's color scheme.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Apply',
-          onPress: async () => {
-            // Apply the new theme
-            await changeTheme(themeId);
+      async () => {
+        // Apply the new theme
+        await changeTheme(themeId);
 
-            // Show success message with restart recommendation
-            Alert.alert(
-              'Theme Applied Successfully!',
-              `${selectedThemeConfig?.name} theme has been applied. For the best experience and to ensure all colors are properly updated, please restart the app.\\n\\nSome screens may still show old colors until the app is restarted.`,
-              [
-                { text: 'Later', onPress: () => navigation.goBack() },
-                {
-                  text: 'Restart Now',
-                  onPress: () => {
-                    // In a real app, you would use a library like react-native-restart
-                    // For now, we'll just show a message
-                    Alert.alert(
-                      'Restart Required',
-                      'Please close and reopen the app to see all theme changes.',
-                      [{ text: 'OK', onPress: () => navigation.goBack() }]
-                    );
+        // Show success message with restart recommendation
+        MessageService.showCustomButtons(
+          'Theme Applied Successfully!',
+          `${selectedThemeConfig?.name} theme has been applied. For the best experience, please restart the app.`,
+          [
+            { text: 'Later', onPress: () => navigation.goBack() },
+            {
+              text: 'Restart Now',
+              onPress: () => {
+                MessageService.showInfo(
+                  'Restart Required',
+                  'Please close and reopen the app to see all theme changes.',
+                  {
+                    onDismiss: () => navigation.goBack()
                   }
-                }
-              ]
-            );
-          }
-        }
-      ]
+                );
+              }
+            }
+          ]
+        );
+      }
     );
   };
 
@@ -228,14 +223,23 @@ export default function ThemesScreen({ navigation }) {
 
   const renderDarkModeToggle = () => (
     <Animated.View style={[styles.darkModeCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      {Platform.OS === 'android' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+      ) : (
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       <View style={styles.darkModeContent}>
         <View style={styles.darkModeLeft}>
           <View style={styles.darkModeIcon}>
-            <Icon name="theme-light-dark" size={24} color="white" />
+            <Icon name="theme-light-dark" size={24} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
           </View>
           <View>
-            <Text style={styles.darkModeTitle}>Dark Mode</Text>
-            <Text style={styles.darkModeSubtitle}>
+            <Text style={[styles.darkModeTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>Dark Mode</Text>
+            <Text style={[styles.darkModeSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
               {isDarkMode ? 'Dark theme active' : 'Light theme active'}
             </Text>
           </View>
@@ -340,7 +344,7 @@ const createStyles = (theme) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
   },
   headerSpacer: {
     width: 40,
@@ -358,7 +362,7 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'white',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
     marginBottom: 8,
   },
   sectionSubtitle: {
@@ -367,11 +371,11 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 20,
   },
   darkModeCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   darkModeContent: {
     flexDirection: 'row',
@@ -395,12 +399,10 @@ const createStyles = (theme) => StyleSheet.create({
   darkModeTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: 'white',
     marginBottom: 2,
   },
   darkModeSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
   },
   darkModeToggle: {
     width: 56,
@@ -448,7 +450,7 @@ const createStyles = (theme) => StyleSheet.create({
   categoryTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: 'white',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
     marginBottom: 2,
   },
   categoryDescription: {

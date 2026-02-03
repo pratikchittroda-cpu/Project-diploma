@@ -6,9 +6,9 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
-  Alert,
   StatusBar,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -63,26 +63,26 @@ export default function BillingSubscriptionScreen({ navigation }) {
     try {
       const recentActions = await AsyncStorage.getItem('companyRecentActions');
       let actions = recentActions ? JSON.parse(recentActions) : [];
-      
+
       const screenData = {
         id: 'BillingSubscription',
         title: 'Billing & Subscription',
         icon: 'credit-card',
         timestamp: Date.now(),
       };
-      
+
       actions = actions.filter(action => action.id !== screenData.id);
       actions.unshift(screenData);
       actions = actions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('companyRecentActions', JSON.stringify(actions));
     } catch (error) {
-      }
+    }
   };
 
   useEffect(() => {
     trackScreenVisit();
-    
+
     // Entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -106,60 +106,52 @@ export default function BillingSubscriptionScreen({ navigation }) {
   }, [navigation]);
 
   const handleUpgradePlan = (plan) => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Upgrade Plan',
       `Upgrade to ${plan.name} for ₹${plan.price}/month?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Upgrade',
-          onPress: () => {
-            Alert.alert('Success', `Successfully upgraded to ${plan.name}!`);
-            setSubscriptionInfo(prev => ({
-              ...prev,
-              currentPlan: plan.name,
-              planPrice: plan.price,
-            }));
-          }
-        }
-      ]
+      () => {
+        MessageService.showSuccess('Success', `Successfully upgraded to ${plan.name}!`);
+        setSubscriptionInfo(prev => ({
+          ...prev,
+          currentPlan: plan.name,
+          planPrice: plan.price,
+        }));
+      }
     );
   };
 
   const handleUpdatePayment = () => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Update Payment Method',
       'You will be redirected to update your payment information securely.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Update', onPress: () => Alert.alert('Success', 'Payment method updated!') }
-      ]
+      () => {
+        // Redirect logic here
+        MessageService.showSuccess('Success', 'Payment method updated!');
+      }
     );
   };
 
   const handleViewInvoices = () => {
-    Alert.alert(
-      'Billing History',
-      'View and download your past invoices and receipts.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'View History', onPress: () => Alert.alert('Coming Soon', 'Invoice history will be available soon!') }
-      ]
+    MessageService.showInfo(
+      'Coming Soon',
+      'Invoice history will be available soon!'
     );
   };
 
   const handleCancelSubscription = () => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Cancel Subscription',
-      'Are you sure you want to cancel your subscription? You will lose access to premium features.',
-      [
-        { text: 'Keep Subscription', style: 'cancel' },
-        {
-          text: 'Cancel',
-          style: 'destructive',
-          onPress: () => Alert.alert('Subscription Cancelled', 'Your subscription will end at the next billing cycle.')
-        }
-      ]
+      'Are you sure you want to cancel? You will lose access to premium features.',
+      () => {
+        MessageService.showInfo('Subscription Cancelled', 'Your subscription will end at the next billing cycle.');
+      },
+      () => { },
+      {
+        buttons: [
+          { text: 'Keep Plan', style: 'cancel' },
+          { text: 'Cancel', style: 'destructive' }
+        ]
+      }
     );
   };
 
@@ -189,7 +181,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
           <Text style={[styles.statusText, { color: theme.success }]}>Active</Text>
         </View>
       </View>
-      
+
       <View style={styles.billingInfo}>
         <View style={styles.billingRow}>
           <Text style={styles.billingLabel}>Next billing:</Text>
@@ -205,7 +197,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
 
   const renderPlanCard = (plan) => {
     const isCurrentPlan = plan.name === subscriptionInfo.currentPlan;
-    
+
     return (
       <Animated.View
         key={plan.id}
@@ -220,7 +212,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
             <Text style={styles.popularText}>Most Popular</Text>
           </View>
         )}
-        
+
         <View style={styles.planCardHeader}>
           <View style={[styles.planIcon, { backgroundColor: plan.color }]}>
             <Icon name="crown" size={24} color={plan.iconColor} />
@@ -230,7 +222,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
             <Text style={styles.planCardPrice}>${plan.price}/month</Text>
           </View>
         </View>
-        
+
         <View style={styles.featuresContainer}>
           {plan.features.map((feature, index) => (
             <View key={index} style={styles.featureRow}>
@@ -239,7 +231,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
             </View>
           ))}
         </View>
-        
+
         <TouchableOpacity
           style={[
             styles.planButton,
@@ -288,7 +280,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {renderHeader()}
-      
+
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}

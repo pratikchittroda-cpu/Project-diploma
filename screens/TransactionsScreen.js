@@ -9,17 +9,18 @@ import {
   ActivityIndicator,
   StatusBar,
   TextInput,
-  Alert,
   RefreshControl,
   SafeAreaView,
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
+import MessageService from '../services/MessageService';
 
 export default function TransactionsScreen({ navigation }) {
   const { theme } = useTheme();
@@ -84,13 +85,38 @@ export default function TransactionsScreen({ navigation }) {
     }
   };
 
-  // Calculate transaction summary
+  const isWithinPeriod = (date, period) => {
+    const d = new Date(date);
+    const now = new Date();
+
+    switch (period) {
+      case 'This Week':
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        return d >= startOfWeek;
+      case 'This Month':
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        return d >= startOfMonth;
+      case 'This Year':
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        return d >= startOfYear;
+      case 'Past Year':
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  // Calculate transaction summary based on filtered transactions
   const transactionSummary = React.useMemo(() => {
-    const totalIncome = transactions
+    const periodTransactions = transactions.filter(t => isWithinPeriod(t.date || t.createdAt, selectedPeriod));
+
+    const totalIncome = periodTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const totalExpenses = transactions
+    const totalExpenses = periodTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -99,7 +125,7 @@ export default function TransactionsScreen({ navigation }) {
       totalExpenses,
       netAmount: totalIncome - totalExpenses,
     };
-  }, [transactions]);
+  }, [transactions, selectedPeriod]);
 
   // Helper functions for category icons and colors
   const getCategoryIcon = (category) => {
@@ -127,6 +153,9 @@ export default function TransactionsScreen({ navigation }) {
   const filteredTransactions = React.useMemo(() => {
     let filtered = transactions;
 
+    // Filter by period
+    filtered = filtered.filter(t => isWithinPeriod(t.date || t.createdAt, selectedPeriod));
+
     // Filter by type
     if (selectedFilter !== 'all') {
       filtered = filtered.filter(t => t.type === selectedFilter);
@@ -147,25 +176,28 @@ export default function TransactionsScreen({ navigation }) {
       icon: getCategoryIcon(transaction.category),
       color: getCategoryColor(transaction.category, transaction.type)
     }));
-  }, [transactions, selectedFilter, searchQuery, theme]);
+  }, [transactions, selectedFilter, searchQuery, selectedPeriod, theme]);
 
   const handleDeleteTransaction = async (transactionId) => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Delete Transaction',
       'Are you sure you want to delete this transaction?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deleteTransaction(transactionId);
-            if (!result.success) {
-              Alert.alert('Error', result.error || 'Failed to delete transaction');
-            }
-          }
+      async () => {
+        const result = await deleteTransaction(transactionId);
+        if (result.success) {
+          MessageService.showSuccess('Deleted', 'Transaction removed successfully');
+        } else {
+          MessageService.showError('Error', result.error || 'Failed to delete transaction');
         }
-      ]
+      },
+      () => { }, // On cancel
+      {
+        animationType: 'slide',
+        buttons: [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', color: '#FF5252' }
+        ]
+      }
     );
   };
 
@@ -189,12 +221,53 @@ export default function TransactionsScreen({ navigation }) {
     }
   };
 
-  const periods = ['This Week', 'This Month', 'This Year'];
+  const periods = ['This Week', 'This Month', 'This Year', 'Past Year'];
   const filters = [
     { id: 'all', name: 'All', icon: 'format-list-bulleted' },
     { id: 'income', name: 'Income', icon: 'trending-up' },
     { id: 'expense', name: 'Expenses', icon: 'trending-down' },
   ];
+
+  const renderCategoryBreakdown = () => {
+    if (selectedPeriod === 'This Week') return null;
+
+    const categoryData = filteredTransactions.reduce((acc, t) => {
+      if (t.type === 'expense') {
+        acc[t.category] = (acc[t.category] || 0) + t.amount;
+      }
+      return acc;
+    }, {});
+
+    const screenWidth = Platform.OS === 'web' ? 600 : 350; // Approximated
+
+    return (
+      <Animated.View style={[styles.breakdownContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <Text style={styles.sectionTitle}>Category Breakdown</Text>
+        <View style={styles.categoryGrid}>
+          {Object.entries(categoryData).sort((a, b) => b[1] - a[1]).map(([category, amount]) => (
+            <View key={category} style={styles.categoryCard}>
+              <BlurView
+                intensity={theme.isDarkMode ? 30 : 60}
+                tint={theme.isDarkMode ? 'dark' : 'light'}
+                experimentalBlurMethod="dimmer"
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={[styles.categoryIconSmall, { backgroundColor: `${getCategoryColor(category, 'expense')}30` }]}>
+                <Icon name={getCategoryIcon(category)} size={16} color={getCategoryColor(category, 'expense')} />
+              </View>
+              <View style={styles.categoryInfo}>
+                <Text style={[styles.categoryName, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]} numberOfLines={1}>{category}</Text>
+                <Text style={[styles.categoryAmount, { color: 'white' }]}>{formatCurrency(amount)}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+        {Object.keys(categoryData).length === 0 && (
+          <Text style={styles.noDataText}>No expense data to breakdown</Text>
+        )}
+      </Animated.View>
+    );
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -227,8 +300,8 @@ export default function TransactionsScreen({ navigation }) {
             <Icon name="arrow-left" size={24} color="white" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Transactions</Text>
-            <Text style={styles.headerSubtitle}>{userData?.fullName || 'User'}'s Activity</Text>
+            <Text style={[styles.headerTitle, { color: 'white' }]}>Transactions</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }]}>{userData?.fullName || 'User'}'s Activity</Text>
           </View>
           <TouchableOpacity
             style={styles.addButton}
@@ -252,24 +325,33 @@ export default function TransactionsScreen({ navigation }) {
         >
           {/* Summary Card */}
           <Animated.View style={[styles.summaryCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.summaryTitle}>This Month Summary</Text>
+            {Platform.OS === 'android' ? (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+            ) : (
+              <BlurView
+                intensity={theme.isDarkMode ? 30 : 60}
+                tint={theme.isDarkMode ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            )}
+            <Text style={[styles.summaryTitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }]}>{selectedPeriod} Summary</Text>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
                 <Icon name="trending-up" size={20} color="#4CAF50" />
-                <Text style={styles.summaryLabel}>Income</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.totalIncome)}</Text>
+                <Text style={[styles.summaryLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }]}>Income</Text>
+                <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.totalIncome)}</Text>
               </View>
               <View style={styles.summaryDivider} />
               <View style={styles.summaryItem}>
                 <Icon name="trending-down" size={20} color="#FF5252" />
-                <Text style={styles.summaryLabel}>Expenses</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.totalExpenses)}</Text>
+                <Text style={[styles.summaryLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }]}>Expenses</Text>
+                <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.totalExpenses)}</Text>
               </View>
               <View style={styles.summaryDivider} />
               <View style={styles.summaryItem}>
                 <Icon name="wallet" size={20} color="#2196F3" />
-                <Text style={styles.summaryLabel}>Net</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(transactionSummary.netAmount)}</Text>
+                <Text style={[styles.summaryLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }]}>Net</Text>
+                <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.netAmount)}</Text>
               </View>
             </View>
           </Animated.View>
@@ -297,17 +379,26 @@ export default function TransactionsScreen({ navigation }) {
 
           {/* Search Bar */}
           <Animated.View style={[styles.searchContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Icon name="magnify" size={20} color="rgba(255,255,255,0.7)" style={styles.searchIcon} />
+            {Platform.OS === 'android' ? (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+            ) : (
+              <BlurView
+                intensity={theme.isDarkMode ? 30 : 60}
+                tint={theme.isDarkMode ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            )}
+            <Icon name="magnify" size={20} color={theme.isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.5)"} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: 'white' }]}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search transactions..."
-              placeholderTextColor="rgba(255,255,255,0.5)"
+              placeholderTextColor={theme.isDarkMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)"}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-                <Icon name="close" size={16} color="rgba(255,255,255,0.7)" />
+                <Icon name="close" size={16} color={theme.isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.5)"} />
               </TouchableOpacity>
             )}
           </Animated.View>
@@ -338,6 +429,8 @@ export default function TransactionsScreen({ navigation }) {
             ))}
           </Animated.View>
 
+          {renderCategoryBreakdown()}
+
           {/* Transactions List */}
           <Animated.View style={[styles.transactionsList, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <Text style={styles.sectionTitle}>
@@ -354,13 +447,19 @@ export default function TransactionsScreen({ navigation }) {
                     style={styles.transactionItem}
                     onLongPress={() => handleDeleteTransaction(transaction.id)}
                   >
+                    <BlurView
+                      intensity={theme.isDarkMode ? 30 : 60}
+                      tint={theme.isDarkMode ? 'dark' : 'light'}
+                      experimentalBlurMethod="dimmer"
+                      style={StyleSheet.absoluteFill}
+                    />
                     <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
                       <Icon name={transaction.icon} size={20} color={transaction.color} />
                     </View>
 
                     <View style={styles.transactionDetails}>
-                      <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                      <Text style={styles.transactionCategory}>
+                      <Text style={[styles.transactionDescription, { color: 'white' }]}>{transaction.description}</Text>
+                      <Text style={[styles.transactionCategory, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
                         {transaction.category} • {new Date(transaction.date).toLocaleDateString('en-US', { weekday: 'long' })}, {new Date(transaction.date).toLocaleDateString()}
                       </Text>
                     </View>
@@ -454,12 +553,12 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Summary Card
   summaryCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   summaryTitle: {
     fontSize: 16,
@@ -524,12 +623,12 @@ const createStyles = (theme) => StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     marginBottom: 15,
     paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   searchIcon: {
     marginRight: 10,
@@ -589,12 +688,12 @@ const createStyles = (theme) => StyleSheet.create({
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 15,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   transactionIcon: {
     width: 40,
@@ -638,5 +737,50 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
+  },
+  // Category Breakdown Styles
+  breakdownContainer: {
+    marginBottom: 25,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  categoryCard: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
+  },
+  categoryIconSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  categoryInfo: {
+    flex: 1,
+  },
+  categoryName: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    textTransform: 'capitalize',
+  },
+  categoryAmount: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  noDataText: {
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    marginTop: 10,
   },
 });

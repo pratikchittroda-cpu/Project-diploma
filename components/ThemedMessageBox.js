@@ -8,9 +8,13 @@ import {
   Dimensions,
   StyleSheet,
   BackHandler,
+  Platform,
+  TextInput,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Icon } from '../constants/Icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -26,27 +30,33 @@ const ThemedMessageBox = ({
   showIcon = true,
   customIcon,
   animationType = 'fade', // 'fade', 'slide', 'scale'
+  showInput = false,
+  placeholder = '',
+  secureTextEntry = false,
+  initialValue = '',
 }) => {
   const { theme } = useTheme();
   const [isVisible, setIsVisible] = useState(visible);
-  
+  const [internalInputValue, setInternalInputValue] = useState(initialValue);
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const slideAnim = useRef(new Animated.Value(-100)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setIsVisible(true);
+      setInternalInputValue(initialValue || '');
       showAnimation();
-      
+
       // Auto hide functionality
       if (autoHide && type !== 'confirm') {
         const timer = setTimeout(() => {
           handleDismiss();
         }, autoHideDelay);
-        
+
         return () => clearTimeout(timer);
       }
     } else {
@@ -67,60 +77,79 @@ const ThemedMessageBox = ({
   }, [isVisible]);
 
   const showAnimation = () => {
-    Animated.parallel([
+    const animations = [
       Animated.timing(overlayAnim, {
         toValue: 1,
         duration: 200,
         useNativeDriver: true,
       }),
-      animationType === 'fade' 
-        ? Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          })
-        : animationType === 'scale'
-        ? Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: true,
-          })
-        : Animated.spring(slideAnim, {
-            toValue: 0,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: true,
-          })
-    ]).start();
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ];
+
+    if (animationType === 'scale') {
+      animations.push(
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        })
+      );
+    } else if (animationType === 'slide') {
+      animations.push(
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        })
+      );
+    }
+
+    Animated.parallel(animations).start();
   };
 
   const hideAnimation = () => {
-    Animated.parallel([
+    const animations = [
       Animated.timing(overlayAnim, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
       }),
-      animationType === 'fade'
-        ? Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          })
-        : animationType === 'scale'
-        ? Animated.timing(scaleAnim, {
-            toValue: 0.8,
-            duration: 200,
-            useNativeDriver: true,
-          })
-        : Animated.timing(slideAnim, {
-            toValue: 50,
-            duration: 200,
-            useNativeDriver: true,
-          })
-    ]).start(() => {
-      setIsVisible(false);
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      })
+    ];
+
+    if (animationType === 'scale') {
+      animations.push(
+        Animated.timing(scaleAnim, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: true,
+        })
+      );
+    } else if (animationType === 'slide') {
+      animations.push(
+        Animated.timing(slideAnim, {
+          toValue: Platform.OS === 'ios' ? -100 : -60,
+          duration: 200,
+          useNativeDriver: true,
+        })
+      );
+    }
+
+    Animated.parallel(animations).start(() => {
+      // Use setTimeout to avoid React scheduler conflicts (useInsertionEffect error)
+      setTimeout(() => {
+        setIsVisible(false);
+      }, 0);
     });
   };
 
@@ -137,36 +166,36 @@ const ThemedMessageBox = ({
         return {
           icon: 'check-circle',
           color: '#4CAF50',
-          backgroundColor: '#E8F5E8',
-          borderColor: '#4CAF50',
+          backgroundColor: 'rgba(76, 175, 80, 0.15)',
+          borderColor: 'rgba(76, 175, 80, 0.3)',
         };
       case 'error':
         return {
           icon: 'alert-circle',
-          color: '#F44336',
-          backgroundColor: '#FFEBEE',
-          borderColor: '#F44336',
+          color: '#FF5252',
+          backgroundColor: 'rgba(255, 82, 82, 0.15)',
+          borderColor: 'rgba(255, 82, 82, 0.3)',
         };
       case 'warning':
         return {
           icon: 'alert',
           color: '#FF9800',
-          backgroundColor: '#FFF3E0',
-          borderColor: '#FF9800',
+          backgroundColor: 'rgba(255, 152, 0, 0.15)',
+          borderColor: 'rgba(255, 152, 0, 0.3)',
         };
       case 'confirm':
         return {
           icon: 'help-circle',
           color: '#2196F3',
-          backgroundColor: '#E3F2FD',
-          borderColor: '#2196F3',
+          backgroundColor: 'rgba(33, 150, 243, 0.15)',
+          borderColor: 'rgba(33, 150, 243, 0.3)',
         };
       default: // info
         return {
           icon: 'information',
           color: '#2196F3',
-          backgroundColor: '#E3F2FD',
-          borderColor: '#2196F3',
+          backgroundColor: 'rgba(33, 150, 243, 0.15)',
+          borderColor: 'rgba(33, 150, 243, 0.3)',
         };
     }
   };
@@ -207,44 +236,53 @@ const ThemedMessageBox = ({
     }
 
     return (
-      <View style={styles.buttonContainer}>
-        {buttons.map((button, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.button,
-              button.style === 'cancel' ? styles.cancelButton : styles.confirmButton,
-              {
-                backgroundColor: button.style === 'cancel' 
-                  ? 'transparent' 
-                  : button.color || theme.primary,
-                borderColor: button.style === 'cancel' 
-                  ? theme.border 
-                  : button.color || theme.primary,
-              }
-            ]}
-            onPress={() => {
-              button.onPress && button.onPress();
-              if (button.dismissOnPress !== false) {
-                handleDismiss();
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <Text
+      <View style={[styles.buttonContainer, type === 'confirm' && styles.confirmButtonContainer]}>
+        {buttons.map((button, index) => {
+          const isCancel = button.style === 'cancel';
+          const buttonColor = button.color || theme.primary;
+
+          return (
+            <TouchableOpacity
+              key={index}
               style={[
-                styles.buttonText,
-                {
-                  color: button.style === 'cancel' 
-                    ? theme.textSecondary 
-                    : 'white'
-                }
+                styles.button,
+                isCancel ? styles.cancelButton : styles.confirmButton,
+                isCancel && { backgroundColor: theme.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' },
+                type === 'confirm' && styles.modalButton,
+                !isCancel && !button.color && { backgroundColor: theme.primary }
               ]}
+              onPress={() => {
+                button.onPress && button.onPress(showInput ? internalInputValue : undefined);
+                if (button.dismissOnPress !== false) {
+                  handleDismiss();
+                }
+              }}
+              activeOpacity={0.8}
             >
-              {button.text}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              {!isCancel ? (
+                <LinearGradient
+                  colors={[buttonColor, buttonColor + 'cc']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
+              <Text
+                style={[
+                  styles.buttonText,
+                  {
+                    color: isCancel
+                      ? (theme.isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#000000')
+                      : 'white'
+                  },
+                  type === 'confirm' && styles.modalButtonText
+                ]}
+              >
+                {button.text}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     );
   };
@@ -259,62 +297,96 @@ const ThemedMessageBox = ({
       statusBarTranslucent
       onRequestClose={handleDismiss}
     >
-      <Animated.View
-        style={[
-          styles.overlay,
-          {
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            opacity: overlayAnim,
-          }
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.overlayTouchable}
-          activeOpacity={1}
-          onPress={type !== 'confirm' ? handleDismiss : undefined}
+      <View style={[styles.overlay, type !== 'confirm' && styles.toastOverlay]}>
+        <Animated.View
+          style={[
+            styles.messageBox,
+            { backgroundColor: theme.isDarkMode ? '#1a1a1a' : '#ffffff' },
+            type !== 'confirm' && styles.toastBox,
+            type === 'confirm' && styles.confirmBox,
+            getAnimationStyle(),
+          ]}
         >
-          <Animated.View
-            style={[
-              styles.messageBox,
-              {
-                backgroundColor: theme.cardBackground,
-                borderColor: typeConfig.borderColor,
-              },
-              getAnimationStyle(),
-            ]}
-          >
-            {/* Header with Icon */}
-            {showIcon && (
-              <View style={[styles.header, { backgroundColor: typeConfig.backgroundColor }]}>
+
+          <View style={[
+            styles.contentWrapper,
+            type === 'confirm' ? styles.confirmContent : styles.toastContent
+          ]}>
+            {/* Icon - Hidden for confirm type based on user request */}
+            {showIcon && type !== 'confirm' && (
+              <View style={[
+                styles.iconContainer,
+                { backgroundColor: typeConfig.backgroundColor }
+              ]}>
                 <Icon
                   name={iconName}
-                  size={32}
+                  size={24}
                   color={typeConfig.color}
                 />
               </View>
             )}
 
-            {/* Content */}
-            <View style={styles.content}>
+            {/* Text Content */}
+            <View style={[
+              styles.textContent,
+              type === 'confirm' && styles.confirmTextContent,
+              type === 'confirm' && { flex: 0, width: '100%' }
+            ]}>
               {title && (
-                <Text style={[styles.title, { color: theme.text }]}>
+                <Text style={[
+                  styles.toastTitle,
+                  type === 'confirm' && styles.confirmTitle,
+                  { color: theme.isDarkMode ? '#ffffff' : '#000000' }
+                ]}>
                   {title}
                 </Text>
               )}
               {message && (
-                <Text style={[styles.message, { color: theme.textSecondary }]}>
+                <Text style={[
+                  styles.toastMessage,
+                  type === 'confirm' && styles.confirmMessage,
+                  { color: theme.isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }
+                ]}>
                   {message}
                 </Text>
               )}
+
+              {showInput && (
+                <View style={[styles.inputContainer, {
+                  borderColor: theme.border,
+                  backgroundColor: theme.isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'
+                }]}>
+                  <TextInput
+                    style={[styles.input, { color: theme.isDarkMode ? 'white' : 'black' }]}
+                    placeholder={placeholder}
+                    placeholderTextColor={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"}
+                    secureTextEntry={secureTextEntry}
+                    value={internalInputValue}
+                    onChangeText={setInternalInputValue}
+                    autoFocus={true}
+                    autoCapitalize="none"
+                  />
+                </View>
+              )}
             </View>
 
-            {/* Buttons */}
-            <View style={styles.footer}>
-              {renderButtons()}
-            </View>
-          </Animated.View>
-        </TouchableOpacity>
-      </Animated.View>
+            {/* Buttons / Close */}
+            {type === 'confirm' ? (
+              <View style={styles.modalButtonWrapper}>
+                {renderButtons()}
+              </View>
+            ) : (
+              <View style={styles.toastRight}>
+                {buttons.length > 0 ? renderButtons() : (
+                  <TouchableOpacity onPress={handleDismiss} style={styles.closeButton}>
+                    <Icon name="close" size={20} color={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 };
@@ -324,76 +396,153 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
-  overlayTouchable: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
+  toastOverlay: {
+    justifyContent: 'flex-start',
+    backgroundColor: 'transparent',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   messageBox: {
-    width: screenWidth * 0.85,
+    width: screenWidth * 0.9,
     maxWidth: 400,
-    borderRadius: 16,
-    borderWidth: 2,
-    elevation: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(128, 128, 128, 0.2)',
+    elevation: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    overflow: 'hidden',
+    shadowRadius: 20,
   },
-  header: {
-    paddingVertical: 20,
+  toastBox: {
+    borderRadius: 50,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  confirmBox: {
+    padding: 24,
+    borderRadius: 32,
+  },
+  contentWrapper: {
+    width: '100%',
+  },
+  toastContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+  },
+  confirmContent: {
+    alignItems: 'center',
+    textAlign: 'center',
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  confirmIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: 16,
+    marginRight: 0,
+  },
+  textContent: {
+    flex: 1,
     justifyContent: 'center',
   },
-  content: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+  confirmTextContent: {
     alignItems: 'center',
+    marginBottom: 24,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  message: {
+  toastTitle: {
     fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 2,
+  },
+  confirmTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  toastMessage: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  confirmMessage: {
+    fontSize: 17,
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     lineHeight: 24,
+    paddingHorizontal: 15,
   },
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+  toastRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  closeButton: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  modalButtonWrapper: {
+    width: '100%',
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  confirmButtonContainer: {
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: 10,
   },
   button: {
-    flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 44,
+    overflow: 'hidden',
   },
-  singleButton: {
-    marginTop: 8,
-  },
-  confirmButton: {
-    borderWidth: 0,
+  modalButton: {
+    flex: 1,
+    minHeight: 50,
   },
   cancelButton: {
-    borderWidth: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  confirmButton: {
+    // Background handled by primary color or gradient
   },
   buttonText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  modalButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+  },
+  inputContainer: {
+    width: '100%',
+    height: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    marginTop: 20,
+    borderWidth: 1,
+    paddingHorizontal: 15,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    height: '100%',
   },
 });
 

@@ -7,9 +7,9 @@ import {
   Animated,
   TouchableOpacity,
   TextInput,
-  Alert,
   StatusBar,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -39,26 +39,26 @@ export default function EditCompanyProfileScreen({ navigation }) {
     try {
       const recentActions = await AsyncStorage.getItem('companyRecentActions');
       let actions = recentActions ? JSON.parse(recentActions) : [];
-      
+
       const screenData = {
         id: 'EditCompanyProfile',
         title: 'Edit Company Profile',
         icon: 'office-building-cog',
         timestamp: Date.now(),
       };
-      
+
       actions = actions.filter(action => action.id !== screenData.id);
       actions.unshift(screenData);
       actions = actions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('companyRecentActions', JSON.stringify(actions));
     } catch (error) {
-      }
+    }
   };
 
   useEffect(() => {
     trackScreenVisit();
-    
+
     // Entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -82,10 +82,10 @@ export default function EditCompanyProfileScreen({ navigation }) {
   }, [navigation]);
 
   const handleSave = () => {
-    Alert.alert(
+    MessageService.showSuccess(
       'Company Profile Updated',
       'Your company information has been saved successfully!',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
+      { onDismiss: () => navigation.goBack() }
     );
   };
 
@@ -141,7 +141,7 @@ export default function EditCompanyProfileScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {renderHeader()}
-      
+
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}

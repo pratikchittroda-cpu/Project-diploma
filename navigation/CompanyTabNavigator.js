@@ -8,7 +8,8 @@ import CompanyBudgetScreen from '../screens/CompanyBudgetScreen';
 import AddCompanyTransactionScreen from '../screens/AddCompanyTransactionScreen';
 import { useTheme } from '../contexts/ThemeContext';
 
-import { View, Text, StyleSheet, Animated, TouchableOpacity, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, ActivityIndicator, StatusBar, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 // Enhanced placeholder screens with animations for company features
 const AnimatedPlaceholderScreen = ({ iconName, title, subtitle }) => {
@@ -214,7 +215,7 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
           {
             opacity: backgroundAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 0.15],
+              outputRange: [0, 0.08], // Reduced opacity for more subtle look
             }),
             transform: [{
               scale: backgroundAnim.interpolate({
@@ -380,6 +381,15 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
   return (
     <View style={customTabBarStyles.container}>
+      {/* Background with Blur - contained to pill shape */}
+      <View style={[StyleSheet.absoluteFill, {
+        borderRadius: 40,
+        overflow: 'hidden',
+        backgroundColor: theme.isDarkMode ? '#1a1a1a' : '#ffffff',
+        borderWidth: 1,
+        borderColor: theme.isDarkMode ? '#333333' : '#e0e0e0',
+      }]} />
+
       <View style={customTabBarStyles.tabContainer}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -419,7 +429,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             }
           };
 
-          // Special styling for Add Transaction button
           if (route.name === 'AddCompanyTransaction') {
             return (
               <AnimatedAddButton
@@ -448,32 +457,28 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 const createCustomTabBarStyles = (theme) => StyleSheet.create({
   container: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingBottom: 10,
-    paddingTop: 15,
-    height: 75,
-    // Glassmorphism effect
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    // Shadow and elevation
+    left: 20,
+    right: 20,
+    bottom: 25,
+    height: 70,
+    borderRadius: 40,
+    // Solid background handling now done in component
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     elevation: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    // Backdrop blur simulation
-    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, // Reduced shadow opacity for solid bar
+    shadowRadius: 10,
+    overflow: 'visible', // Allow add button to overflow
   },
   tabContainer: {
     flexDirection: 'row',
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-around',
+    borderRadius: 40,
+    overflow: 'visible', // Don't clip overflow children (like addButton)
   },
   tabButton: {
     flex: 1,
@@ -491,27 +496,28 @@ const createCustomTabBarStyles = (theme) => StyleSheet.create({
   },
   focusedBackground: {
     position: 'absolute',
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   focusedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: theme.primary,
     marginTop: 4,
   },
   addButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -15,
+    marginTop: -35, // Move up more for overlapping look
+    zIndex: 10,
   },
   addButtonInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,
@@ -519,8 +525,8 @@ const createCustomTabBarStyles = (theme) => StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 6, // Thicker border to mask the bar behind it
+    borderColor: theme.isDarkMode ? '#1a1a1a' : '#ffffff', // Match the solid bar background
   },
 });
 

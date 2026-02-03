@@ -6,14 +6,15 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
-  Alert,
   StatusBar,
   ActivityIndicator,
   Platform,
   SafeAreaView,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -81,55 +82,49 @@ export default function BackupRestoreScreen({ navigation }) {
   }, [navigation]);
 
   const handleBackupNow = () => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Create Backup',
       'This will backup all your financial data to the cloud. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Backup',
-          onPress: () => {
-            setIsBackingUp(true);
-            // Simulate backup process
-            setTimeout(() => {
-              setIsBackingUp(false);
-              setBackupInfo(prev => ({
-                ...prev,
-                lastBackup: new Date().toLocaleString(),
-                backupSize: '2.6 MB',
-              }));
-              Alert.alert('Success', 'Backup completed successfully!');
-            }, 3000);
-          }
-        }
-      ]
+      () => {
+        setIsBackingUp(true);
+        // Simulate backup process
+        setTimeout(() => {
+          setIsBackingUp(false);
+          setBackupInfo(prev => ({
+            ...prev,
+            lastBackup: new Date().toLocaleString(),
+            backupSize: '2.6 MB',
+          }));
+          MessageService.showSuccess('Success', 'Backup completed successfully!');
+        }, 3000);
+      }
     );
   };
 
   const handleRestoreBackup = () => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Restore from Backup',
       'This will replace all current data with your backup. This action cannot be undone. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Restore',
-          style: 'destructive',
-          onPress: () => {
-            setIsRestoring(true);
-            // Simulate restore process
-            setTimeout(() => {
-              setIsRestoring(false);
-              Alert.alert('Success', 'Data restored successfully! Please restart the app.');
-            }, 4000);
-          }
-        }
-      ]
+      () => {
+        setIsRestoring(true);
+        // Simulate restore process
+        setTimeout(() => {
+          setIsRestoring(false);
+          MessageService.showSuccess('Success', 'Data restored successfully! Please restart the app.');
+        }, 4000);
+      },
+      () => { },
+      {
+        buttons: [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Restore', style: 'destructive' }
+        ]
+      }
     );
   };
 
   const handleChangeCloudProvider = () => {
-    Alert.alert(
+    MessageService.showCustomButtons(
       'Cloud Storage Provider',
       'Choose your preferred cloud storage service:',
       [
@@ -143,23 +138,32 @@ export default function BackupRestoreScreen({ navigation }) {
 
   const renderBackupStatus = () => (
     <Animated.View style={[styles.statusCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      {Platform.OS === 'android' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+      ) : (
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       <View style={styles.statusHeader}>
-        <Icon name="cloud-check" size={32} color="white" />
-        <Text style={styles.statusTitle}>Backup Status</Text>
+        <Icon name="cloud-check" size={32} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
+        <Text style={[styles.statusTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>Backup Status</Text>
       </View>
 
       <View style={styles.statusInfo}>
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Last Backup:</Text>
-          <Text style={styles.statusValue}>{backupInfo.lastBackup}</Text>
+          <Text style={[styles.statusLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Last Backup:</Text>
+          <Text style={[styles.statusValue, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{backupInfo.lastBackup}</Text>
         </View>
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Backup Size:</Text>
-          <Text style={styles.statusValue}>{backupInfo.backupSize}</Text>
+          <Text style={[styles.statusLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Backup Size:</Text>
+          <Text style={[styles.statusValue, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{backupInfo.backupSize}</Text>
         </View>
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Cloud Provider:</Text>
-          <Text style={styles.statusValue}>{backupInfo.cloudProvider}</Text>
+          <Text style={[styles.statusLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Cloud Provider:</Text>
+          <Text style={[styles.statusValue, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{backupInfo.cloudProvider}</Text>
         </View>
       </View>
     </Animated.View>
@@ -172,27 +176,36 @@ export default function BackupRestoreScreen({ navigation }) {
         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         isLoading && styles.disabledButton
       ]}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.actionLeft}>
           <View style={styles.actionIcon}>
             {isLoading ? (
-              <ActivityIndicator size="small" color="white" />
+              <ActivityIndicator size="small" color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
             ) : (
-              <Icon name={icon} size={22} color="white" />
+              <Icon name={icon} size={22} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
             )}
           </View>
           <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>{title}</Text>
-            <Text style={styles.actionSubtitle}>{subtitle}</Text>
+            <Text style={[styles.actionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
           </View>
         </View>
-        <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
+        <Icon name="chevron-right" size={20} color={theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)'} />
       </Animated.View>
     </TouchableOpacity>
   );
 
   const renderSection = (title, children) => (
     <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
       {children}
     </Animated.View>
   );
@@ -257,7 +270,7 @@ export default function BackupRestoreScreen({ navigation }) {
                 'Backup Schedule',
                 'Configure automatic backup frequency',
                 'calendar-clock',
-                () => Alert.alert('Coming Soon', 'Backup scheduling will be available soon!')
+                () => MessageService.showInfo('Coming Soon', 'Backup scheduling will be available soon!')
               )}
             </>
           ))}
@@ -309,7 +322,7 @@ const createStyles = (theme) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
   },
   headerSpacer: {
     width: 40,
@@ -322,12 +335,12 @@ const createStyles = (theme) => StyleSheet.create({
     paddingBottom: 40,
   },
   statusCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 25,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   statusHeader: {
     flexDirection: 'row',
@@ -337,7 +350,6 @@ const createStyles = (theme) => StyleSheet.create({
   statusTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'white',
     marginLeft: 12,
   },
   statusInfo: {
@@ -350,12 +362,10 @@ const createStyles = (theme) => StyleSheet.create({
   },
   statusLabel: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
   },
   statusValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
   },
   section: {
     marginBottom: 25,
@@ -363,19 +373,18 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'white',
     marginBottom: 15,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   disabledButton: {
     opacity: 0.6,
@@ -400,12 +409,10 @@ const createStyles = (theme) => StyleSheet.create({
   actionTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: 'white',
     marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
   },
   progressContainer: {
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -419,7 +426,7 @@ const createStyles = (theme) => StyleSheet.create({
   progressText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
     textAlign: 'center',
     marginTop: 15,
   },

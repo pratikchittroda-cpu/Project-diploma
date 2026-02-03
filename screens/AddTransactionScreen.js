@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Alert,
   ActivityIndicator,
   StatusBar,
   Modal,
@@ -19,10 +18,11 @@ import {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcons, Icon } from '../constants/Icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
+import MessageService from '../services/MessageService';
 
 export default function AddTransactionScreen({ navigation, route }) {
   const { theme } = useTheme();
@@ -90,10 +90,10 @@ export default function AddTransactionScreen({ navigation, route }) {
 
   const personalCategories = {
     expense: [
-      { id: 'food', name: 'Food & Dining', icon: 'food' },
+      { id: 'food', name: 'Food & Dining', icon: 'hamburger' },
       { id: 'transport', name: 'Transportation', icon: 'car' },
       { id: 'shopping', name: 'Shopping', icon: 'shopping' },
-      { id: 'entertainment', name: 'Entertainment', icon: 'movie' },
+      { id: 'entertainment', name: 'Entertainment', icon: 'movie-open' },
       { id: 'bills', name: 'Bills & Utilities', icon: 'receipt' },
       { id: 'health', name: 'Healthcare', icon: 'medical-bag' },
       { id: 'education', name: 'Education', icon: 'school' },
@@ -111,17 +111,17 @@ export default function AddTransactionScreen({ navigation, route }) {
 
   const handleSubmit = async () => {
     if (!amount || !description || !selectedCategory) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      MessageService.showError('Missing Fields', 'Please fill in all required fields');
       return;
     }
 
     if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      MessageService.showError('Invalid Amount', 'Please enter a valid amount');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to add transactions');
+      MessageService.showError('Auth Error', 'You must be logged in to add transactions');
       return;
     }
 
@@ -170,29 +170,20 @@ export default function AddTransactionScreen({ navigation, route }) {
           maximumFractionDigits: 0,
         }).format(parseFloat(amount));
 
-        Alert.alert(
-          'Success!',
-          `Great job, ${userData?.fullName || 'User'}! Your ${selectedType === 'income' ? 'income' : 'expense'} of ${formattedAmount} has been added successfully.`,
-          [
-            {
-              text: 'Add Another',
-              onPress: () => {
-                setAmount('');
-                setDescription('');
-                setSelectedCategory('food');
-              }
-            },
-            {
-              text: 'Done',
-              onPress: () => navigation.goBack()
-            }
-          ]
+        // Clear fields immediately so the form is ready for next input
+        setAmount('');
+        setDescription('');
+        setSelectedCategory(selectedType === 'expense' ? 'food' : 'salary');
+
+        MessageService.showSuccess(
+          'Transaction Added!',
+          `Your ${selectedType} of ${formattedAmount} has been saved.`
         );
       } else {
-        Alert.alert('Error', result.error || 'Failed to save transaction. Please try again.');
+        MessageService.showError('Error', result.error || 'Failed to save transaction');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      MessageService.showError('Error', 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }

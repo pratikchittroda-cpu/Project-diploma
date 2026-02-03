@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -299,13 +300,22 @@ export default function CompanyDashboardScreen({ navigation }) {
 
   const renderOverviewCard = () => (
     <Animated.View style={[styles.overviewCard, { opacity: fadeAnim, transform: [{ scale: cardScale }] }]}>
+      {Platform.OS === 'android' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+      ) : (
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       <View style={styles.overviewHeader}>
-        <Text style={styles.overviewTitle}>Total Revenue</Text>
+        <Text style={[styles.overviewTitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }]}>Total Revenue</Text>
         <TouchableOpacity>
-          <Icon name="eye-outline" size={20} color="rgba(255,255,255,0.8)" />
+          <Icon name="eye-outline" size={20} color={theme.isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.6)"} />
         </TouchableOpacity>
       </View>
-      <Text style={styles.balanceAmount}>{formatCurrency(dashboardStats.totalRevenue)}</Text>
+      <Text style={[styles.balanceAmount, { color: 'white' }]}>{formatCurrency(dashboardStats.totalRevenue)}</Text>
 
       <View style={styles.incomeExpenseRow}>
         <View style={styles.incomeExpenseItem}>
@@ -313,7 +323,7 @@ export default function CompanyDashboardScreen({ navigation }) {
             <Icon name="trending-up" size={20} color="#4CAF50" />
           </View>
           <View>
-            <Text style={styles.incomeExpenseLabel}>Net Profit</Text>
+            <Text style={[styles.incomeExpenseLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Net Profit</Text>
             <Text style={styles.incomeAmount}>{formatCurrency(dashboardStats.netProfit)}</Text>
           </View>
         </View>
@@ -322,7 +332,7 @@ export default function CompanyDashboardScreen({ navigation }) {
             <Icon name="arrow-down-circle" size={20} color="#FF5252" />
           </View>
           <View>
-            <Text style={styles.incomeExpenseLabel}>Expenses</Text>
+            <Text style={[styles.incomeExpenseLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Expenses</Text>
             <Text style={styles.expenseAmount}>{formatCurrency(dashboardStats.monthlyExpenses)}</Text>
           </View>
         </View>
@@ -353,8 +363,8 @@ export default function CompanyDashboardScreen({ navigation }) {
       </View>
 
       <View style={styles.transactionDetails}>
-        <Text style={styles.transactionDescription}>{transaction.description}</Text>
-        <Text style={styles.transactionCategory}>
+        <Text style={[styles.transactionDescription, { color: 'white' }]}>{transaction.description}</Text>
+        <Text style={[styles.transactionCategory, { color: theme.isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>
           {transaction.category} • {transaction.department || 'General'} • {transaction.date}
         </Text>
       </View>
@@ -385,14 +395,14 @@ export default function CompanyDashboardScreen({ navigation }) {
           {/* Header */}
           <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
             <View>
-              <Text style={styles.greeting}>Good Morning!</Text>
-              <Text style={styles.userName}>{userData?.companyName || 'Company Dashboard'}</Text>
+              <Text style={[styles.greeting, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }]}>Good Morning!</Text>
+              <Text style={[styles.userName, { color: 'white' }]}>{userData?.companyName || 'Company Dashboard'}</Text>
             </View>
             <TouchableOpacity
               style={styles.profileButton}
               onPress={handleProfilePress}
             >
-              <Icon name="account-circle" size={40} color="rgba(255,255,255,0.9)" />
+              <Icon name="account-circle" size={40} color={theme.isDarkMode ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)"} />
             </TouchableOpacity>
           </Animated.View>
 
@@ -413,7 +423,7 @@ export default function CompanyDashboardScreen({ navigation }) {
 
             {/* Recent Actions Section */}
             <Animated.View style={[styles.sectionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <Text style={[styles.sectionTitle, { color: 'white' }]}>Quick Actions</Text>
               <View style={styles.recentActionsGrid}>
                 {recentActions.map((action) => (
                   <TouchableOpacity
@@ -432,10 +442,16 @@ export default function CompanyDashboardScreen({ navigation }) {
                       }
                     }}
                   >
+                    <BlurView
+                      intensity={theme.isDarkMode ? 30 : 60}
+                      tint={theme.isDarkMode ? 'dark' : 'light'}
+                      experimentalBlurMethod="dimmer"
+                      style={StyleSheet.absoluteFill}
+                    />
                     <View style={[styles.actionIconContainer, { backgroundColor: `${action.color}20` }]}>
                       <Icon name={action.icon} size={24} color={action.color} />
                     </View>
-                    <Text style={styles.recentActionText}>{action.name}</Text>
+                    <Text style={[styles.recentActionText, { color: 'white' }]}>{action.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -444,13 +460,19 @@ export default function CompanyDashboardScreen({ navigation }) {
             {/* Recent Transactions Section */}
             <Animated.View style={[styles.sectionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Recent Transactions</Text>
+                <Text style={[styles.sectionTitle, { color: 'white' }]}>Recent Transactions</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('CompanyTransactions')}>
-                  <Text style={styles.seeAllText}>See All</Text>
+                  <Text style={[styles.seeAllText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }]}>See All</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.transactionsList}>
+                <BlurView
+                  intensity={theme.isDarkMode ? 30 : 60}
+                  tint={theme.isDarkMode ? 'dark' : 'light'}
+                  experimentalBlurMethod="dimmer"
+                  style={StyleSheet.absoluteFill}
+                />
                 {transactionsLoading ? (
                   <ActivityIndicator size="small" color="white" style={{ marginVertical: 20 }} />
                 ) : dashboardStats.recentTransactions.length > 0 ? (
@@ -458,7 +480,7 @@ export default function CompanyDashboardScreen({ navigation }) {
                     renderTransactionItem(transaction, index)
                   )
                 ) : (
-                  <Text style={styles.emptyText}>
+                  <Text style={[styles.emptyText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
                     No transactions yet. Add your first one!
                   </Text>
                 )}
@@ -524,12 +546,12 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Overview Card
   overviewCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
     marginBottom: 25,
+    overflow: 'hidden',
   },
   overviewHeader: {
     flexDirection: 'row',
@@ -612,12 +634,12 @@ const createStyles = (theme) => StyleSheet.create({
   },
   recentActionButton: {
     width: '48%',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
   },
   actionIconContainer: {
     width: 48,
@@ -635,11 +657,11 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Transactions List
   transactionsList: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 20,
     padding: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
   },
   transactionItem: {
     flexDirection: 'row',

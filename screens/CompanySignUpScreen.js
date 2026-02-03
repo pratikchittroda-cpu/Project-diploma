@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  Alert,
   ActivityIndicator,
   StatusBar,
   SafeAreaView,
@@ -15,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -102,23 +102,23 @@ export default function CompanySignUpScreen({ navigation }) {
     const { companyName, email, password, confirmPassword, contactPerson, phone } = formData;
 
     if (!companyName || !email || !password || !confirmPassword || !contactPerson || !phone) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      MessageService.showError('Missing Fields', 'Please fill in all required fields');
       return false;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      MessageService.showError('Error', 'Passwords do not match');
       return false;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      MessageService.showError('Error', 'Password must be at least 6 characters long');
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      MessageService.showError('Error', 'Please enter a valid email address');
       return false;
     }
 
@@ -142,14 +142,14 @@ export default function CompanySignUpScreen({ navigation }) {
       const result = await signUp(formData.email, formData.password, additionalData);
 
       if (result.success) {
-        Alert.alert('Success!', 'Company account created successfully!', [
-          { text: 'OK', onPress: () => navigation.replace('CompanyDashboard') }
-        ]);
+        MessageService.showSuccess('Success!', 'Company account created successfully!', {
+          onDismiss: () => navigation.replace('CompanyDashboard')
+        });
       } else {
-        Alert.alert('Registration Failed', result.error || 'Failed to create account');
+        MessageService.showError('Registration Failed', result.error || 'Failed to create account');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      MessageService.showError('Error', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }

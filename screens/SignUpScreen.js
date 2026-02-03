@@ -9,13 +9,13 @@ import {
   Dimensions,
   ActivityIndicator,
   StatusBar,
-  SafeAreaView,
-  Alert
+  SafeAreaView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import MessageService from '../services/MessageService';
 
 
 const { width, height } = Dimensions.get('window');
@@ -24,7 +24,7 @@ export default function SignUpScreen({ navigation, route }) {
   const { theme, isLoading: themeLoading } = useTheme();
   const { signUp } = useAuth();
   const testData = route?.params?.testData;
-  
+
   const [fullName, setFullName] = useState(testData?.fullName || '');
   const [email, setEmail] = useState(testData?.email || '');
   const [password, setPassword] = useState(testData?.password || '');
@@ -93,48 +93,39 @@ export default function SignUpScreen({ navigation, route }) {
   }, [navigation]);
 
   const handleSignUp = async () => {
-    console.log('SignUp button pressed');
-    
     if (!fullName || !email || !password || !confirmPassword) {
-      console.log('Missing fields');
-      Alert.alert('Error', 'Please fill in all fields');
+      MessageService.showError('Missing Fields', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      console.log('Passwords do not match');
-      Alert.alert('Error', 'Passwords do not match');
+      MessageService.showError('Error', 'Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      console.log('Password too short');
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      MessageService.showError('Error', 'Password must be at least 6 characters long');
       return;
     }
 
-    console.log('Starting signup process...');
     setIsLoading(true);
-    
+
     try {
       const result = await signUp(email, password, {
         fullName,
         userType: 'personal',
         profileComplete: false
       });
-      
-      console.log('Signup result:', result);
-      
+
       if (result.success) {
-        Alert.alert('Success!', 'Account created successfully. You are now signed in!', [
-          { text: 'OK', onPress: () => navigation.replace('Dashboard') }
-        ]);
+        MessageService.showSuccess('Success!', 'Account created successfully!', {
+          onDismiss: () => navigation.replace('Dashboard')
+        });
       } else {
-        Alert.alert('Sign Up Failed', result.error || 'Please try again.');
+        MessageService.showError('Sign Up Failed', result.error || 'Please try again.');
       }
     } catch (error) {
-      console.error('Signup error:', error);
-      Alert.alert('Sign Up Error', 'An unexpected error occurred. Please try again.');
+      MessageService.showError('Sign Up Error', 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
@@ -154,143 +145,143 @@ export default function SignUpScreen({ navigation, route }) {
           colors={[theme.primary, theme.primaryLight]}
           style={styles.background}
         >
-        {/* Header */}
-        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
-            <Icon name="finance" size={60} color="white" />
+          {/* Header */}
+          <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+            <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
+              <Icon name="finance" size={60} color="white" />
+            </Animated.View>
+            <Text style={styles.appName}>Expenzo</Text>
+            <Text style={styles.tagline}>Track. Save. Succeed.</Text>
           </Animated.View>
-          <Text style={styles.appName}>Expenzo</Text>
-          <Text style={styles.tagline}>Track. Save. Succeed.</Text>
-        </Animated.View>
 
-        {/* Sign Up Form */}
-        <Animated.View
-          style={[
-            styles.formContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
-        >
-          <View style={styles.formContent}>
-            <Text style={styles.welcomeText}>Create Account</Text>
-            <Text style={styles.subtitle}>Sign up to get started</Text>
+          {/* Sign Up Form */}
+          <Animated.View
+            style={[
+              styles.formContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            <View style={styles.formContent}>
+              <Text style={styles.welcomeText}>Create Account</Text>
+              <Text style={styles.subtitle}>Sign up to get started</Text>
 
-            {/* Full Name Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="account-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Full Name"
-                placeholderTextColor={theme.placeholderText}
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-                autoCorrect={false}
-              />
-            </View>
-
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="email-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={theme.placeholderText}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="lock-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={theme.placeholderText}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Icon
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={20}
-                  color={theme.textSecondary}
+              {/* Full Name Input */}
+              <View style={styles.inputContainer}>
+                <Icon name="account-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name"
+                  placeholderTextColor={theme.placeholderText}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
                 />
-              </TouchableOpacity>
-            </View>
+              </View>
 
-            {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="lock-check-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                placeholderTextColor={theme.placeholderText}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeIcon}
-              >
-                <Icon
-                  name={showConfirmPassword ? "eye-off" : "eye"}
-                  size={20}
-                  color={theme.textSecondary}
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Icon name="email-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor={theme.placeholderText}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-              </TouchableOpacity>
-            </View>
+              </View>
 
-            {/* Sign Up Button */}
-            <TouchableOpacity
-              style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]}
-              onPress={handleSignUp}
-              disabled={isLoading}
-            >
-              <LinearGradient
-                colors={[theme.primary, theme.primaryLight]}
-                style={styles.gradientButton}
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <Icon name="lock-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor={theme.placeholderText}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Icon
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={theme.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Confirm Password Input */}
+              <View style={styles.inputContainer}>
+                <Icon name="lock-check-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm Password"
+                  placeholderTextColor={theme.placeholderText}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Icon
+                    name={showConfirmPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={theme.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Sign Up Button */}
+              <TouchableOpacity
+                style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]}
+                onPress={handleSignUp}
+                disabled={isLoading}
               >
-                {isLoading ? (
-                  <Animated.View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
-                    <Text style={styles.signUpButtonText}>Creating Account...</Text>
-                  </Animated.View>
-                ) : (
-                  <Text style={styles.signUpButtonText}>Sign Up</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Sign In */}
-            <View style={styles.signInContainer}>
-              <Text style={styles.signInText}>Already have an account? </Text>
-              <TouchableOpacity onPress={handleSignIn}>
-                <Text style={styles.signInLink}>Sign In</Text>
+                <LinearGradient
+                  colors={[theme.primary, theme.primaryLight]}
+                  style={styles.gradientButton}
+                >
+                  {isLoading ? (
+                    <Animated.View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+                      <Text style={styles.signUpButtonText}>Creating Account...</Text>
+                    </Animated.View>
+                  ) : (
+                    <Text style={styles.signUpButtonText}>Sign Up</Text>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Sign In */}
+              <View style={styles.signInContainer}>
+                <Text style={styles.signInText}>Already have an account? </Text>
+                <TouchableOpacity onPress={handleSignIn}>
+                  <Text style={styles.signInLink}>Sign In</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
         </LinearGradient>
       </View>
     </SafeAreaView>

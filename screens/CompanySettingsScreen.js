@@ -7,10 +7,10 @@ import {
   Animated,
   TouchableOpacity,
   Switch,
-  Alert,
   StatusBar,
   TextInput,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -38,26 +38,26 @@ export default function CompanySettingsScreen({ navigation }) {
     try {
       const recentActions = await AsyncStorage.getItem('companyRecentActions');
       let actions = recentActions ? JSON.parse(recentActions) : [];
-      
+
       const screenData = {
         id: 'CompanySettings',
         title: 'Company Settings',
         icon: 'cog',
         timestamp: Date.now(),
       };
-      
+
       actions = actions.filter(action => action.id !== screenData.id);
       actions.unshift(screenData);
       actions = actions.slice(0, 4);
-      
+
       await AsyncStorage.setItem('companyRecentActions', JSON.stringify(actions));
     } catch (error) {
-      }
+    }
   };
 
   useEffect(() => {
     trackScreenVisit();
-    
+
     // Entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -85,34 +85,27 @@ export default function CompanySettingsScreen({ navigation }) {
   };
 
   const handleResetSettings = () => {
-    Alert.alert(
-      'Reset Company Settings',
+    MessageService.showConfirm(
+      'Reset Settings',
       'Are you sure you want to reset all company settings to default?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => {
-            setCompanySettings({
-              autoReports: true,
-              employeeNotifications: true,
-              budgetAlerts: true,
-              expenseApproval: false,
-              dataRetention: '12',
-              backupFrequency: 'weekly',
-              multiCurrency: false,
-              auditLogging: true,
-            });
-            Alert.alert('Settings Reset', 'All company settings have been reset to default values.');
-          }
-        }
-      ]
+      () => {
+        setCompanySettings({
+          autoReports: true,
+          employeeNotifications: true,
+          budgetAlerts: true,
+          expenseApproval: false,
+          dataRetention: '12',
+          backupFrequency: 'weekly',
+          multiCurrency: false,
+          auditLogging: true,
+        });
+        MessageService.showSuccess('Settings Reset', 'All company settings have been reset.');
+      }
     );
   };
 
   const handleBackupFrequencyChange = () => {
-    Alert.alert(
+    MessageService.showCustomButtons(
       'Backup Frequency',
       'How often should company data be backed up?',
       [
@@ -217,7 +210,7 @@ export default function CompanySettingsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {renderHeader()}
-      
+
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}

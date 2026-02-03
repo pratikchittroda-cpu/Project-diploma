@@ -9,11 +9,11 @@ import {
     ActivityIndicator,
     StatusBar,
     TextInput,
-    Alert,
     RefreshControl,
     SafeAreaView,
     Platform,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -170,22 +170,24 @@ export default function CompanyTransactionsScreen({ navigation }) {
     }, [transactions, selectedFilter, searchQuery, theme]);
 
     const handleDeleteTransaction = async (transactionId) => {
-        Alert.alert(
+        MessageService.showConfirm(
             'Delete Transaction',
             'Are you sure you want to delete this transaction?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        const result = await deleteTransaction(transactionId);
-                        if (!result.success) {
-                            Alert.alert('Error', result.error || 'Failed to delete transaction');
-                        }
-                    }
+            async () => {
+                const result = await deleteTransaction(transactionId);
+                if (!result.success) {
+                    MessageService.showError('Error', result.error || 'Failed to delete transaction');
+                } else {
+                    MessageService.showSuccess('Deleted', 'Transaction has been removed');
                 }
-            ]
+            },
+            () => { },
+            {
+                buttons: [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive' }
+                ]
+            }
         );
     };
 

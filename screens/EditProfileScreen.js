@@ -7,12 +7,12 @@ import {
   StyleSheet,
   Animated,
   ScrollView,
-  Alert,
   ActivityIndicator,
   StatusBar,
   SafeAreaView,
   Platform,
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -61,7 +61,7 @@ export default function EditProfileScreen({ navigation }) {
 
   const handleSave = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
+      MessageService.showError('Error', 'Please enter your full name');
       return;
     }
 
@@ -77,21 +77,18 @@ export default function EditProfileScreen({ navigation }) {
       const result = await updateUserProfile(profileData);
 
       if (result.success) {
-        Alert.alert(
+        MessageService.showSuccess(
           'Success!',
           'Your profile has been updated successfully.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack()
-            }
-          ]
+          {
+            onDismiss: () => navigation.goBack()
+          }
         );
       } else {
-        Alert.alert('Error', result.error || 'Failed to update profile. Please try again.');
+        MessageService.showError('Error', result.error || 'Failed to update profile.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      MessageService.showError('Error', 'Failed to update profile.');
     } finally {
       setIsSubmitting(false);
     }

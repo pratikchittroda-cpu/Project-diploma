@@ -45,6 +45,8 @@ export const useThemedMessageBox = () => {
       type: 'error',
       title,
       message,
+      autoHide: true,
+      autoHideDelay: 5000,
       animationType: 'slide',
       ...options,
     });
@@ -55,6 +57,8 @@ export const useThemedMessageBox = () => {
       type: 'warning',
       title,
       message,
+      autoHide: true,
+      autoHideDelay: 4000,
       ...options,
     });
   }, [showMessage]);
@@ -64,6 +68,8 @@ export const useThemedMessageBox = () => {
       type: 'info',
       title,
       message,
+      autoHide: true,
+      autoHideDelay: 3000,
       ...options,
     });
   }, [showMessage]);
@@ -81,6 +87,27 @@ export const useThemedMessageBox = () => {
         },
         {
           text: 'Confirm',
+          onPress: onConfirm,
+        },
+      ],
+      ...options,
+    });
+  }, [showMessage]);
+
+  const showPrompt = useCallback((title, message, onConfirm, onCancel, options = {}) => {
+    showMessage({
+      type: 'confirm',
+      title,
+      message,
+      showInput: true,
+      buttons: [
+        {
+          text: options.cancelButtonText || 'Cancel',
+          style: 'cancel',
+          onPress: onCancel,
+        },
+        {
+          text: options.confirmButtonText || 'OK',
           onPress: onConfirm,
         },
       ],
@@ -107,6 +134,7 @@ export const useThemedMessageBox = () => {
     showWarning,
     showInfo,
     showConfirm,
+    showPrompt,
     showCustom,
     hideMessage,
   };

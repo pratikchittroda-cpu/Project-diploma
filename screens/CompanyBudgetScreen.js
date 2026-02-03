@@ -10,7 +10,6 @@ import {
   StatusBar,
   Modal,
   TextInput,
-  Alert,
   SafeAreaView,
   Platform
 } from 'react-native';
@@ -21,7 +20,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 import budgetService from '../services/budgetService';
-import { useThemedMessageBox } from '../hooks/useThemedMessageBox';
+import MessageService from '../services/MessageService';
 import UserTypeGuard from '../components/UserTypeGuard';
 import CircularProgress from '../components/budget/CircularProgress';
 
@@ -29,7 +28,6 @@ export default function CompanyBudgetScreen({ navigation }) {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { transactions } = useTransactions();
-  const { showSuccess, showError } = useThemedMessageBox();
 
   const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
   const [budgets, setBudgets] = useState([]);
@@ -188,7 +186,7 @@ export default function CompanyBudgetScreen({ navigation }) {
 
   const handleAddBudget = async () => {
     if (!budgetAmount || parseFloat(budgetAmount) <= 0) {
-      showError('Invalid Amount', 'Please enter a valid budget amount');
+      MessageService.showError('Invalid Amount', 'Please enter a valid budget amount');
       return;
     }
 
@@ -212,12 +210,12 @@ export default function CompanyBudgetScreen({ navigation }) {
         setBudgetCategory('office-supplies');
         setShowAddBudgetModal(false);
 
-        showSuccess('Success', 'Budget created successfully');
+        MessageService.showSuccess('Success', 'Budget created successfully');
       } else {
-        showError('Error', 'Failed to create budget');
+        MessageService.showError('Error', 'Failed to create budget');
       }
     } catch (error) {
-      showError('Error', 'An unexpected error occurred');
+      MessageService.showError('Error', 'An unexpected error occurred');
     }
   };
 

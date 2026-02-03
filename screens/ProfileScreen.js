@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Switch,
   ActivityIndicator,
   StatusBar,
@@ -16,9 +15,11 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import MessageService from '../services/MessageService';
 
 export default function ProfileScreen({ navigation, onClose }) {
   const { isDarkMode, theme, toggleTheme, isLoading } = useTheme();
@@ -180,21 +181,25 @@ export default function ProfileScreen({ navigation, onClose }) {
     navigation.navigate('BackupRestore');
   };
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: () => {
-          if (onClose) {
-            onClose();
-            setTimeout(() => navigation.navigate('UserType'), 500);
-          } else {
-            navigation.navigate('UserType');
-          }
-        },
+    MessageService.showConfirm(
+      'Logout',
+      'Are you sure you want to logout?',
+      () => {
+        if (onClose) {
+          onClose();
+          setTimeout(() => navigation.navigate('UserType'), 500);
+        } else {
+          navigation.navigate('UserType');
+        }
       },
-    ]);
+      () => { },
+      {
+        buttons: [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Logout', color: theme.error }
+        ]
+      }
+    );
   };
 
   // Render helpers
@@ -238,6 +243,15 @@ export default function ProfileScreen({ navigation, onClose }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Account Information</Text>
       <View style={styles.infoCard}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.infoItem}>
           <Icon name="account-outline" size={20} color={theme.primary} />
           <View style={styles.infoContent}>
@@ -274,6 +288,15 @@ export default function ProfileScreen({ navigation, onClose }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Account Management</Text>
       <TouchableOpacity style={styles.menuButton} onPress={handleEditProfile}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.blue }]}>
             <Icon name="account-edit" size={22} color={theme.info} />
@@ -283,6 +306,15 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.menuButton} onPress={handleSecuritySettings}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.green }]}>
             <Icon name="shield-check" size={22} color={theme.success} />
@@ -292,6 +324,15 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.menuButton} onPress={handleBackupRestore}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.purple }]}>
             <Icon name="backup-restore" size={22} color="#9C27B0" />
@@ -302,6 +343,15 @@ export default function ProfileScreen({ navigation, onClose }) {
       </TouchableOpacity>
       <Text style={[styles.sectionTitle, { marginTop: 25 }]}>Preferences</Text>
       <TouchableOpacity style={styles.menuButton} onPress={handleSettings}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.gray }]}>
             <Icon name="cog" size={22} color={theme.textSecondary} />
@@ -311,6 +361,15 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.menuButton} onPress={handleThemes}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.orange }]}>
             <Icon name="palette" size={22} color={theme.warning} />
@@ -320,6 +379,15 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <View style={styles.menuButton}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.blue }]}>
             <Icon name="bell" size={22} color={theme.info} />
@@ -334,6 +402,15 @@ export default function ProfileScreen({ navigation, onClose }) {
         />
       </View>
       <View style={styles.menuButton}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.gray }]}>
             <Icon name="theme-light-dark" size={22} color={theme.textSecondary} />
@@ -348,6 +425,15 @@ export default function ProfileScreen({ navigation, onClose }) {
         />
       </View>
       <TouchableOpacity style={[styles.menuButton, styles.logoutButton]} onPress={handleLogout}>
+        {Platform.OS === 'android' ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
+        ) : (
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.red }]}>
             <Icon name="logout" size={22} color={theme.error} />
@@ -480,6 +566,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 15,
     padding: 20,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
     elevation: 3,
@@ -501,6 +588,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
+    overflow: 'hidden',
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

@@ -7,14 +7,13 @@ import {
   Animated,
   TouchableOpacity,
   ActivityIndicator,
-  StatusBar,
-  Alert,
   TextInput,
   Modal,
   SafeAreaView,
   Platform,
   KeyboardAvoidingView
 } from 'react-native';
+import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -100,7 +99,7 @@ export default function TeamManagementScreen({ navigation }) {
       });
     } catch (error) {
       console.error('Error loading team data:', error);
-      Alert.alert('Error', 'Failed to load team data');
+      MessageService.showError('Error', 'Failed to load team data');
     } finally {
       setLoadingData(false);
     }
@@ -144,12 +143,12 @@ export default function TeamManagementScreen({ navigation }) {
 
   const handleCreateMember = async () => {
     if (!newMember.name || !newMember.role || !newMember.salary) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      MessageService.showError('Error', 'Please fill in all required fields');
       return;
     }
 
     if (!user?.uid) {
-      Alert.alert('Error', 'User not authenticated');
+      MessageService.showError('Error', 'User not authenticated');
       return;
     }
 
@@ -176,20 +175,20 @@ export default function TeamManagementScreen({ navigation }) {
       }));
       setShowAddMemberModal(false);
       setNewMember({ name: '', email: '', role: '', salary: '', department: '' });
-      Alert.alert('Success', 'Team member added and salary expense recorded!');
+      MessageService.showSuccess('Success', 'Team member added and salary recorded!');
     } else {
-      Alert.alert('Error', 'Failed to add member');
+      MessageService.showError('Error', 'Failed to add member');
     }
   };
 
   const handleCreateTeam = async () => {
     if (!newTeam.name || !newTeam.budget) {
-      Alert.alert('Error', 'Please fill in all fields');
+      MessageService.showError('Error', 'Please fill in all fields');
       return;
     }
 
     if (!user?.uid) {
-      Alert.alert('Error', 'User not authenticated');
+      MessageService.showError('Error', 'User not authenticated');
       return;
     }
 
@@ -209,7 +208,7 @@ export default function TeamManagementScreen({ navigation }) {
       setShowAddTeamModal(false);
       setNewTeam({ name: '', budget: '' });
     } else {
-      Alert.alert('Error', 'Failed to create team');
+      MessageService.showError('Error', 'Failed to create team');
     }
   };
 
@@ -238,38 +237,32 @@ export default function TeamManagementScreen({ navigation }) {
       setSelectedMember(null);
       setSalaryEdit('');
     } else {
-      Alert.alert('Error', 'Failed to update salary');
+      MessageService.showError('Error', 'Failed to update salary');
     }
   };
 
   const handleGenerateMonthlySalaries = async () => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Generate Monthly Salaries',
       `This will create salary expense transactions for all ${teamData.members.filter(m => m.status === 'active').length} active team members. Continue?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Generate',
-          onPress: async () => {
-            setLoadingData(true);
-            try {
-              const result = await teamService.checkAndCreateMonthlySalaries(user.uid);
-              if (result.success) {
-                Alert.alert(
-                  'Success',
-                  `Monthly salary expenses generated for ${result.results.filter(r => r.success).length} team members!`
-                );
-              } else {
-                Alert.alert('Error', result.error || 'Failed to generate salary expenses');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to generate salary expenses');
-            } finally {
-              setLoadingData(false);
-            }
+      async () => {
+        setLoadingData(true);
+        try {
+          const result = await teamService.checkAndCreateMonthlySalaries(user.uid);
+          if (result.success) {
+            MessageService.showSuccess(
+              'Success',
+              `Monthly salary expenses generated for ${result.results.filter(r => r.success).length} team members!`
+            );
+          } else {
+            MessageService.showError('Error', result.error || 'Failed to generate salary expenses');
           }
+        } catch (error) {
+          MessageService.showError('Error', 'Failed to generate salary expenses');
+        } finally {
+          setLoadingData(false);
         }
-      ]
+      }
     );
   };
 

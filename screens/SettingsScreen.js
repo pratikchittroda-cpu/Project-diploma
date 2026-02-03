@@ -7,14 +7,15 @@ import {
   Animated,
   TouchableOpacity,
   Switch,
-  Alert,
   StatusBar,
   SafeAreaView,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
+import MessageService from '../services/MessageService';
 
 export default function SettingsScreen({ navigation }) {
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -53,45 +54,54 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const handleResetSettings = () => {
-    Alert.alert(
+    MessageService.showConfirm(
       'Reset Settings',
       'Are you sure you want to reset all settings to default?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => {
-            setSettings({
-              notifications: true,
-              emailReports: true,
-              biometricAuth: false,
-              autoBackup: true,
-              soundEffects: true,
-              hapticFeedback: true,
-            });
-            Alert.alert('Settings Reset', 'All settings have been reset to default values.');
-          }
-        }
-      ]
+      () => {
+        setSettings({
+          notifications: true,
+          emailReports: true,
+          biometricAuth: false,
+          autoBackup: true,
+          soundEffects: true,
+          hapticFeedback: true,
+        });
+        MessageService.showSuccess('Settings Reset', 'All settings have been reset to default values.');
+      },
+      () => { },
+      {
+        buttons: [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Reset', color: '#FF5252' }
+        ]
+      }
     );
   };
 
   const renderSettingItem = (title, subtitle, icon, setting) => (
     <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      {Platform.OS === 'android' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+      ) : (
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       <View style={styles.settingLeft}>
-        <View style={styles.settingIcon}>
+        <View style={[styles.settingIcon, { backgroundColor: theme.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
           <Icon name={icon} size={22} color="white" />
         </View>
         <View style={styles.settingContent}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          <Text style={styles.settingSubtitle}>{subtitle}</Text>
+          <Text style={[styles.settingTitle, { color: 'white' }]}>{title}</Text>
+          <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
         </View>
       </View>
       <Switch
         value={settings[setting]}
         onValueChange={(value) => handleSettingChange(setting, value)}
-        trackColor={{ false: 'rgba(255,255,255,0.3)', true: 'rgba(255,255,255,0.5)' }}
+        trackColor={{ false: theme.isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', true: theme.primary }}
         thumbColor={settings[setting] ? '#fff' : '#f4f3f4'}
       />
     </Animated.View>
@@ -99,7 +109,7 @@ export default function SettingsScreen({ navigation }) {
 
   const renderSection = (title, children) => (
     <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: 'white' }]}>{title}</Text>
       {children}
     </Animated.View>
   );
@@ -122,7 +132,7 @@ export default function SettingsScreen({ navigation }) {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Icon name="arrow-left" size={24} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={[styles.headerTitle, { color: 'white' }]}>Settings</Text>
           <TouchableOpacity style={styles.resetButton} onPress={handleResetSettings}>
             <Icon name="refresh" size={24} color="white" />
           </TouchableOpacity>
@@ -186,19 +196,25 @@ export default function SettingsScreen({ navigation }) {
 
           {renderSection('Appearance', (
             <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+              <BlurView
+                intensity={theme.isDarkMode ? 30 : 60}
+                tint={theme.isDarkMode ? 'dark' : 'light'}
+                experimentalBlurMethod="dimmer"
+                style={StyleSheet.absoluteFill}
+              />
               <View style={styles.settingLeft}>
-                <View style={styles.settingIcon}>
+                <View style={[styles.settingIcon, { backgroundColor: theme.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
                   <Icon name="theme-light-dark" size={22} color="white" />
                 </View>
                 <View style={styles.settingContent}>
-                  <Text style={styles.settingTitle}>Dark Mode</Text>
-                  <Text style={styles.settingSubtitle}>Switch between light and dark themes</Text>
+                  <Text style={[styles.settingTitle, { color: 'white' }]}>Dark Mode</Text>
+                  <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Switch between light and dark themes</Text>
                 </View>
               </View>
               <Switch
                 value={isDarkMode}
                 onValueChange={toggleTheme}
-                trackColor={{ false: 'rgba(255,255,255,0.3)', true: 'rgba(255,255,255,0.5)' }}
+                trackColor={{ false: theme.isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', true: theme.primary }}
                 thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
               />
             </Animated.View>
@@ -272,12 +288,12 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
   },
   settingLeft: {
     flexDirection: 'row',
@@ -288,7 +304,6 @@ const createStyles = (theme) => StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,

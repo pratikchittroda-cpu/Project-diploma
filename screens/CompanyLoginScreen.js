@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  Alert,
   ActivityIndicator,
   StatusBar,
   SafeAreaView
@@ -16,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import MessageService from '../services/MessageService';
 
 
 // Get screen dimensions
@@ -24,7 +24,7 @@ const { width, height } = screenDimensions;
 
 export default function CompanyLoginScreen({ navigation }) {
   const { theme, isLoading: themeLoading } = useTheme();
-  const { signIn, loading: authLoading } = useAuth();
+  const { signIn, resetPassword, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -93,7 +93,7 @@ export default function CompanyLoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      MessageService.showError('Missing Fields', 'Please fill in all fields');
       return;
     }
 
@@ -107,7 +107,7 @@ export default function CompanyLoginScreen({ navigation }) {
 
         // Check if user is company type
         if (userData?.userType !== 'company') {
-          Alert.alert('Access Denied', 'This account is not registered as a Company account. Please use the Personal login or create a Company account.');
+          MessageService.showError('Access Denied', 'This account is not registered as a Company account.');
           setIsLoading(false);
           return;
         }
@@ -119,67 +119,58 @@ export default function CompanyLoginScreen({ navigation }) {
 
         if (result.error) {
           if (result.error.includes('auth/invalid-credential')) {
-            errorMessage = 'Invalid email or password. Please check your credentials.';
+            errorMessage = 'Invalid email or password.';
           } else if (result.error.includes('auth/user-not-found')) {
-            errorMessage = 'No company account found with this email. Please sign up first.';
+            errorMessage = 'No company account found with this email.';
           } else if (result.error.includes('auth/wrong-password')) {
-            errorMessage = 'Incorrect password. Please try again.';
+            errorMessage = 'Incorrect password.';
           } else if (result.error.includes('auth/invalid-email')) {
             errorMessage = 'Please enter a valid email address.';
-          } else if (result.error.includes('auth/user-disabled')) {
-            errorMessage = 'This account has been disabled. Please contact support.';
-          } else if (result.error.includes('auth/too-many-requests')) {
-            errorMessage = 'Too many failed attempts. Please try again later.';
           } else {
             errorMessage = result.error;
           }
         }
 
-        Alert.alert('Login Failed', errorMessage);
-        }
+        MessageService.showError('Login Failed', errorMessage);
+      }
     } catch (error) {
-      Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
-      } finally {
+      MessageService.showError('Login Error', 'An unexpected error occurred.');
+    } finally {
       setIsLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    Alert.prompt(
+    MessageService.showPrompt(
       'Reset Password',
       'Enter your company email address to receive a password reset link:',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Send Reset Email',
-          onPress: async (email) => {
-            if (!email || !email.includes('@')) {
-              Alert.alert('Error', 'Please enter a valid email address');
-              return;
-            }
+      async (email) => {
+        if (!email || !email.includes('@')) {
+          MessageService.showError('Error', 'Please enter a valid email address');
+          return;
+        }
 
-            try {
-              setIsLoading(true);
-              // Implement password reset logic here
-              Alert.alert(
-                'Success!',
-                'Password reset email sent! Check your inbox and follow the instructions to reset your password.',
-                [{ text: 'OK' }]
-              );
-            } catch (error) {
-              Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      '',
-      'email-address'
+        try {
+          setIsLoading(true);
+          const result = await resetPassword(email);
+
+          if (result.success) {
+            MessageService.showSuccess('Success!', 'Password reset email sent! Check your inbox.');
+          } else {
+            MessageService.showError('Error', result.error || 'Failed to send reset email.');
+          }
+        } catch (error) {
+          MessageService.showError('Error', 'An unexpected error occurred.');
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      () => { },
+      {
+        placeholder: 'Company Email',
+        keyboardType: 'email-address',
+        confirmButtonText: 'Send Reset Email'
+      }
     );
   };
 
@@ -193,118 +184,118 @@ export default function CompanyLoginScreen({ navigation }) {
           colors={[theme.primary, theme.primaryLight]}
           style={styles.background}
         >
-        {/* Header */}
-        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-left" size={24} color="white" />
-          </TouchableOpacity>
-          <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
-            <Icon name="office-building" size={60} color="white" />
-          </Animated.View>
-          <Text style={styles.appName}>Expenzo Business</Text>
-          <Text style={styles.tagline}>Manage. Analyze. Grow.</Text>
-        </Animated.View>
-
-        {/* Login Form */}
-        <Animated.View
-          style={[
-            styles.formContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
-        >
-          <Text style={styles.welcomeText}>Welcome Back!</Text>
-          <Text style={styles.subtitle}>Sign in to your business account</Text>
-
-          {/* Email Input */}
-          <View style={styles.inputContainer}>
-            <Icon name="email-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Company Email"
-              placeholderTextColor={theme.placeholderText}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-              blurOnSubmit={false}
-            />
-          </View>
-
-          {/* Password Input */}
-          <View style={styles.inputContainer}>
-            <Icon name="lock-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={theme.placeholderText}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
+          {/* Header */}
+          <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
             <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
             >
-              <Icon
-                name={showPassword ? "eye-off" : "eye"}
-                size={20}
-                color={theme.textSecondary}
-              />
+              <Icon name="arrow-left" size={24} color="white" />
             </TouchableOpacity>
-          </View>
+            <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
+              <Icon name="office-building" size={60} color="white" />
+            </Animated.View>
+            <Text style={styles.appName}>Expenzo Business</Text>
+            <Text style={styles.tagline}>Manage. Analyze. Grow.</Text>
+          </Animated.View>
 
-          {/* Forgot Password */}
-          <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          {/* Login Button */}
-          <TouchableOpacity
-            style={[styles.loginButton, (isLoading || authLoading) && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading || authLoading}
+          {/* Login Form */}
+          <Animated.View
+            style={[
+              styles.formContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
           >
-            <LinearGradient
-              colors={[theme.primary, theme.primaryLight]}
-              style={styles.gradientButton}
-            >
-              {(isLoading || authLoading) ? (
-                <Animated.View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
-                  <Text style={styles.loginButtonText}>Signing In...</Text>
-                </Animated.View>
-              ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+            <Text style={styles.welcomeText}>Welcome Back!</Text>
+            <Text style={styles.subtitle}>Sign in to your business account</Text>
 
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
+            {/* Email Input */}
+            <View style={styles.inputContainer}>
+              <Icon name="email-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Company Email"
+                placeholderTextColor={theme.placeholderText}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                blurOnSubmit={false}
+              />
+            </View>
 
-          {/* Sign Up */}
-          <View style={styles.signUpContainer}>
-            <Text style={styles.signUpText}>Don't have a company account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('CompanyRegister')}>
-              <Text style={styles.signUpLink}>Sign Up</Text>
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Icon name="lock-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={theme.placeholderText}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Icon
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color={theme.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Forgot Password */}
+            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
-          </View>
-        </Animated.View>
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[styles.loginButton, (isLoading || authLoading) && styles.loginButtonDisabled]}
+              onPress={handleLogin}
+              disabled={isLoading || authLoading}
+            >
+              <LinearGradient
+                colors={[theme.primary, theme.primaryLight]}
+                style={styles.gradientButton}
+              >
+                {(isLoading || authLoading) ? (
+                  <Animated.View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+                    <Text style={styles.loginButtonText}>Signing In...</Text>
+                  </Animated.View>
+                ) : (
+                  <Text style={styles.loginButtonText}>Sign In</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Sign Up */}
+            <View style={styles.signUpContainer}>
+              <Text style={styles.signUpText}>Don't have a company account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('CompanyRegister')}>
+                <Text style={styles.signUpLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
         </LinearGradient>
       </View>
     </SafeAreaView>

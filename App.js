@@ -2,6 +2,7 @@ import { View, ActivityIndicator, StatusBar } from 'react-native';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
+import MessageBoxProvider from './components/MessageBoxProvider';
 
 const AppContent = () => {
   const { isLoading, theme } = useTheme();
@@ -42,7 +43,9 @@ export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <AppContent />
+        <MessageBoxProvider>
+          <AppContent />
+        </MessageBoxProvider>
       </ThemeProvider>
     </AuthProvider>
   );
