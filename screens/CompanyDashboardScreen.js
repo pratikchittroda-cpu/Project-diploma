@@ -548,8 +548,7 @@ const createStyles = (theme) => StyleSheet.create({
   overviewCard: {
     borderRadius: 24,
     padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     marginBottom: 25,
     overflow: 'hidden',
   },
@@ -637,8 +636,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
     overflow: 'hidden',
   },
   actionIconContainer: {
@@ -659,8 +657,7 @@ const createStyles = (theme) => StyleSheet.create({
   transactionsList: {
     borderRadius: 20,
     padding: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
     overflow: 'hidden',
   },
   transactionItem: {

@@ -132,21 +132,29 @@ export default function SecuritySettingsScreen({ navigation }) {
 
   const renderSecurityOption = (title, subtitle, icon, setting, isSwitch = true) => (
     <Animated.View style={[styles.optionItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {Platform.OS === 'android' ? (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-      ) : (
-        <BlurView
-          intensity={theme.isDarkMode ? 30 : 60}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
+      <BlurView
+        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+        tint={theme.isDarkMode ? 'dark' : 'light'}
+        experimentalBlurMethod="none"
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Dynamic overlay for extra glass effect */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.isDarkMode
+              ? 'rgba(0, 0, 0, 0.1)'
+              : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+          }
+        ]}
+      />
       <View style={styles.optionLeft}>
         <View style={styles.optionIcon}>
-          <Icon name={icon} size={22} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
+          <Icon name={icon} size={22} color="white" />
         </View>
         <View style={styles.optionContent}>
-          <Text style={[styles.optionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
+          <Text style={[styles.optionTitle, { color: 'white' }]}>{title}</Text>
           <Text style={[styles.optionSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
         </View>
       </View>
@@ -177,10 +185,10 @@ export default function SecuritySettingsScreen({ navigation }) {
         )}
         <View style={styles.optionLeft}>
           <View style={styles.optionIcon}>
-            <Icon name={icon} size={22} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
+            <Icon name={icon} size={22} color="white" />
           </View>
           <View style={styles.optionContent}>
-            <Text style={[styles.optionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
+            <Text style={[styles.optionTitle, { color: 'white' }]}>{title}</Text>
             <Text style={[styles.optionSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
           </View>
         </View>
@@ -191,7 +199,7 @@ export default function SecuritySettingsScreen({ navigation }) {
 
   const renderSection = (title, children) => (
     <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={[styles.sectionTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: 'white' }]}>{title}</Text>
       {children}
     </Animated.View>
   );
@@ -303,7 +311,7 @@ const createStyles = (theme) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
+    color: 'white',
   },
   headerSpacer: {
     width: 40,
@@ -330,8 +338,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     overflow: 'hidden',
   },
   optionLeft: {

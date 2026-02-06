@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Animated, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
   Easing,
   Dimensions,
   TouchableWithoutFeedback,
@@ -28,7 +28,7 @@ const currencyIcons = [
 export default function SplashScreen({ navigation }) {
   const { theme, isLoading: themeLoading } = useTheme();
   const { user, userData, initializing } = useAuth();
-  
+
   // Animation values
   const logoScale = useRef(new Animated.Value(0.8)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -192,24 +192,24 @@ export default function SplashScreen({ navigation }) {
   const floatingCurrencies = (() => {
     const positions = [];
     const minSpacing = 100; // Further increased spacing for maximum spread
-    
+
     return currencyIcons.map((icon, index) => {
       let x, y, attempts = 0;
       const randomSize = Math.random() * 16 + 28; // Size between 28-44, slightly larger
-      
+
       // Create grid distribution with bottom row for extra currencies
       let gridCols, gridRows, col, row;
-      
+
       if (index < 6) {
         // First 6 currencies in 2x3 grid
         gridCols = 2;
         gridRows = 3;
         col = index % gridCols;
         row = Math.floor(index / gridCols);
-        
+
         const cellWidth = (width - 80) / gridCols;
         const cellHeight = (height - 450) / gridRows; // Leave more space for bottom currencies
-        
+
         x = col * cellWidth + Math.random() * (cellWidth - 40) + 40;
         y = row * cellHeight + Math.random() * (cellHeight - 40) + 100;
       } else {
@@ -217,69 +217,69 @@ export default function SplashScreen({ navigation }) {
         const bottomIndex = index - 6;
         const bottomCols = 2;
         const bottomCellWidth = (width - 120) / bottomCols; // More spacing for bottom row
-        
+
         col = bottomIndex % bottomCols;
         x = col * bottomCellWidth + Math.random() * (bottomCellWidth - 60) + 60;
         y = height - 200 + Math.random() * 80; // Bottom area with some randomness
       }
-      
-      // No spacing check needed with grid positioning
-      
-      positions.push({ x, y, size: randomSize });
-    
-    // Create unique animations for each icon
-    const floatAnim = globalAnim.interpolate({
-      inputRange: [0, 0.5, 1],
-      outputRange: [0, -15, 0]
-    });
-    
-    const rotateAnim = globalAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['0deg', `${index % 2 === 0 ? '360deg' : '-360deg'}`]
-    });
-    
-    const scaleAnim = globalAnim.interpolate({
-      inputRange: [0, 0.5, 1],
-      outputRange: [1, 1.2, 1]
-    });
-    
-    const opacityAnim = globalAnim.interpolate({
-      inputRange: [0, 0.3, 0.7, 1],
-      outputRange: [0.7, 1, 0.8, 0.7]
-    });
 
-    return (
-      <Animated.View
-        key={icon}
-        style={[
-          styles.floatingCurrency,
-          {
-            left: x - randomSize/2,
-            top: y - randomSize/2,
-            width: randomSize + 12,
-            height: randomSize + 12,
-            transform: [
-              { translateY: floatAnim },
-              { rotate: rotateAnim },
-              { scale: scaleAnim }
-            ],
-            opacity: opacityAnim
-          }
-        ]}
-      >
-        <Icon 
-          name={icon} 
-          size={randomSize} 
-          color="#fff" 
-          style={styles.currencyIcon}
-        />
-      </Animated.View>
-    );
-  });
+      // No spacing check needed with grid positioning
+
+      positions.push({ x, y, size: randomSize });
+
+      // Create unique animations for each icon
+      const floatAnim = globalAnim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, -15, 0]
+      });
+
+      const rotateAnim = globalAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', `${index % 2 === 0 ? '360deg' : '-360deg'}`]
+      });
+
+      const scaleAnim = globalAnim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [1, 1.2, 1]
+      });
+
+      const opacityAnim = globalAnim.interpolate({
+        inputRange: [0, 0.3, 0.7, 1],
+        outputRange: [0.7, 1, 0.8, 0.7]
+      });
+
+      return (
+        <Animated.View
+          key={icon}
+          style={[
+            styles.floatingCurrency,
+            {
+              left: x - randomSize / 2,
+              top: y - randomSize / 2,
+              width: randomSize + 12,
+              height: randomSize + 12,
+              transform: [
+                { translateY: floatAnim },
+                { rotate: rotateAnim },
+                { scale: scaleAnim }
+              ],
+              opacity: opacityAnim
+            }
+          ]}
+        >
+          <Icon
+            name={icon}
+            size={randomSize}
+            color="#fff"
+            style={styles.currencyIcon}
+          />
+        </Animated.View>
+      );
+    });
   })();
 
   // Wave path data
-  const wavePath = `M0,60 Q${width/4},30 ${width/2},60 T${width},60 V120 H0 Z`;
+  const wavePath = `M0,60 Q${width / 4},30 ${width / 2},60 T${width},60 V120 H0 Z`;
 
   return (
     <TouchableWithoutFeedback onPress={() => {
@@ -290,8 +290,8 @@ export default function SplashScreen({ navigation }) {
       <View style={styles.container}>
         {/* Animated Gradient Background */}
         <Animated.View style={[
-          styles.background, 
-          { 
+          styles.background,
+          {
             transform: [
               { rotate: bgInterpolate },
               { scale: 1.2 }
@@ -311,24 +311,24 @@ export default function SplashScreen({ navigation }) {
           styles.waveContainer,
           { transform: [{ translateX: waveInterpolate }] }
         ]}>
-          <Svg width={width*2} height={120} style={styles.wave}>
-            <Path 
-              d={wavePath} 
-              fill="rgba(255,255,255,0.15)" 
+          <Svg width={width * 2} height={120} style={styles.wave}>
+            <Path
+              d={wavePath}
+              fill="rgba(255,255,255,0.15)"
             />
           </Svg>
         </Animated.View>
         <Animated.View style={[
           styles.waveContainer,
-          { 
+          {
             transform: [{ translateX: Animated.add(width, waveInterpolate) }],
             opacity: 0.8
           }
         ]}>
-          <Svg width={width*2} height={120} style={styles.wave}>
-            <Path 
-              d={wavePath} 
-              fill="rgba(255,255,255,0.1)" 
+          <Svg width={width * 2} height={120} style={styles.wave}>
+            <Path
+              d={wavePath}
+              fill="rgba(255,255,255,0.1)"
             />
           </Svg>
         </Animated.View>
@@ -340,7 +340,7 @@ export default function SplashScreen({ navigation }) {
         <View style={styles.content}>
           <Animated.View style={[
             styles.logoContainer,
-            { 
+            {
               transform: [{ scale: logoScale }],
               opacity: logoOpacity
             }
@@ -426,19 +426,13 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10
   },
   logoImage: {
     width: 150,
     height: 150,
     borderRadius: 30,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)'
+    borderWidth: 0,
   },
   titleContainer: {
     alignItems: 'center',
@@ -446,8 +440,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingVertical: 20,
     borderRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)'
+    borderWidth: 0,
   },
   title: {
     fontSize: 36,
@@ -493,9 +486,5 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'white',
     marginHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3
-  }
+  },
 });

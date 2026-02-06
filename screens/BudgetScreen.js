@@ -13,9 +13,9 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import GlassCard from '../components/GlassCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -699,43 +699,25 @@ export default function BudgetScreen({ navigation }) {
 
   const renderQuickStats = () => (
     <Animated.View style={[styles.quickStatsGrid, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <View style={styles.quickStatCard}>
-        <BlurView
-          intensity={theme.isDarkMode ? 30 : 60}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          experimentalBlurMethod="dimmer"
-          style={StyleSheet.absoluteFill}
-        />
-        <Icon name="wallet-outline" size={28} color={theme.text} style={{ marginBottom: 8 }} />
-        <Text style={[styles.quickStatValue, { color: theme.text }]}>
+      <GlassCard style={styles.quickStatCard} borderRadius={20} padding={16}>
+        <Icon name="wallet-outline" size={28} color="white" style={{ marginBottom: 8 }} />
+        <Text style={[styles.quickStatValue, { color: 'white' }]}>
           {budgetStats.totalBudget > 0 ? `${budgetStats.percentage}%` : '0%'}
         </Text>
-        <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Used</Text>
-      </View>
+        <Text style={[styles.quickStatLabel, { color: 'rgba(255,255,255,0.7)' }]}>Used</Text>
+      </GlassCard>
 
-      <View style={styles.quickStatCard}>
-        <BlurView
-          intensity={theme.isDarkMode ? 30 : 60}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          experimentalBlurMethod="dimmer"
-          style={StyleSheet.absoluteFill}
-        />
-        <Icon name="cash" size={28} color={theme.text} style={{ marginBottom: 8 }} />
-        <Text style={[styles.quickStatValue, { color: theme.text }]}>₹{budgetStats.totalRemaining.toFixed(0)}</Text>
-        <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Remaining</Text>
-      </View>
+      <GlassCard style={styles.quickStatCard} borderRadius={20} padding={16}>
+        <Icon name="cash" size={28} color="white" style={{ marginBottom: 8 }} />
+        <Text style={[styles.quickStatValue, { color: 'white' }]}>₹{budgetStats.totalRemaining.toFixed(0)}</Text>
+        <Text style={[styles.quickStatLabel, { color: 'rgba(255,255,255,0.7)' }]}>Remaining</Text>
+      </GlassCard>
 
-      <View style={styles.quickStatCard}>
-        <BlurView
-          intensity={theme.isDarkMode ? 30 : 60}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          experimentalBlurMethod="dimmer"
-          style={StyleSheet.absoluteFill}
-        />
-        <Icon name="alert-circle" size={28} color={theme.text} style={{ marginBottom: 8 }} />
-        <Text style={[styles.quickStatValue, { color: theme.text }]}>{budgetStats.alerts.length}</Text>
-        <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Alerts</Text>
-      </View>
+      <GlassCard style={styles.quickStatCard} borderRadius={20} padding={16}>
+        <Icon name="alert-circle" size={28} color="white" style={{ marginBottom: 8 }} />
+        <Text style={[styles.quickStatValue, { color: 'white' }]}>{budgetStats.alerts.length}</Text>
+        <Text style={[styles.quickStatLabel, { color: 'rgba(255,255,255,0.7)' }]}>Alerts</Text>
+      </GlassCard>
     </Animated.View>
   );
 
@@ -754,23 +736,20 @@ export default function BudgetScreen({ navigation }) {
         </View>
 
         {budgetStats.alerts.map((alert, index) => (
-          <View key={index} style={styles.alertCard}>
-            <BlurView
-              intensity={theme.isDarkMode ? 30 : 60}
-              tint={theme.isDarkMode ? 'dark' : 'light'}
-              experimentalBlurMethod="dimmer"
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.alertIconContainer}>
+          <GlassCard key={index} style={styles.alertCard} borderRadius={16} padding={16}>
+            <View style={[
+              styles.alertIconContainer,
+              { backgroundColor: alert.severity === 'danger' ? 'rgba(244, 67, 54, 0.2)' : 'rgba(255, 152, 0, 0.2)' }
+            ]}>
               <Icon
                 name={alert.severity === 'danger' ? 'alert-circle' : 'alert'}
                 size={24}
-                color={alert.severity === 'danger' ? 'white' : 'white'}
+                color="white"
               />
             </View>
             <View style={styles.alertContent}>
               <Text style={[styles.alertCategory, { color: 'white' }]}>{alert.category}</Text>
-              <Text style={[styles.alertMessage, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }]}>{alert.message}</Text>
+              <Text style={[styles.alertMessage, { color: 'rgba(255,255,255,0.8)' }]}>{alert.message}</Text>
             </View>
             <View style={[
               styles.alertSeverityBadge,
@@ -787,7 +766,7 @@ export default function BudgetScreen({ navigation }) {
                 {alert.severity === 'danger' ? 'OVER' : 'WARNING'}
               </Text>
             </View>
-          </View>
+          </GlassCard>
         ))}
       </Animated.View>
     );
@@ -827,84 +806,80 @@ export default function BudgetScreen({ navigation }) {
           const isExpanded = expandedCards[category.id];
 
           return (
-            <TouchableOpacity
-              key={category.id}
-              style={styles.categoryCard}
-              onPress={() => toggleCardExpansion(category.id)}
-              activeOpacity={0.7}
-            >
-              <BlurView
-                intensity={theme.isDarkMode ? 30 : 60}
-                tint={theme.isDarkMode ? 'dark' : 'light'}
-                experimentalBlurMethod="dimmer"
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.categoryHeader}>
-                <View style={styles.categoryInfo}>
-                  <View style={styles.categoryIconContainer}>
-                    <Icon name={category.icon} size={24} color="white" />
-                  </View>
-                  <View style={styles.categoryDetails}>
-                    <Text style={[styles.categoryName, { color: 'white' }]}>{category.name}</Text>
-                    <Text style={[styles.categoryAmount, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
-                      {formatCurrency(category.spent)} of {formatCurrency(category.budget)}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.categoryActions}>
-                  <CircularProgress
-                    percentage={category.percentage}
-                    size={60}
-                    strokeWidth={6}
-                    color={getBudgetStatusColor(category.percentage)}
-                    backgroundColor={theme.border}
-                    showPercentage={true}
-                    textColor={theme.text}
-                    fontSize={14}
-                  />
-                  {budget && (
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={styles.editIconButton}
-                        onPress={() => handleEditBudget(budget)}
-                      >
-                        <Icon name="pencil" size={16} color="white" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.deleteIconButton}
-                        onPress={() => handleDeleteBudget(budget.id)}
-                      >
-                        <Icon name="delete" size={16} color="white" />
-                      </TouchableOpacity>
+            <React.Fragment key={category.id}>
+              <TouchableOpacity
+                onPress={() => toggleCardExpansion(category.id)}
+                activeOpacity={0.7}
+              >
+                <GlassCard style={styles.categoryCard} borderRadius={16} padding={20}>
+                  <View style={styles.categoryHeader}>
+                    <View style={styles.categoryInfo}>
+                      <View style={styles.categoryIconContainer}>
+                        <Icon name={category.icon} size={24} color="white" />
+                      </View>
+                      <View style={styles.categoryDetails}>
+                        <Text style={[styles.categoryName, { color: 'white' }]}>{category.name}</Text>
+                        <Text style={[styles.categoryAmount, { color: 'rgba(255,255,255,0.7)' }]}>
+                          {formatCurrency(category.spent)} of {formatCurrency(category.budget)}
+                        </Text>
+                      </View>
                     </View>
-                  )}
-                </View>
-              </View>
+                    <View style={styles.categoryActions}>
+                      <CircularProgress
+                        percentage={category.percentage}
+                        size={60}
+                        strokeWidth={6}
+                        color={getBudgetStatusColor(category.percentage)}
+                        backgroundColor="rgba(255,255,255,0.1)"
+                        showPercentage={true}
+                        textColor="white"
+                        fontSize={14}
+                      />
+                      {budget && (
+                        <View style={styles.actionButtons}>
+                          <TouchableOpacity
+                            style={styles.editIconButton}
+                            onPress={() => handleEditBudget(budget)}
+                          >
+                            <Icon name="pencil" size={16} color="white" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.deleteIconButton}
+                            onPress={() => handleDeleteBudget(budget.id)}
+                          >
+                            <Icon name="delete" size={16} color="white" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  </View>
 
-              <View style={styles.progressBarContainer}>
-                <View style={styles.progressBarBackground}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        width: `${Math.min(category.percentage, 100)}%`,
-                        backgroundColor: getBudgetStatusColor(category.percentage)
-                      }
-                    ]}
-                  />
-                </View>
-              </View>
+                  <View style={styles.progressBarContainer}>
+                    <View style={styles.progressBarBackground}>
+                      <View
+                        style={[
+                          styles.progressBarFill,
+                          {
+                            width: `${Math.min(category.percentage, 100)}%`,
+                            backgroundColor: getBudgetStatusColor(category.percentage)
+                          }
+                        ]}
+                      />
+                    </View>
+                  </View>
 
-              <View style={styles.categoryFooter}>
-                <Text style={styles.categoryFooterText}>
-                  ₹{category.remaining.toFixed(2)} remaining
-                </Text>
-                <TouchableOpacity onPress={() => toggleCardExpansion(category.id)}>
-                  <Text style={[styles.categoryFooterText, { color: 'white', fontWeight: '600' }]}>
-                    {isExpanded ? 'Show less' : `${category.transactions} transactions`}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                  <View style={styles.categoryFooter}>
+                    <Text style={styles.categoryFooterText}>
+                      ₹{category.remaining.toFixed(2)} remaining
+                    </Text>
+                    <TouchableOpacity onPress={() => toggleCardExpansion(category.id)}>
+                      <Text style={[styles.categoryFooterText, { color: 'white', fontWeight: '600' }]}>
+                        {isExpanded ? 'Show less' : `${category.transactions} transactions`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </GlassCard>
+              </TouchableOpacity>
 
               {isExpanded && (
                 <View style={styles.expandedContent}>
@@ -973,7 +948,7 @@ export default function BudgetScreen({ navigation }) {
                   )}
                 </View>
               )}
-            </TouchableOpacity>
+            </React.Fragment>
           );
         })}
       </Animated.View>
@@ -1207,11 +1182,6 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 20,
     borderRadius: 20,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   overviewGradient: {
     padding: 24,
@@ -1313,12 +1283,7 @@ const createStyles = (theme) => StyleSheet.create({
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
-    padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    overflow: 'hidden',
   },
   alertIconContainer: {
     width: 48,
@@ -1369,12 +1334,7 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Category Card
   categoryCard: {
-    borderRadius: 16,
-    padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    overflow: 'hidden',
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -1562,8 +1522,7 @@ const createStyles = (theme) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   createButtonText: {
     fontSize: 16,
@@ -1585,13 +1544,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: 24,
     padding: 20,
-    borderWidth: 1,
-    borderColor: theme.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    borderWidth: 0,
   },
   popupHeader: {
     flexDirection: 'row',
@@ -1599,8 +1552,7 @@ const createStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
+    borderBottomWidth: 0,
   },
   popupTitle: {
     fontSize: 20,
@@ -1620,8 +1572,7 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
+    borderBottomWidth: 0,
   },
   popupItemLeft: {
     flexDirection: 'row',
@@ -1661,8 +1612,7 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: theme.border,
+    borderTopWidth: 0,
   },
   popupTotalLabel: {
     fontSize: 16,

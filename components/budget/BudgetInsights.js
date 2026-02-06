@@ -100,8 +100,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   insightHeader: {
     flexDirection: 'row',
@@ -143,8 +142,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   statusValue: {
     fontSize: 20,
@@ -166,8 +164,7 @@ const createStyles = (theme) => StyleSheet.create({
     gap: 12,
     borderLeftWidth: 4,
     borderLeftColor: 'rgba(255,255,255,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   recommendationContent: {
     flex: 1,

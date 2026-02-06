@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import GlassCard from '../components/GlassCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import { useTheme } from '../contexts/ThemeContext';
@@ -350,44 +350,23 @@ export default function StatsScreen({ navigation }) {
             {/* Overview Cards */}
             <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
               <View style={styles.grid}>
-                <View style={styles.card}>
-                  <BlurView
-                    intensity={theme.isDarkMode ? 30 : 60}
-                    tint={theme.isDarkMode ? 'dark' : 'light'}
-                    experimentalBlurMethod="dimmer"
-                    style={StyleSheet.absoluteFill}
-                  />
+                <GlassCard style={styles.card} borderRadius={20} padding={16}>
                   <View style={[styles.iconContainer, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
                     <Icon name="arrow-down-circle" size={24} color="#4CAF50" />
                   </View>
                   <Text style={[styles.cardLabel, { color: 'rgba(255,255,255,0.7)' }]}>Income</Text>
                   <Text style={[styles.cardValue, { color: 'white' }]}>{formatCurrency(statsData.overview.totalIncome)}</Text>
-                </View>
-                <View style={styles.card}>
-                  <BlurView
-                    intensity={theme.isDarkMode ? 30 : 60}
-                    tint={theme.isDarkMode ? 'dark' : 'light'}
-                    experimentalBlurMethod="dimmer"
-                    style={StyleSheet.absoluteFill}
-                  />
+                </GlassCard>
+                <GlassCard style={styles.card} borderRadius={20} padding={16}>
                   <View style={[styles.iconContainer, { backgroundColor: 'rgba(255, 152, 0, 0.2)' }]}>
                     <Icon name="arrow-up-circle" size={24} color="#FF9800" />
                   </View>
                   <Text style={[styles.cardLabel, { color: 'rgba(255,255,255,0.7)' }]}>Expenses</Text>
                   <Text style={[styles.cardValue, { color: 'white' }]}>{formatCurrency(statsData.overview.totalExpenses)}</Text>
-                </View>
+                </GlassCard>
               </View>
 
-              <View style={styles.bigCard}>
-                {Platform.OS === 'android' ? (
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]} />
-                ) : (
-                  <BlurView
-                    intensity={theme.isDarkMode ? 30 : 60}
-                    tint={theme.isDarkMode ? 'dark' : 'light'}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
+              <GlassCard style={styles.bigCard} borderRadius={20} padding={20}>
                 <View style={styles.rowBetween}>
                   <View>
                     <Text style={[styles.cardLabel, { color: 'rgba(255,255,255,0.7)' }]}>Net Savings</Text>
@@ -398,23 +377,14 @@ export default function StatsScreen({ navigation }) {
                     <Text style={styles.savingsText}>{statsData.overview.savingsRate.toFixed(1)}%</Text>
                   </View>
                 </View>
-              </View>
+              </GlassCard>
             </Animated.View>
 
             {/* Charts Section */}
             <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
               {/* Expense Trend */}
-              <View style={styles.chartCard}>
-                {Platform.OS === 'android' ? (
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
-                ) : (
-                  <BlurView
-                    intensity={theme.isDarkMode ? 30 : 60}
-                    tint={theme.isDarkMode ? 'dark' : 'light'}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
+              <GlassCard style={styles.chartCard} borderRadius={24} padding={16}>
                 <Text style={[styles.chartTitle, { color: 'white' }]}>Expense Trend</Text>
                 {statsData.monthlyTrends.datasets[0].data.length > 0 ? (
                   <LineChart
@@ -444,19 +414,10 @@ export default function StatsScreen({ navigation }) {
                 ) : (
                   <Text style={[styles.noDataText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>No trend data available</Text>
                 )}
-              </View>
+              </GlassCard>
 
               {/* Category Breakdown */}
-              <View style={styles.chartCard}>
-                {Platform.OS === 'android' ? (
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
-                ) : (
-                  <BlurView
-                    intensity={theme.isDarkMode ? 30 : 60}
-                    tint={theme.isDarkMode ? 'dark' : 'light'}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
+              <GlassCard style={styles.chartCard} borderRadius={24} padding={16}>
                 <Text style={[styles.chartTitle, { color: 'white' }]}>Spending by Category</Text>
                 {statsData.categoryBreakdown.length > 0 ? (
                   <PieChart
@@ -466,9 +427,9 @@ export default function StatsScreen({ navigation }) {
                     chartConfig={{
                       color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
                     }}
-                    accessor={"population"}
+                    accessor="population"
                     backgroundColor={"transparent"}
-                    paddingLeft={"15"}
+                    paddingLeft={15}
                     absolute
                     legendFontColor="white"
                   />
@@ -477,7 +438,7 @@ export default function StatsScreen({ navigation }) {
                     <Text style={[styles.noDataText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>No expense data for this period</Text>
                   </View>
                 )}
-              </View>
+              </GlassCard>
 
             </Animated.View>
           </ScrollView>
@@ -549,8 +510,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   periodButton: {
     flex: 1,
@@ -582,16 +542,14 @@ const createStyles = (theme) => StyleSheet.create({
     flex: 1,
     borderRadius: 20,
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     overflow: 'hidden',
   },
   bigCard: {
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     overflow: 'hidden',
   },
   iconContainer: {
@@ -637,12 +595,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   chartCard: {
     borderRadius: 24,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    overflow: 'hidden',
+    // Style handled by GlassCard
   },
   chartTitle: {
     color: 'white',

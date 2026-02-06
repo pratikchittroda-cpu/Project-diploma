@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import GlassCard from './GlassCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -40,8 +40,8 @@ const BudgetAdvisor = ({ recommendations, onDismiss }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Icon name="robot" size={20} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'rgba(255,255,255,0.9)'} />
-                <Text style={[styles.headerText, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'rgba(255,255,255,0.9)' }]}>AI Budget Advisor</Text>
+                <Icon name="robot" size={22} color={theme.isDarkMode ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.95)'} />
+                <Text style={[styles.headerText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.95)' }]}>AI Budget Advisor</Text>
             </View>
 
             <ScrollView
@@ -51,30 +51,23 @@ const BudgetAdvisor = ({ recommendations, onDismiss }) => {
                 contentContainerStyle={styles.scrollContent}
             >
                 {recommendations.map((recommendation, index) => (
-                    <View
+                    <GlassCard
                         key={index}
                         style={[
                             styles.card,
                             { borderLeftColor: getTypeColor(recommendation.type) }
                         ]}
+                        borderRadius={20}
+                        padding={16}
                     >
-                        {Platform.OS === 'android' ? (
-                            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-                        ) : (
-                            <BlurView
-                                intensity={theme.isDarkMode ? 30 : 60}
-                                tint={theme.isDarkMode ? 'dark' : 'light'}
-                                style={StyleSheet.absoluteFill}
-                            />
-                        )}
                         <View style={styles.cardHeader}>
                             <View style={styles.titleRow}>
                                 <View style={[styles.iconContainer, { backgroundColor: `${getTypeColor(recommendation.type)}20` }]}>
                                     <Text style={styles.icon}>{recommendation.icon}</Text>
                                 </View>
                                 <View style={styles.titleContainer}>
-                                    <Text style={[styles.title, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>{recommendation.title}</Text>
-                                    <Text style={[styles.message, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }]}>{recommendation.message}</Text>
+                                    <Text style={[styles.title, { color: 'white' }]}>{recommendation.title}</Text>
+                                    <Text style={[styles.message, { color: 'rgba(255,255,255,0.85)' }]}>{recommendation.message}</Text>
                                 </View>
                             </View>
                             {onDismiss && (
@@ -82,7 +75,7 @@ const BudgetAdvisor = ({ recommendations, onDismiss }) => {
                                     onPress={() => onDismiss(index)}
                                     style={styles.dismissButton}
                                 >
-                                    <Icon name="close" size={18} color={theme.isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'} />
+                                    <Icon name="close" size={18} color="rgba(255,255,255,0.7)" />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -92,12 +85,12 @@ const BudgetAdvisor = ({ recommendations, onDismiss }) => {
                                 {recommendation.suggestions.map((suggestion, idx) => (
                                     <View key={idx} style={styles.suggestionRow}>
                                         <Icon name="check-circle" size={14} color={getTypeColor(recommendation.type)} />
-                                        <Text style={[styles.suggestionText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{suggestion}</Text>
+                                        <Text style={[styles.suggestionText, { color: 'rgba(255,255,255,0.8)' }]}>{suggestion}</Text>
                                     </View>
                                 ))}
                             </View>
                         )}
-                    </View>
+                    </GlassCard>
                 ))}
             </ScrollView>
         </View>
@@ -128,12 +121,7 @@ const styles = StyleSheet.create({
     },
     card: {
         width: 300,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
         borderLeftWidth: 4,
-        overflow: 'hidden',
     },
     cardHeader: {
         flexDirection: 'row',

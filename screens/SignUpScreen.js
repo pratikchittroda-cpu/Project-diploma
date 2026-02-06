@@ -365,8 +365,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 15,
     height: Math.max(50, height * 0.065),
-    borderWidth: 1,
-    borderColor: theme.border,
+    borderWidth: 0,
     minHeight: 55,
   },
   inputIcon: {

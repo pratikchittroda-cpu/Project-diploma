@@ -564,6 +564,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 12,
     padding: 4,
+    borderWidth: 0,
   },
   periodButton: {
     paddingVertical: 8,
@@ -590,8 +591,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 25,
     borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   overviewGradient: {
@@ -658,8 +658,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   departmentHeader: {
     flexDirection: 'row',
@@ -712,8 +711,7 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 40,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
   },
   emptyText: {
     color: 'rgba(255,255,255,0.7)',
@@ -744,8 +742,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: '#2A2A2A', // Dark background for modal
     borderRadius: 24,
     padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -779,8 +776,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.1)',
     marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
   },
   categoryOptionActive: {
     backgroundColor: theme.primary,

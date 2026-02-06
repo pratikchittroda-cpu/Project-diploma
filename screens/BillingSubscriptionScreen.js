@@ -172,9 +172,26 @@ export default function BillingSubscriptionScreen({ navigation }) {
 
   const renderCurrentPlan = () => (
     <Animated.View style={[styles.currentPlanCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <BlurView
+        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+        tint={theme.isDarkMode ? 'dark' : 'light'}
+        experimentalBlurMethod="none"
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Dynamic overlay for extra glass effect */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.isDarkMode
+              ? 'rgba(0, 0, 0, 0.1)'
+              : 'rgba(255, 255, 255, 0.1)'
+          }
+        ]}
+      />
       <View style={styles.planHeader}>
         <View style={styles.planInfo}>
-          <Text style={styles.planName}>{subscriptionInfo.currentPlan}</Text>
+          <Text style={[styles.planName, { color: 'white' }]}>{subscriptionInfo.currentPlan}</Text>
           <Text style={styles.planPrice}>${subscriptionInfo.planPrice}/month</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: theme.iconBackground.green }]}>
@@ -185,11 +202,11 @@ export default function BillingSubscriptionScreen({ navigation }) {
       <View style={styles.billingInfo}>
         <View style={styles.billingRow}>
           <Text style={styles.billingLabel}>Next billing:</Text>
-          <Text style={styles.billingValue}>{subscriptionInfo.nextBilling}</Text>
+          <Text style={[styles.billingValue, { color: 'white' }]}>{subscriptionInfo.nextBilling}</Text>
         </View>
         <View style={styles.billingRow}>
           <Text style={styles.billingLabel}>Payment method:</Text>
-          <Text style={styles.billingValue}>{subscriptionInfo.paymentMethod}</Text>
+          <Text style={[styles.billingValue, { color: 'white' }]}>{subscriptionInfo.paymentMethod}</Text>
         </View>
       </View>
     </Animated.View>
@@ -207,6 +224,23 @@ export default function BillingSubscriptionScreen({ navigation }) {
           isCurrentPlan && styles.currentPlanHighlight
         ]}
       >
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         {plan.popular && (
           <View style={styles.popularBadge}>
             <Text style={styles.popularText}>Most Popular</Text>
@@ -218,7 +252,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
             <Icon name="crown" size={24} color={plan.iconColor} />
           </View>
           <View style={styles.planDetails}>
-            <Text style={styles.planCardName}>{plan.name}</Text>
+            <Text style={[styles.planCardName, { color: 'white' }]}>{plan.name}</Text>
             <Text style={styles.planCardPrice}>${plan.price}/month</Text>
           </View>
         </View>
@@ -227,7 +261,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
           {plan.features.map((feature, index) => (
             <View key={index} style={styles.featureRow}>
               <Icon name="check" size={16} color={theme.success} />
-              <Text style={styles.featureText}>{feature}</Text>
+              <Text style={[styles.featureText, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.8)' : 'white' }]}>{feature}</Text>
             </View>
           ))}
         </View>
@@ -254,13 +288,19 @@ export default function BillingSubscriptionScreen({ navigation }) {
   const renderActionButton = (title, subtitle, icon, onPress, iconColor, backgroundColor) => (
     <TouchableOpacity onPress={onPress}>
       <Animated.View style={[styles.actionButton, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
         <View style={styles.actionLeft}>
           <View style={[styles.actionIcon, { backgroundColor }]}>
-            <Icon name={icon} size={22} color={iconColor} />
+            <Icon name={icon} size={22} color="white" />
           </View>
           <View style={styles.actionContent}>
-            <Text style={styles.actionTitle}>{title}</Text>
-            <Text style={styles.actionSubtitle}>{subtitle}</Text>
+            <Text style={[styles.actionTitle, { color: 'white' }]}>{title}</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
           </View>
         </View>
         <Icon name="chevron-right" size={20} color={theme.textLight} />
@@ -270,7 +310,7 @@ export default function BillingSubscriptionScreen({ navigation }) {
 
   const renderSection = (title, children) => (
     <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: 'white' }]}>{title}</Text>
       {children}
     </Animated.View>
   );
@@ -336,11 +376,6 @@ const createStyles = (theme) => StyleSheet.create({
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   headerGradient: {
     paddingTop: (StatusBar.currentHeight || 0) + 15,
@@ -386,13 +421,8 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.cardBackground,
     borderRadius: 16,
     padding: 20,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: theme.divider,
+    borderWidth: 0,
+    overflow: 'hidden',
   },
   planHeader: {
     flexDirection: 'row',
@@ -444,17 +474,11 @@ const createStyles = (theme) => StyleSheet.create({
     gap: 16,
   },
   planCard: {
-    backgroundColor: theme.cardBackground,
     borderRadius: 16,
     padding: 20,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: theme.divider,
+    borderWidth: 0,
     position: 'relative',
+    overflow: 'hidden',
   },
   currentPlanHighlight: {
     borderColor: theme.success,
@@ -539,17 +563,11 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.cardBackground,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: theme.divider,
+    borderWidth: 0,
+    overflow: 'hidden',
   },
   actionLeft: {
     flexDirection: 'row',
@@ -563,11 +581,6 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   actionContent: {
     flex: 1,

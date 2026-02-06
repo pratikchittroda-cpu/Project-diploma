@@ -7,14 +7,14 @@ export const colors = {
     dark: '#2E7D32',
     darker: '#1B5E20',
   },
-  
+
   // Secondary Colors
   secondary: {
     light: '#C8E6C9',
     main: '#81C784',
     dark: '#66BB6A',
   },
-  
+
   // Background Colors
   background: {
     primary: '#A5D6A7',
@@ -23,7 +23,7 @@ export const colors = {
     card: 'rgba(255, 255, 255, 0.9)',
     cardLight: 'rgba(255, 255, 255, 0.7)',
   },
-  
+
   // Text Colors
   text: {
     primary: '#333',
@@ -33,7 +33,7 @@ export const colors = {
     whiteMuted: 'rgba(255, 255, 255, 0.8)',
     whiteLight: 'rgba(255, 255, 255, 0.7)',
   },
-  
+
   // Status Colors
   status: {
     success: '#4CAF50',
@@ -42,29 +42,44 @@ export const colors = {
     error: '#F44336',
     info: '#2196F3',
   },
-  
+
   // Border Colors
   border: {
     light: '#E0E0E0',
     medium: '#BDBDBD',
     dark: '#9E9E9E',
   },
-  
+
   // Shadow Colors
   shadow: {
     light: 'rgba(0, 0, 0, 0.1)',
     medium: 'rgba(0, 0, 0, 0.2)',
     dark: 'rgba(0, 0, 0, 0.3)',
   },
-  
+
   // Gradient Colors
   gradients: {
     primary: ['#A5D6A7', '#81C784', '#66BB6A'],
     secondary: ['#E8F5E9', '#C8E6C9'],
     button: ['#2E7D32', '#4CAF50'],
     card: ['#E8F5E9', '#C8E6C9'],
+    // Purple Dashboard Theme
+    purpleDashboard: ['#7B68EE', '#9D8FFF', '#B8A9FF'],
+    purpleCard: ['rgba(139, 116, 238, 0.3)', 'rgba(157, 143, 255, 0.2)'],
   },
-  
+
+  // Purple Dashboard Colors
+  purpleDashboard: {
+    primary: '#7B68EE',
+    secondary: '#9D8FFF',
+    light: '#B8A9FF',
+    cardOverlay: 'rgba(139, 116, 238, 0.25)',
+    cardBorder: 'rgba(255, 255, 255, 0.2)',
+    textPrimary: '#FFFFFF',
+    textSecondary: 'rgba(255, 255, 255, 0.8)',
+    textMuted: 'rgba(255, 255, 255, 0.6)',
+  },
+
   // Switch Colors
   switch: {
     track: {

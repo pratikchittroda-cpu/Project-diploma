@@ -114,13 +114,19 @@ export default function EditCompanyProfileScreen({ navigation }) {
     <Animated.View style={[styles.fieldContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.inputContainer}>
-        <Icon name={icon} size={20} color={theme.textSecondary} style={styles.inputIcon} />
+        <BlurView
+          intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        <Icon name={icon} size={20} color="white" style={styles.inputIcon} />
         <TextInput
           style={[styles.textInput, multiline && styles.multilineInput]}
           value={companyInfo[field]}
           onChangeText={(value) => handleInputChange(field, value)}
           placeholder={placeholder}
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.isDarkMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)"}
           multiline={multiline}
           numberOfLines={multiline ? 4 : 1}
           keyboardType={keyboardType}
@@ -185,11 +191,6 @@ const createStyles = (theme) => StyleSheet.create({
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   headerGradient: {
     paddingTop: (StatusBar.currentHeight || 0) + 15,
@@ -244,23 +245,17 @@ const createStyles = (theme) => StyleSheet.create({
   fieldLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.text,
+    color: 'white',
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.cardBackground,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.divider,
+    borderWidth: 0,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    elevation: 2,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    overflow: 'hidden',
   },
   inputIcon: {
     marginRight: 12,

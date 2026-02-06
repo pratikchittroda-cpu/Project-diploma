@@ -554,8 +554,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   periodButton: {
     flex: 1,
@@ -588,16 +587,14 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   bigCard: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   iconContainer: {
     width: 40,
@@ -645,8 +642,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 24,
     padding: 16,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     alignItems: 'center',
   },
   chartTitle: {
@@ -683,8 +679,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   departmentHeader: {
     flexDirection: 'row',

@@ -120,7 +120,7 @@ export default function CompanySettingsScreen({ navigation }) {
   const renderHeader = () => (
     <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={[theme.primary, theme.primaryLight]}
         style={styles.headerGradient}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -136,13 +136,30 @@ export default function CompanySettingsScreen({ navigation }) {
 
   const renderSettingItem = (title, subtitle, icon, setting, iconColor, backgroundColor) => (
     <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <BlurView
+        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+        tint={theme.isDarkMode ? 'dark' : 'light'}
+        experimentalBlurMethod="none"
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Dynamic overlay for extra glass effect */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.isDarkMode
+              ? 'rgba(0, 0, 0, 0.1)'
+              : 'rgba(255, 255, 255, 0.1)'
+          }
+        ]}
+      />
       <View style={styles.settingLeft}>
         <View style={[styles.settingIcon, { backgroundColor }]}>
-          <Icon name={icon} size={22} color={iconColor} />
+          <Icon name={icon} size={22} color="white" />
         </View>
         <View style={styles.settingContent}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          <Text style={styles.settingSubtitle}>{subtitle}</Text>
+          <Text style={[styles.settingTitle, { color: 'white' }]}>{title}</Text>
+          <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
         </View>
       </View>
       <Switch
@@ -157,13 +174,30 @@ export default function CompanySettingsScreen({ navigation }) {
   const renderActionItem = (title, subtitle, icon, onPress, iconColor, backgroundColor, value = null) => (
     <TouchableOpacity onPress={onPress}>
       <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.settingLeft}>
           <View style={[styles.settingIcon, { backgroundColor }]}>
-            <Icon name={icon} size={22} color={iconColor} />
+            <Icon name={icon} size={22} color="white" />
           </View>
           <View style={styles.settingContent}>
-            <Text style={styles.settingTitle}>{title}</Text>
-            <Text style={styles.settingSubtitle}>{subtitle}</Text>
+            <Text style={[styles.settingTitle, { color: 'white' }]}>{title}</Text>
+            <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
           </View>
         </View>
         <View style={styles.settingRight}>
@@ -176,13 +210,30 @@ export default function CompanySettingsScreen({ navigation }) {
 
   const renderInputItem = (title, subtitle, icon, setting, iconColor, backgroundColor, suffix = '') => (
     <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <BlurView
+        intensity={Platform.OS === 'android' ? 100 : (theme.isDarkMode ? 30 : 60)}
+        tint={theme.isDarkMode ? 'dark' : 'light'}
+        experimentalBlurMethod="none"
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Dynamic overlay for extra glass effect */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.isDarkMode
+              ? 'rgba(0, 0, 0, 0.1)'
+              : 'rgba(255, 255, 255, 0.1)'
+          }
+        ]}
+      />
       <View style={styles.settingLeft}>
         <View style={[styles.settingIcon, { backgroundColor }]}>
-          <Icon name={icon} size={22} color={iconColor} />
+          <Icon name={icon} size={22} color="white" />
         </View>
         <View style={styles.settingContent}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          <Text style={styles.settingSubtitle}>{subtitle}</Text>
+          <Text style={[styles.settingTitle, { color: 'white' }]}>{title}</Text>
+          <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
         </View>
       </View>
       <View style={styles.inputContainer}>
@@ -299,13 +350,19 @@ export default function CompanySettingsScreen({ navigation }) {
 
         {renderSection('Appearance', (
           <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <BlurView
+              intensity={Platform.OS === 'android' ? 100 : (theme.isDarkMode ? 30 : 60)}
+              tint={theme.isDarkMode ? 'dark' : 'light'}
+              experimentalBlurMethod="none"
+              style={StyleSheet.absoluteFill}
+            />
             <View style={styles.settingLeft}>
               <View style={[styles.settingIcon, { backgroundColor: theme.iconBackground.gray }]}>
-                <Icon name="theme-light-dark" size={22} color={theme.textSecondary} />
+                <Icon name="theme-light-dark" size={22} color="white" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Dark Mode</Text>
-                <Text style={styles.settingSubtitle}>Switch between light and dark themes</Text>
+                <Text style={[styles.settingTitle, { color: 'white' }]}>Dark Mode</Text>
+                <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Switch between light and dark themes</Text>
               </View>
             </View>
             <Switch
@@ -330,11 +387,6 @@ const createStyles = (theme) => StyleSheet.create({
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   headerGradient: {
     paddingTop: (StatusBar.currentHeight || 0) + 15,
@@ -378,7 +430,7 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.text,
+    color: 'white',
     marginBottom: 15,
   },
   settingItem: {
@@ -389,13 +441,8 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: theme.divider,
+    borderWidth: 0,
+    overflow: 'hidden',
   },
   settingLeft: {
     flexDirection: 'row',
@@ -409,11 +456,6 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   settingContent: {
     flex: 1,
@@ -426,7 +468,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   settingSubtitle: {
     fontSize: 14,
-    color: theme.textSecondary,
+    color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
   },
   settingRight: {
     flexDirection: 'row',
@@ -445,8 +487,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: theme.divider,
+    borderWidth: 0,
   },
   inputText: {
     fontSize: 16,

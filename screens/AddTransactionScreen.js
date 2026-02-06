@@ -508,8 +508,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.5)',
+    borderWidth: 0,
     gap: 6,
   },
   scannedBadgeText: {
@@ -539,8 +538,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   typeButtonActiveExpense: {
     backgroundColor: '#FF5252',
@@ -565,8 +563,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   currencySymbol: {
     fontSize: 24,
@@ -587,8 +584,7 @@ const styles = StyleSheet.create({
     padding: 15,
     fontSize: 16,
     color: 'white',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     minHeight: 80,
   },
   categoryDropdown: {
@@ -598,8 +594,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   categoryDropdownContent: {
     flexDirection: 'row',
@@ -622,8 +617,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: 12,
     paddingVertical: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 0,
   },
   submitButtonDisabled: {
     opacity: 0.6,
@@ -664,8 +658,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
+    borderBottomWidth: 0,
   },
   modalTitle: {
     fontSize: 18,
@@ -685,8 +678,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomWidth: 0,
   },
   categoryModalItemActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',

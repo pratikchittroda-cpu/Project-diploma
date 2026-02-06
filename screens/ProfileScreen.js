@@ -65,10 +65,6 @@ export default function ProfileScreen({ navigation, onClose }) {
           tabBarStyle: {
             backgroundColor: isDarkMode ? '#1e1e1e' : 'white',
             borderTopWidth: 0,
-            elevation: 20,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.1,
             paddingBottom: 10,
             paddingTop: 15,
             height: 75,
@@ -140,10 +136,6 @@ export default function ProfileScreen({ navigation, onClose }) {
           tabBarStyle: {
             backgroundColor: isDarkMode ? '#1e1e1e' : 'white',
             borderTopWidth: 0,
-            elevation: 20,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.1,
             paddingBottom: 10,
             paddingTop: 15,
             height: 75,
@@ -153,6 +145,7 @@ export default function ProfileScreen({ navigation, onClose }) {
             left: 0,
             right: 0,
             bottom: 0,
+            display: 'flex',
           },
         });
       }
@@ -243,15 +236,23 @@ export default function ProfileScreen({ navigation, onClose }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Account Information</Text>
       <View style={styles.infoCard}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.infoItem}>
           <Icon name="account-outline" size={20} color={theme.primary} />
           <View style={styles.infoContent}>
@@ -288,15 +289,23 @@ export default function ProfileScreen({ navigation, onClose }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Account Management</Text>
       <TouchableOpacity style={styles.menuButton} onPress={handleEditProfile}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.blue }]}>
             <Icon name="account-edit" size={22} color={theme.info} />
@@ -306,15 +315,23 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.menuButton} onPress={handleSecuritySettings}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.green }]}>
             <Icon name="shield-check" size={22} color={theme.success} />
@@ -324,15 +341,23 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.menuButton} onPress={handleBackupRestore}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.purple }]}>
             <Icon name="backup-restore" size={22} color="#9C27B0" />
@@ -343,15 +368,23 @@ export default function ProfileScreen({ navigation, onClose }) {
       </TouchableOpacity>
       <Text style={[styles.sectionTitle, { marginTop: 25 }]}>Preferences</Text>
       <TouchableOpacity style={styles.menuButton} onPress={handleSettings}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.gray }]}>
             <Icon name="cog" size={22} color={theme.textSecondary} />
@@ -361,15 +394,23 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.menuButton} onPress={handleThemes}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.orange }]}>
             <Icon name="palette" size={22} color={theme.warning} />
@@ -379,15 +420,23 @@ export default function ProfileScreen({ navigation, onClose }) {
         <Icon name="chevron-right" size={20} color={theme.textLight} />
       </TouchableOpacity>
       <View style={styles.menuButton}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.blue }]}>
             <Icon name="bell" size={22} color={theme.info} />
@@ -402,15 +451,23 @@ export default function ProfileScreen({ navigation, onClose }) {
         />
       </View>
       <View style={styles.menuButton}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.gray }]}>
             <Icon name="theme-light-dark" size={22} color={theme.textSecondary} />
@@ -425,15 +482,23 @@ export default function ProfileScreen({ navigation, onClose }) {
         />
       </View>
       <TouchableOpacity style={[styles.menuButton, styles.logoutButton]} onPress={handleLogout}>
-        {Platform.OS === 'android' ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-        ) : (
-          <BlurView
-            intensity={theme.isDarkMode ? 30 : 60}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
         <View style={styles.menuButtonLeft}>
           <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.red }]}>
             <Icon name="logout" size={22} color={theme.error} />
@@ -518,6 +583,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 10,
   },
   profileImageContainer: {
     position: 'relative',
@@ -531,8 +597,6 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'white',
   },
   editImageButton: {
     position: 'absolute',
@@ -544,14 +608,18 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
   },
-  profileName: { fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 },
-  profileEmail: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginBottom: 20 },
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 5
+  },
+  profileEmail: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 20
+  },
   statsRow: { flexDirection: 'row', alignItems: 'center' },
   statItem: { alignItems: 'center', paddingHorizontal: 20 },
   statNumber: { fontSize: 20, fontWeight: 'bold', color: 'white' },
@@ -561,19 +629,17 @@ const createStyles = (theme) => StyleSheet.create({
   content: { flex: 1 },
   scrollContent: { paddingBottom: 30 },
   section: { marginTop: 20, paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: 'white', borderBottomColor: 'rgba(255,255,255,0.2)' },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    borderBottomColor: 'rgba(255,255,255,0.2)'
+  },
   infoCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 15,
     padding: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    borderWidth: 0,
   },
   infoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   infoContent: { marginLeft: 15, flex: 1 },
@@ -584,18 +650,11 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   menuButtonLeft: { flexDirection: 'row', alignItems: 'center' },
   menuIcon: {
@@ -605,13 +664,8 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   menuButtonText: { fontSize: 17, color: 'white', fontWeight: '600', letterSpacing: 0.3 },
-  logoutButton: { marginTop: 15, backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' },
+  logoutButton: { marginTop: 15 },
   logoutText: { color: 'white', fontWeight: '600' },
 });

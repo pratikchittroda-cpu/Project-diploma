@@ -21,7 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 export default function UserTypeScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
   const [selectedType, setSelectedType] = useState(null);
-  
+
   // Simplified animation values for better performance
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -70,9 +70,9 @@ export default function UserTypeScreen({ navigation }) {
 
   const handleCardPress = (type) => {
     setSelectedType(type);
-    
+
     const cardAnim = type === 'personal' ? personalCardAnim : companyCardAnim;
-    
+
     // Subtle press feedback
     Animated.sequence([
       Animated.timing(cardAnim, {
@@ -98,20 +98,20 @@ export default function UserTypeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar 
+      <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
         translucent={true}
       />
-      
+
       {/* Modern Background */}
       <LinearGradient
         colors={['#667eea', '#764ba2']}
         style={styles.backgroundGradient}
       />
-      
+
       {/* Content Container */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.content,
           {
@@ -265,8 +265,7 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   appTitle: {
     fontSize: 28,
@@ -295,11 +294,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   cardWrapper: {
     borderRadius: 20,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
     marginBottom: 16,
   },
   card: {

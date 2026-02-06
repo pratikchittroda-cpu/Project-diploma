@@ -427,8 +427,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 20,
     paddingHorizontal: 15,
     height: 55,
-    borderWidth: 1,
-    borderColor: theme.border,
+    borderWidth: 0,
     minHeight: 55,
   },
   inputIcon: {
@@ -510,8 +509,7 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 10,
     backgroundColor: 'rgba(102, 126, 234, 0.1)',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(102, 126, 234, 0.3)',
+    borderWidth: 0,
     alignItems: 'center',
   },
   debugButtonText: {

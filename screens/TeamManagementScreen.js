@@ -351,6 +351,23 @@ export default function TeamManagementScreen({ navigation }) {
 
       {teamData.members.map((member) => (
         <View key={member.id} style={styles.memberCard}>
+          <BlurView
+            intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            experimentalBlurMethod="none"
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Dynamic overlay for extra glass effect */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0, 0, 0, 0.1)'
+                  : 'rgba(255, 255, 255, 0.1)'
+              }
+            ]}
+          />
           <View style={styles.memberHeader}>
             <View style={styles.memberInfo}>
               <View style={[styles.avatarContainer, { backgroundColor: `${member.color}20` }]}>
@@ -370,12 +387,12 @@ export default function TeamManagementScreen({ navigation }) {
 
           <View style={styles.memberDetails}>
             <View style={styles.detailItem}>
-              <Icon name="email-outline" size={16} color="rgba(255,255,255,0.6)" />
-              <Text style={styles.detailText}>{member.email}</Text>
+              <Icon name="email-outline" size={16} color={Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)'} />
+              <Text style={[styles.detailText, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)' }]}>{member.email}</Text>
             </View>
             <View style={styles.detailItem}>
-              <Icon name="office-building" size={16} color="rgba(255,255,255,0.6)" />
-              <Text style={styles.detailText}>{member.department}</Text>
+              <Icon name="office-building" size={16} color={Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)'} />
+              <Text style={[styles.detailText, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)' }]}>{member.department}</Text>
             </View>
           </View>
 
@@ -390,8 +407,9 @@ export default function TeamManagementScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
-      ))}
-    </Animated.View>
+      ))
+      }
+    </Animated.View >
   );
 
   const renderTeamsList = () => (
@@ -412,6 +430,23 @@ export default function TeamManagementScreen({ navigation }) {
 
         return (
           <View key={index} style={styles.teamCard}>
+            <BlurView
+              intensity={theme.isDarkMode ? 30 : 60}
+              tint={theme.isDarkMode ? 'dark' : 'light'}
+              experimentalBlurMethod="none"
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Dynamic overlay for extra glass effect */}
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: theme.isDarkMode
+                    ? 'rgba(0, 0, 0, 0.1)'
+                    : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+                }
+              ]}
+            />
             <View style={styles.teamHeader}>
               <View style={[styles.teamIcon, { backgroundColor: `${dept.color}20` }]}>
                 <Icon name={dept.icon} size={24} color={dept.color} />
@@ -425,11 +460,11 @@ export default function TeamManagementScreen({ navigation }) {
             <View style={styles.teamStats}>
               <View style={styles.teamStatItem}>
                 <Text style={styles.teamStatLabel}>Budget</Text>
-                <Text style={styles.teamStatValue}>{formatCurrency(dept.budget)}</Text>
+                <Text style={[styles.teamStatValue, { color: 'white' }]}>{formatCurrency(dept.budget)}</Text>
               </View>
               <View style={styles.teamStatItem}>
                 <Text style={styles.teamStatLabel}>Utilized</Text>
-                <Text style={[styles.teamStatValue, { color: totalSalary > dept.budget ? '#F44336' : '#4CAF50' }]}>
+                <Text style={[styles.teamStatValue, { color: totalSalary > dept.budget ? '#F44336' : (Platform.OS === 'android' && !theme.isDarkMode ? 'black' : '#4CAF50') }]}>
                   {formatCurrency(totalSalary)}
                 </Text>
               </View>
@@ -449,7 +484,7 @@ export default function TeamManagementScreen({ navigation }) {
           </View>
         );
       })}
-    </Animated.View>
+    </Animated.View >
   );
 
   const styles = createStyles(theme);
@@ -667,8 +702,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 20,
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   overviewGradient: {
@@ -707,8 +741,7 @@ const createStyles = (theme) => StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginTop: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 0,
   },
   generateSalariesText: {
     color: 'white',
@@ -770,12 +803,11 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Member Card
   memberCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
+    overflow: 'hidden',
   },
   memberHeader: {
     flexDirection: 'row',
@@ -863,12 +895,11 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Team Card
   teamCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
+    overflow: 'hidden',
   },
   teamHeader: {
     flexDirection: 'row',
@@ -935,8 +966,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: '#2A2A2A',
     borderRadius: 24,
     padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -959,8 +989,7 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: 'white',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
     marginBottom: 12,
   },
   modalButton: {

@@ -236,17 +236,34 @@ export default function CompanyProfileScreen({ navigation }) {
     ]}>
       <View style={styles.profileGradient}>
         <View style={styles.profileInfo}>
+          <BlurView
+            intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            experimentalBlurMethod="none"
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Dynamic overlay for extra glass effect */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0, 0, 0, 0.1)'
+                  : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+              }
+            ]}
+          />
           <View style={styles.avatarContainer}>
             <Icon name="office-building" size={40} color="white" />
           </View>
           <View style={styles.profileDetails}>
-            <Text style={styles.companyName}>
+            <Text style={[styles.companyName, { color: 'white' }]}>
               {userData?.companyName || 'Company Name'}
             </Text>
-            <Text style={styles.adminName}>
+            <Text style={[styles.adminName, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>
               {userData?.contactPerson || userData?.fullName || 'Admin Name'}
             </Text>
-            <Text style={styles.adminEmail}>
+            <Text style={[styles.adminEmail, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)' }]}>
               {user?.email || 'admin@company.com'}
             </Text>
           </View>
@@ -269,24 +286,92 @@ export default function CompanyProfileScreen({ navigation }) {
       <Text style={styles.sectionTitle}>Company Statistics</Text>
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
+          <BlurView
+            intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            experimentalBlurMethod="none"
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Dynamic overlay for extra glass effect */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0, 0, 0, 0.1)'
+                  : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+              }
+            ]}
+          />
           <Icon name="trending-up" size={24} color="#4CAF50" />
-          <Text style={styles.statValue}>{formatCurrency(companyStats.totalRevenue)}</Text>
-          <Text style={styles.statLabel}>Total Revenue</Text>
+          <Text style={[styles.statValue, { color: 'white' }]}>{formatCurrency(companyStats.totalRevenue)}</Text>
+          <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Total Revenue</Text>
         </View>
         <View style={styles.statCard}>
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            experimentalBlurMethod="none"
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Dynamic overlay for extra glass effect */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0, 0, 0, 0.1)'
+                  : 'rgba(255, 255, 255, 0.1)'
+              }
+            ]}
+          />
           <Icon name="trending-down" size={24} color="#FF5252" />
-          <Text style={styles.statValue}>{formatCurrency(companyStats.totalExpenses)}</Text>
-          <Text style={styles.statLabel}>Total Expenses</Text>
+          <Text style={[styles.statValue, { color: 'white' }]}>{formatCurrency(companyStats.totalExpenses)}</Text>
+          <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Total Expenses</Text>
         </View>
         <View style={styles.statCard}>
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            experimentalBlurMethod="none"
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Dynamic overlay for extra glass effect */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0, 0, 0, 0.1)'
+                  : 'rgba(255, 255, 255, 0.1)'
+              }
+            ]}
+          />
           <Icon name="swap-vertical" size={24} color="#2196F3" />
-          <Text style={styles.statValue}>{companyStats.totalTransactions}</Text>
-          <Text style={styles.statLabel}>Transactions</Text>
+          <Text style={[styles.statValue, { color: 'white' }]}>{companyStats.totalTransactions}</Text>
+          <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Transactions</Text>
         </View>
         <View style={styles.statCard}>
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            experimentalBlurMethod="none"
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Dynamic overlay for extra glass effect */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0, 0, 0, 0.1)'
+                  : 'rgba(255, 255, 255, 0.1)'
+              }
+            ]}
+          />
           <Icon name="calendar-month" size={24} color="#FF9800" />
-          <Text style={styles.statValue}>{formatCurrency(companyStats.monthlyRevenue)}</Text>
-          <Text style={styles.statLabel}>This Month</Text>
+          <Text style={[styles.statValue, { color: 'white' }]}>{formatCurrency(companyStats.monthlyRevenue)}</Text>
+          <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>This Month</Text>
         </View>
       </View>
     </Animated.View>
@@ -381,6 +466,23 @@ export default function CompanyProfileScreen({ navigation }) {
         </View>
       ) : (
         <View style={styles.infoGrid}>
+          <BlurView
+            intensity={theme.isDarkMode ? 30 : 60}
+            tint={theme.isDarkMode ? 'dark' : 'light'}
+            experimentalBlurMethod="none"
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Dynamic overlay for extra glass effect */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0, 0, 0, 0.1)'
+                  : 'rgba(255, 255, 255, 0.1)'
+              }
+            ]}
+          />
           <View style={styles.infoItem}>
             <Icon name="domain" size={20} color={theme.primary} />
             <Text style={styles.infoLabel}>Industry</Text>
@@ -414,6 +516,23 @@ export default function CompanyProfileScreen({ navigation }) {
       <Text style={styles.sectionTitle}>Settings</Text>
 
       <View style={styles.settingItem}>
+        <BlurView
+          intensity={Platform.OS === 'android' ? 100 : (theme.isDarkMode ? 30 : 60)}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Dynamic overlay for extra glass effect */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : 'rgba(255, 255, 255, 0.1)'
+            }
+          ]}
+        />
         <View style={styles.settingInfo}>
           <View style={[styles.menuIcon, { backgroundColor: 'rgba(33, 150, 243, 0.2)' }]}>
             <Icon name="bell" size={20} color="#2196F3" />
@@ -625,8 +744,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'white',
+    borderWidth: 0,
     marginBottom: 15,
   },
   profileDetails: {
@@ -641,12 +759,12 @@ const createStyles = (theme) => StyleSheet.create({
   },
   adminName: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)',
     marginBottom: 2,
   },
   adminEmail: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: Platform.OS === 'android' && !theme.isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)',
   },
   editButton: {
     position: 'absolute',
@@ -658,11 +776,6 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: 'black',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
   },
 
   // Stats Section Styles
@@ -686,12 +799,11 @@ const createStyles = (theme) => StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
+    overflow: 'hidden',
   },
   statValue: {
     fontSize: 16,
@@ -713,11 +825,10 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 20,
   },
   infoGrid: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
+    overflow: 'hidden',
   },
   infoItem: {
     flexDirection: 'row',
@@ -743,8 +854,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   inputGroup: {
     marginBottom: 16,
@@ -761,8 +871,7 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: 'white',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 0,
   },
   saveButton: {
     marginTop: 10,
@@ -793,8 +902,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   settingInfo: {
     flexDirection: 'row',
@@ -827,8 +935,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   actionButtonLeft: {
     flexDirection: 'row',
@@ -842,7 +949,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   signOutButton: {
     marginTop: 10,
-    borderColor: 'rgba(255, 82, 82, 0.5)',
     backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    borderWidth: 0,
   },
 });

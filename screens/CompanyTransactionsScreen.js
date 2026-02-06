@@ -482,8 +482,7 @@ const createStyles = (theme) => StyleSheet.create({
         borderRadius: 20,
         padding: 20,
         marginBottom: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 0,
     },
     summaryTitle: {
         fontSize: 16,
@@ -523,8 +522,7 @@ const createStyles = (theme) => StyleSheet.create({
         borderRadius: 12,
         padding: 4,
         marginBottom: 15,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 0,
     },
     periodButton: {
         flex: 1,
@@ -552,8 +550,7 @@ const createStyles = (theme) => StyleSheet.create({
         borderRadius: 12,
         marginBottom: 15,
         paddingHorizontal: 15,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 0,
     },
     searchIcon: {
         marginRight: 10,
@@ -583,8 +580,7 @@ const createStyles = (theme) => StyleSheet.create({
         borderRadius: 12,
         paddingVertical: 10,
         paddingHorizontal: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 0,
     },
     filterTabActive: {
         backgroundColor: 'rgba(255,255,255,0.3)',
@@ -617,8 +613,7 @@ const createStyles = (theme) => StyleSheet.create({
         borderRadius: 12,
         padding: 15,
         marginBottom: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 0,
     },
     transactionIcon: {
         width: 40,

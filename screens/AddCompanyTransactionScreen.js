@@ -478,8 +478,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   typeButtonActiveExpense: {
     backgroundColor: 'rgba(244, 67, 54, 0.3)',
@@ -506,8 +505,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   currencySymbol: {
     fontSize: 32,
@@ -541,8 +539,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     minWidth: '47%',
   },
   categoryButtonActive: {
@@ -581,8 +578,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   departmentButtonActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -606,8 +602,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     padding: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   dateInput: {
     flex: 1,
@@ -623,8 +618,7 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 15,
     fontSize: 16,
     color: 'white',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     minHeight: 100,
   },
 
@@ -635,8 +629,7 @@ const createStyles = (theme) => StyleSheet.create({
   submitButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 0,
   },
   submitButtonDisabled: {
     opacity: 0.6,

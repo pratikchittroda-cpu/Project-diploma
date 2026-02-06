@@ -223,22 +223,30 @@ export default function ThemesScreen({ navigation }) {
 
   const renderDarkModeToggle = () => (
     <Animated.View style={[styles.darkModeCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {Platform.OS === 'android' ? (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)' }]} />
-      ) : (
-        <BlurView
-          intensity={theme.isDarkMode ? 30 : 60}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
+      <BlurView
+        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+        tint={theme.isDarkMode ? 'dark' : 'light'}
+        experimentalBlurMethod="none"
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Dynamic overlay for extra glass effect */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.isDarkMode
+              ? 'rgba(0, 0, 0, 0.1)'
+              : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+          }
+        ]}
+      />
       <View style={styles.darkModeContent}>
         <View style={styles.darkModeLeft}>
           <View style={styles.darkModeIcon}>
-            <Icon name="theme-light-dark" size={24} color={Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white'} />
+            <Icon name="theme-light-dark" size={24} color="white" />
           </View>
           <View>
-            <Text style={[styles.darkModeTitle, { color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white' }]}>Dark Mode</Text>
+            <Text style={[styles.darkModeTitle, { color: 'white' }]}>Dark Mode</Text>
             <Text style={[styles.darkModeSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
               {isDarkMode ? 'Dark theme active' : 'Light theme active'}
             </Text>
@@ -344,7 +352,7 @@ const createStyles = (theme) => StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
+    color: 'white',
   },
   headerSpacer: {
     width: 40,
@@ -362,7 +370,7 @@ const createStyles = (theme) => StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
+    color: 'white',
     marginBottom: 8,
   },
   sectionSubtitle: {
@@ -373,8 +381,7 @@ const createStyles = (theme) => StyleSheet.create({
   darkModeCard: {
     borderRadius: 16,
     padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     overflow: 'hidden',
   },
   darkModeContent: {
@@ -450,7 +457,7 @@ const createStyles = (theme) => StyleSheet.create({
   categoryTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: Platform.OS === 'android' && !theme.isDarkMode ? 'black' : 'white',
+    color: 'white',
     marginBottom: 2,
   },
   categoryDescription: {
@@ -481,8 +488,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   selectedThemeCard: {
     borderColor: 'rgba(76, 175, 80, 0.8)',
@@ -555,7 +561,6 @@ const createStyles = (theme) => StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 0,
   },
 });

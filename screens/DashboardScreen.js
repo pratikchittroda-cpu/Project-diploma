@@ -16,12 +16,12 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { AppIcons, Icon } from '../constants/Icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTransactions } from '../hooks/useTransactions';
 import BudgetAdvisor from '../components/BudgetAdvisor';
+import GlassCard from '../components/GlassCard';
 import aiService from '../services/aiService';
 
 const { width } = Dimensions.get('window');
@@ -250,44 +250,39 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const renderOverviewCard = () => (
-    <Animated.View style={[styles.overviewCard, { opacity: fadeAnim, transform: [{ scale: cardScale }] }]}>
-      {Platform.OS === 'android' ? (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
-      ) : (
-        <BlurView
-          intensity={theme.isDarkMode ? 30 : 60}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-      <View style={styles.cardContent}>
+    <Animated.View style={[styles.overviewContainer, { opacity: fadeAnim, transform: [{ scale: cardScale }] }]}>
+      <GlassCard
+        style={styles.overviewCard}
+        borderRadius={28}
+        padding={24}
+      >
         <View style={styles.overviewHeader}>
-          <Text style={[styles.overviewTitle, { color: 'rgba(255,255,255,0.8)' }]}>Total Balance</Text>
-          <AppIcons.Eye size={20} color="rgba(255,255,255,0.8)" />
+          <Text style={[styles.overviewTitle, { color: 'rgba(255,255,255,0.9)' }]}>Total Balance</Text>
+          <AppIcons.Eye size={22} color="rgba(255,255,255,0.9)" />
         </View>
         <Text style={[styles.balanceAmount, { color: 'white' }]}>{formatCurrency(dashboardStats.totalBalance)}</Text>
 
         <View style={styles.incomeExpenseRow}>
           <View style={styles.incomeExpenseItem}>
-            <View style={[styles.iconCircle, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
-              <AppIcons.Income size={20} color="#4CAF50" />
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(76, 175, 80, 0.25)' }]}>
+              <AppIcons.Income size={22} color="#4CAF50" />
             </View>
             <View>
-              <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.6)' }]}>Income</Text>
+              <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.7)' }]}>Income</Text>
               <Text style={styles.incomeAmount}>{formatCurrency(dashboardStats.monthlyIncome)}</Text>
             </View>
           </View>
           <View style={styles.incomeExpenseItem}>
-            <View style={[styles.iconCircle, { backgroundColor: 'rgba(255, 82, 82, 0.2)' }]}>
-              <AppIcons.Expense size={20} color="#FF5252" />
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(255, 82, 82, 0.25)' }]}>
+              <AppIcons.Expense size={22} color="#FF5252" />
             </View>
             <View>
-              <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.6)' }]}>Expenses</Text>
+              <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.7)' }]}>Expenses</Text>
               <Text style={styles.expenseAmount}>{formatCurrency(dashboardStats.monthlyExpenses)}</Text>
             </View>
           </View>
         </View>
-      </View>
+      </GlassCard>
     </Animated.View>
   );
 
@@ -383,27 +378,23 @@ export default function DashboardScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.transactionsList, { overflow: 'hidden' }]}>
-              <BlurView
-                intensity={theme.isDarkMode ? 30 : 60}
-                tint={theme.isDarkMode ? 'dark' : 'light'}
-                experimentalBlurMethod="dimmer"
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={{ padding: 5 }}>
-                {transactionsLoading ? (
-                  <ActivityIndicator size="small" color={theme.isDarkMode ? "white" : "#333"} style={{ marginVertical: 20 }} />
-                ) : recentTransactions.length > 0 ? (
-                  recentTransactions.map((transaction, index) =>
-                    renderTransactionItem(transaction, index)
-                  )
-                ) : (
-                  <Text style={[styles.emptyText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
-                    No transactions yet. Add your first one!
-                  </Text>
-                )}
-              </View>
-            </View>
+            <GlassCard
+              style={styles.transactionsList}
+              borderRadius={24}
+              padding={5}
+            >
+              {transactionsLoading ? (
+                <ActivityIndicator size="small" color={theme.isDarkMode ? "white" : "#333"} style={{ marginVertical: 20 }} />
+              ) : recentTransactions.length > 0 ? (
+                recentTransactions.map((transaction, index) =>
+                  renderTransactionItem(transaction, index)
+                )
+              ) : (
+                <Text style={[styles.emptyText, { color: theme.isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }]}>
+                  No transactions yet. Add your first one!
+                </Text>
+              )}
+            </GlassCard>
           </Animated.View>
         </ScrollView>
       </SafeAreaView>
@@ -463,21 +454,14 @@ const styles = StyleSheet.create({
   },
 
   // Overview Card
-  // Overview Card
-  overviewCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+  overviewContainer: {
     marginBottom: 25,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+  },
+  overviewCard: {
+    // Styling handled by GlassCard
   },
   cardContent: {
-    padding: 24,
+    padding: 0,
   },
   overviewHeader: {
     flexDirection: 'row',
@@ -491,10 +475,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   balanceAmount: {
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: '700',
     color: 'white',
     marginBottom: 24,
+    letterSpacing: 0.5,
   },
   incomeExpenseRow: {
     flexDirection: 'row',
@@ -554,9 +539,8 @@ const styles = StyleSheet.create({
 
   // Transactions List
   transactionsList: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 24,
+    borderWidth: 0,
   },
   transactionItem: {
     flexDirection: 'row',

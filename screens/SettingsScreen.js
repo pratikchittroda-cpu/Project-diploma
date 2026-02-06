@@ -80,15 +80,23 @@ export default function SettingsScreen({ navigation }) {
 
   const renderSettingItem = (title, subtitle, icon, setting) => (
     <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {Platform.OS === 'android' ? (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
-      ) : (
-        <BlurView
-          intensity={theme.isDarkMode ? 30 : 60}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
+      <BlurView
+        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+        tint={theme.isDarkMode ? 'dark' : 'light'}
+        experimentalBlurMethod="none"
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Dynamic overlay for extra glass effect */}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.isDarkMode
+              ? 'rgba(0, 0, 0, 0.1)'
+              : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+          }
+        ]}
+      />
       <View style={styles.settingLeft}>
         <View style={[styles.settingIcon, { backgroundColor: theme.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
           <Icon name={icon} size={22} color="white" />
@@ -197,10 +205,21 @@ export default function SettingsScreen({ navigation }) {
           {renderSection('Appearance', (
             <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
               <BlurView
-                intensity={theme.isDarkMode ? 30 : 60}
+                intensity={Platform.OS === 'android' ? 100 : (theme.isDarkMode ? 30 : 60)}
                 tint={theme.isDarkMode ? 'dark' : 'light'}
-                experimentalBlurMethod="dimmer"
+                experimentalBlurMethod="none"
                 style={StyleSheet.absoluteFill}
+              />
+              {/* Dynamic overlay for extra glass effect */}
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor: theme.isDarkMode
+                      ? 'rgba(0, 0, 0, 0.1)'
+                      : 'rgba(255, 255, 255, 0.1)'
+                  }
+                ]}
               />
               <View style={styles.settingLeft}>
                 <View style={[styles.settingIcon, { backgroundColor: theme.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
@@ -291,8 +310,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     overflow: 'hidden',
   },
   settingLeft: {

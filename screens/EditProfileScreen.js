@@ -140,11 +140,28 @@ export default function EditProfileScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Full Name</Text>
               <View style={styles.inputContainer}>
+                <BlurView
+                  intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+                  tint={theme.isDarkMode ? 'dark' : 'light'}
+                  experimentalBlurMethod="none"
+                  style={StyleSheet.absoluteFill}
+                />
+                {/* Dynamic overlay for extra glass effect */}
+                <View
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      backgroundColor: theme.isDarkMode
+                        ? 'rgba(0, 0, 0, 0.1)'
+                        : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+                    }
+                  ]}
+                />
                 <Icon name="account-outline" size={20} color="white" style={styles.inputIcon} />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Enter your full name"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  placeholderTextColor={theme.isDarkMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)"}
                   value={fullName}
                   onChangeText={setFullName}
                   autoCapitalize="words"
@@ -156,13 +173,19 @@ export default function EditProfileScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
               <View style={[styles.inputContainer, styles.disabledInput]}>
-                <Icon name="email-outline" size={20} color="rgba(255,255,255,0.5)" style={styles.inputIcon} />
+                <BlurView
+                  intensity={theme.isDarkMode ? 30 : 60}
+                  tint={theme.isDarkMode ? 'dark' : 'light'}
+                  experimentalBlurMethod="none"
+                  style={StyleSheet.absoluteFill}
+                />
+                <Icon name="email-outline" size={20} color={theme.isDarkMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)"} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.textInput, styles.disabledText]}
                   value={user?.email || ''}
                   editable={false}
                   placeholder="Email cannot be changed"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  placeholderTextColor={theme.isDarkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
                 />
               </View>
               <Text style={styles.helperText}>Email address cannot be changed</Text>
@@ -172,11 +195,28 @@ export default function EditProfileScreen({ navigation }) {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Phone Number</Text>
               <View style={styles.inputContainer}>
+                <BlurView
+                  intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
+                  tint={theme.isDarkMode ? 'dark' : 'light'}
+                  experimentalBlurMethod="none"
+                  style={StyleSheet.absoluteFill}
+                />
+                {/* Dynamic overlay for extra glass effect */}
+                <View
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      backgroundColor: theme.isDarkMode
+                        ? 'rgba(0, 0, 0, 0.1)'
+                        : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+                    }
+                  ]}
+                />
                 <Icon name="phone-outline" size={20} color="white" style={styles.inputIcon} />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Enter your phone number"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  placeholderTextColor={theme.isDarkMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)"}
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
@@ -274,8 +314,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 0,
   },
   editImageButton: {
     position: 'absolute',
@@ -287,8 +326,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderWidth: 0,
   },
   changePhotoText: {
     fontSize: 14,
@@ -311,15 +349,13 @@ const createStyles = (theme) => StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
     paddingHorizontal: 15,
     paddingVertical: 12,
+    overflow: 'hidden',
   },
   disabledInput: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
     borderColor: 'rgba(255,255,255,0.1)',
   },
   inputIcon: {
@@ -349,8 +385,7 @@ const createStyles = (theme) => StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 0,
     paddingVertical: 15,
     paddingHorizontal: 20,
     marginBottom: 15,

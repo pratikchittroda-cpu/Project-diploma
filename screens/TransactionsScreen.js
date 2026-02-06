@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import GlassCard from '../components/GlassCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -245,21 +245,15 @@ export default function TransactionsScreen({ navigation }) {
         <Text style={styles.sectionTitle}>Category Breakdown</Text>
         <View style={styles.categoryGrid}>
           {Object.entries(categoryData).sort((a, b) => b[1] - a[1]).map(([category, amount]) => (
-            <View key={category} style={styles.categoryCard}>
-              <BlurView
-                intensity={theme.isDarkMode ? 30 : 60}
-                tint={theme.isDarkMode ? 'dark' : 'light'}
-                experimentalBlurMethod="dimmer"
-                style={StyleSheet.absoluteFill}
-              />
+            <GlassCard key={category} style={styles.categoryCard} borderRadius={12} padding={12}>
               <View style={[styles.categoryIconSmall, { backgroundColor: `${getCategoryColor(category, 'expense')}30` }]}>
                 <Icon name={getCategoryIcon(category)} size={16} color={getCategoryColor(category, 'expense')} />
               </View>
               <View style={styles.categoryInfo}>
-                <Text style={[styles.categoryName, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]} numberOfLines={1}>{category}</Text>
+                <Text style={[styles.categoryName, { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>{category}</Text>
                 <Text style={[styles.categoryAmount, { color: 'white' }]}>{formatCurrency(amount)}</Text>
               </View>
-            </View>
+            </GlassCard>
           ))}
         </View>
         {Object.keys(categoryData).length === 0 && (
@@ -324,36 +318,33 @@ export default function TransactionsScreen({ navigation }) {
           }
         >
           {/* Summary Card */}
-          <Animated.View style={[styles.summaryCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {Platform.OS === 'android' ? (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
-            ) : (
-              <BlurView
-                intensity={theme.isDarkMode ? 30 : 60}
-                tint={theme.isDarkMode ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
-              />
-            )}
-            <Text style={[styles.summaryTitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }]}>{selectedPeriod} Summary</Text>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Icon name="trending-up" size={20} color="#4CAF50" />
-                <Text style={[styles.summaryLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }]}>Income</Text>
-                <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.totalIncome)}</Text>
+          <Animated.View style={[styles.summaryContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <GlassCard
+              style={styles.summaryCard}
+              borderRadius={20}
+              padding={20}
+            >
+              <Text style={[styles.summaryTitle, { color: 'rgba(255,255,255,0.8)' }]}>{selectedPeriod} Summary</Text>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryItem}>
+                  <Icon name="trending-up" size={20} color="#4CAF50" />
+                  <Text style={[styles.summaryLabel, { color: 'rgba(255,255,255,0.7)' }]}>Income</Text>
+                  <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.totalIncome)}</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Icon name="trending-down" size={20} color="#FF5252" />
+                  <Text style={[styles.summaryLabel, { color: 'rgba(255,255,255,0.7)' }]}>Expenses</Text>
+                  <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.totalExpenses)}</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Icon name="wallet" size={20} color="#2196F3" />
+                  <Text style={[styles.summaryLabel, { color: 'rgba(255,255,255,0.7)' }]}>Net</Text>
+                  <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.netAmount)}</Text>
+                </View>
               </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Icon name="trending-down" size={20} color="#FF5252" />
-                <Text style={[styles.summaryLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }]}>Expenses</Text>
-                <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.totalExpenses)}</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Icon name="wallet" size={20} color="#2196F3" />
-                <Text style={[styles.summaryLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }]}>Net</Text>
-                <Text style={[styles.summaryValue, { color: 'white' }]}>{formatCurrency(transactionSummary.netAmount)}</Text>
-              </View>
-            </View>
+            </GlassCard>
           </Animated.View>
 
           {/* Period Selector */}
@@ -378,29 +369,28 @@ export default function TransactionsScreen({ navigation }) {
           </Animated.View>
 
           {/* Search Bar */}
-          <Animated.View style={[styles.searchContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {Platform.OS === 'android' ? (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }]} />
-            ) : (
-              <BlurView
-                intensity={theme.isDarkMode ? 30 : 60}
-                tint={theme.isDarkMode ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
-              />
-            )}
-            <Icon name="magnify" size={20} color={theme.isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.5)"} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, { color: 'white' }]}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search transactions..."
-              placeholderTextColor={theme.isDarkMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)"}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-                <Icon name="close" size={16} color={theme.isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.5)"} />
-              </TouchableOpacity>
-            )}
+          <Animated.View style={[styles.searchContainerWrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <GlassCard
+              style={styles.searchContainer}
+              borderRadius={12}
+              padding={0}
+            >
+              <View style={styles.searchContent}>
+                <Icon name="magnify" size={20} color="rgba(255,255,255,0.7)" style={styles.searchIcon} />
+                <TextInput
+                  style={[styles.searchInput, { color: 'white' }]}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search transactions..."
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+                    <Icon name="close" size={16} color="rgba(255,255,255,0.7)" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </GlassCard>
           </Animated.View>
 
           {/* Filter Tabs */}
@@ -444,32 +434,31 @@ export default function TransactionsScreen({ navigation }) {
                 {filteredTransactions.map((transaction) => (
                   <TouchableOpacity
                     key={transaction.id}
-                    style={styles.transactionItem}
                     onLongPress={() => handleDeleteTransaction(transaction.id)}
                   >
-                    <BlurView
-                      intensity={theme.isDarkMode ? 30 : 60}
-                      tint={theme.isDarkMode ? 'dark' : 'light'}
-                      experimentalBlurMethod="dimmer"
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
-                      <Icon name={transaction.icon} size={20} color={transaction.color} />
-                    </View>
+                    <GlassCard
+                      style={styles.transactionItem}
+                      borderRadius={12}
+                      padding={15}
+                    >
+                      <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
+                        <Icon name={transaction.icon} size={20} color={transaction.color} />
+                      </View>
 
-                    <View style={styles.transactionDetails}>
-                      <Text style={[styles.transactionDescription, { color: 'white' }]}>{transaction.description}</Text>
-                      <Text style={[styles.transactionCategory, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
-                        {transaction.category} • {new Date(transaction.date).toLocaleDateString('en-US', { weekday: 'long' })}, {new Date(transaction.date).toLocaleDateString()}
+                      <View style={styles.transactionDetails}>
+                        <Text style={[styles.transactionDescription, { color: 'white' }]}>{transaction.description}</Text>
+                        <Text style={[styles.transactionCategory, { color: 'rgba(255,255,255,0.7)' }]}>
+                          {transaction.category} • {new Date(transaction.date).toLocaleDateString('en-US', { weekday: 'long' })}, {new Date(transaction.date).toLocaleDateString()}
+                        </Text>
+                      </View>
+
+                      <Text style={[
+                        styles.transactionAmount,
+                        { color: transaction.type === 'income' ? '#4CAF50' : '#FF5252' }
+                      ]}>
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                       </Text>
-                    </View>
-
-                    <Text style={[
-                      styles.transactionAmount,
-                      { color: transaction.type === 'income' ? '#4CAF50' : '#FF5252' }
-                    ]}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                    </Text>
+                    </GlassCard>
                   </TouchableOpacity>
                 ))}
 
@@ -552,13 +541,11 @@ const createStyles = (theme) => StyleSheet.create({
   },
 
   // Summary Card
-  summaryCard: {
-    borderRadius: 20,
-    padding: 20,
+  summaryContainer: {
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    overflow: 'hidden',
+  },
+  summaryCard: {
+    // Handling handled by GlassCard
   },
   summaryTitle: {
     fontSize: 16,
@@ -598,8 +585,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 12,
     padding: 4,
     marginBottom: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 0,
   },
   periodButton: {
     flex: 1,
@@ -620,15 +606,16 @@ const createStyles = (theme) => StyleSheet.create({
   },
 
   // Search Bar
+  searchContainerWrapper: {
+    marginBottom: 15,
+  },
   searchContainer: {
+    // Style handled by GlassCard
+  },
+  searchContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    marginBottom: 15,
     paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    overflow: 'hidden',
   },
   searchIcon: {
     marginRight: 10,
@@ -686,14 +673,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 15,
   },
   transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    padding: 15,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    overflow: 'hidden',
   },
   transactionIcon: {
     width: 40,
