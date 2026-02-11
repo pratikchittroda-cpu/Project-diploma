@@ -16,6 +16,9 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import MessageService from '../services/MessageService';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
+import { GOOGLE_CLIENT_IDS } from '../utils/googleAuth';
 
 
 // Get screen dimensions
@@ -24,11 +27,55 @@ const { width, height } = screenDimensions;
 
 export default function CompanyLoginScreen({ navigation }) {
   const { theme, isLoading: themeLoading } = useTheme();
-  const { signIn, resetPassword, loading: authLoading } = useAuth();
+  const { signIn, resetPassword, loading: authLoading, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Google Auth Request
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: GOOGLE_CLIENT_IDS.androidClientId,
+    iosClientId: GOOGLE_CLIENT_IDS.iosClientId,
+    webClientId: GOOGLE_CLIENT_IDS.webClientId,
+    clientId: GOOGLE_CLIENT_IDS.webClientId,
+    responseType: 'id_token',
+    scopes: ['openid', 'profile', 'email'],
+    redirectUri: 'https://auth.expo.io/@pratik2467/Expenzo',
+  });
+
+  const redirectUri = 'https://auth.expo.io/@pratik2467/Expenzo';
+
+  useEffect(() => {
+    if (request) {
+      console.log('DEBUG [V4]: Final Hardcoded URI:', redirectUri);
+    }
+  }, [request]);
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      handleGoogleLogin(id_token);
+    } else if (response?.type === 'error') {
+      MessageService.showError('Google Error', response.error?.message || 'Failed to sign in with Google');
+    }
+  }, [response]);
+
+  const handleGoogleLogin = async (idToken) => {
+    setIsLoading(true);
+    try {
+      const result = await signInWithGoogle(idToken, 'company');
+      if (result.success) {
+        navigation.replace('CompanyDashboard');
+      } else {
+        MessageService.showError('Login Failed', result.error || 'Failed to sign in with Google');
+      }
+    } catch (error) {
+      MessageService.showError('Login Error', 'An unexpected error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Ensure width and height are available
   if (!width || !height) {
@@ -107,12 +154,18 @@ export default function CompanyLoginScreen({ navigation }) {
 
         // Check if user is company type
         if (userData?.userType !== 'company') {
+          console.log('Login Error: User type mismatch', userData);
           MessageService.showError('Access Denied', 'This account is not registered as a Company account.');
           setIsLoading(false);
           return;
         }
 
-        navigation.replace('CompanyDashboard');
+        console.log('Login Success: Navigating to CompanyDashboard', userData);
+
+        // Small delay to ensure state propagation if needed, though optimistic update should handle it
+        setTimeout(() => {
+          navigation.replace('CompanyDashboard');
+        }, 100);
       } else {
         // Enhanced error messages for better debugging
         let errorMessage = 'Please check your credentials and try again.';
@@ -295,6 +348,18 @@ export default function CompanyLoginScreen({ navigation }) {
                 <Text style={styles.signUpLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Google Login Button */}
+            <TouchableOpacity
+              style={[styles.socialButton, (isLoading || authLoading) && styles.loginButtonDisabled]}
+              onPress={() => promptAsync()}
+              disabled={isLoading || authLoading || !request}
+            >
+              <View style={styles.socialButtonContent}>
+                <Icon name="google" size={20} color={theme.text} style={styles.socialIcon} />
+                <Text style={styles.socialButtonText}>Continue with Google</Text>
+              </View>
+            </TouchableOpacity>
           </Animated.View>
         </LinearGradient>
       </View>
@@ -452,8 +517,29 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 14,
   },
   signUpLink: {
-    color: theme.linkColor,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  socialButton: {
+    marginTop: 20,
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    height: 55,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  socialButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  socialIcon: {
+    marginRight: 10,
+  },
+  socialButtonText: {
+    color: theme.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

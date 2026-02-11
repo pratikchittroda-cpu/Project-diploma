@@ -571,7 +571,7 @@ export default function BudgetScreen({ navigation }) {
       'Are you sure you want to delete this budget?',
       async () => {
         try {
-          const result = await budgetService.deleteBudget(user.uid, budgetId);
+          const result = await budgetService.deleteBudget(budgetId);
           if (result.success) {
             setBudgets(budgets.filter(b => b.id !== budgetId));
             MessageService.showSuccess('Deleted', 'Budget removed successfully');
@@ -586,8 +586,29 @@ export default function BudgetScreen({ navigation }) {
       () => { }, // On cancel
       {
         buttons: [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', color: '#FF5252' }
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => { }
+          },
+          {
+            text: 'Delete',
+            color: '#FF5252',
+            onPress: async () => {
+              try {
+                const result = await budgetService.deleteBudget(budgetId);
+                if (result.success) {
+                  setBudgets(budgets.filter(b => b.id !== budgetId));
+                  MessageService.showSuccess('Deleted', 'Budget removed successfully');
+                } else {
+                  MessageService.showError('Error', result.error || 'Failed to delete budget');
+                }
+              } catch (error) {
+                console.error('Error deleting budget:', error);
+                MessageService.showError('Error', 'An unexpected error occurred');
+              }
+            }
+          }
         ]
       }
     );
@@ -809,6 +830,8 @@ export default function BudgetScreen({ navigation }) {
             <React.Fragment key={category.id}>
               <TouchableOpacity
                 onPress={() => toggleCardExpansion(category.id)}
+                onLongPress={() => budget && handleDeleteBudget(budget.id)}
+                delayLongPress={500}
                 activeOpacity={0.7}
               >
                 <GlassCard style={styles.categoryCard} borderRadius={16} padding={20}>

@@ -219,6 +219,28 @@ export default function CompanyBudgetScreen({ navigation }) {
     }
   };
 
+  const handleDeleteBudget = async (budgetId) => {
+    MessageService.showConfirm(
+      'Delete Budget',
+      'Are you sure you want to delete this budget?',
+      async () => {
+        try {
+          const result = await budgetService.deleteBudget(budgetId);
+          if (result.success) {
+            setBudgets(prev => prev.filter(b => b.id !== budgetId));
+            MessageService.showSuccess('Success', 'Budget deleted successfully');
+          } else {
+            MessageService.showError('Error', 'Failed to delete budget');
+          }
+        } catch (error) {
+          MessageService.showError('Error', 'An unexpected error occurred');
+        }
+      },
+      () => { },
+      { confirmButtonText: 'Delete', destructive: true }
+    );
+  };
+
   const getCompanyCategoryName = (category) => {
     const categories = {
       'office-supplies': 'Office Supplies',
@@ -367,7 +389,13 @@ export default function CompanyBudgetScreen({ navigation }) {
       <Text style={styles.sectionTitle}>Department Budgets</Text>
       {realBudgetData.departments.length > 0 ? (
         realBudgetData.departments.map((dept) => (
-          <View key={dept.id} style={styles.departmentCard}>
+          <TouchableOpacity
+            key={dept.id}
+            style={styles.departmentCard}
+            onLongPress={() => handleDeleteBudget(dept.id)}
+            delayLongPress={500}
+            activeOpacity={0.7}
+          >
             <View style={styles.departmentHeader}>
               <View style={styles.departmentInfo}>
                 <View style={[styles.departmentIcon, { backgroundColor: `${dept.color}20` }]}>
@@ -392,7 +420,7 @@ export default function CompanyBudgetScreen({ navigation }) {
                 ]}
               />
             </View>
-          </View>
+          </TouchableOpacity>
         ))
       ) : (
         <View style={styles.emptyState}>

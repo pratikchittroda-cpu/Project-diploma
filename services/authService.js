@@ -1,17 +1,53 @@
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
   updateProfile,
   sendPasswordResetEmail,
   updatePassword,
   EmailAuthProvider,
-  reauthenticateWithCredential
+  reauthenticateWithCredential,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 class AuthService {
+  // Sign in with Google
+  async signInWithGoogle(idToken, userType = 'personal') {
+    try {
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      const user = userCredential.user;
+
+      // Get or create user data from Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      let userData;
+      if (!userDocSnap.exists()) {
+        userData = {
+          uid: user.uid,
+          email: user.email,
+          fullName: user.displayName || 'Google User',
+          userType: userType,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          profileComplete: false,
+          provider: 'google'
+        };
+        await setDoc(userDocRef, userData);
+      } else {
+        userData = userDocSnap.data();
+      }
+
+      return { success: true, user, userData };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   // Sign up with email and password
   async signUp(email, password, userData) {
     try {
@@ -35,7 +71,7 @@ class AuthService {
         profileComplete: false,
         ...userData
       };
-      
+
       await setDoc(doc(db, 'users', user.uid), userDoc);
       return { success: true, user };
     } catch (error) {

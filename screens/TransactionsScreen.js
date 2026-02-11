@@ -194,8 +194,23 @@ export default function TransactionsScreen({ navigation }) {
       {
         animationType: 'slide',
         buttons: [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', color: '#FF5252' }
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => { }
+          },
+          {
+            text: 'Delete',
+            color: '#FF5252',
+            onPress: async () => {
+              const result = await deleteTransaction(transactionId);
+              if (result.success) {
+                MessageService.showSuccess('Deleted', 'Transaction removed successfully');
+              } else {
+                MessageService.showError('Error', result.error || 'Failed to delete transaction');
+              }
+            }
+          }
         ]
       }
     );
@@ -432,34 +447,43 @@ export default function TransactionsScreen({ navigation }) {
             ) : (
               <>
                 {filteredTransactions.map((transaction) => (
-                  <TouchableOpacity
-                    key={transaction.id}
-                    onLongPress={() => handleDeleteTransaction(transaction.id)}
-                  >
-                    <GlassCard
-                      style={styles.transactionItem}
-                      borderRadius={12}
-                      padding={15}
+                  <View key={transaction.id} style={styles.transactionItemContainer}>
+                    <TouchableOpacity
+                      style={{ flex: 1 }}
+                      onLongPress={() => handleDeleteTransaction(transaction.id)}
                     >
-                      <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
-                        <Icon name={transaction.icon} size={20} color={transaction.color} />
-                      </View>
+                      <GlassCard
+                        style={styles.transactionItem}
+                        borderRadius={12}
+                        padding={15}
+                      >
+                        <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
+                          <Icon name={transaction.icon} size={20} color={transaction.color} />
+                        </View>
 
-                      <View style={styles.transactionDetails}>
-                        <Text style={[styles.transactionDescription, { color: 'white' }]}>{transaction.description}</Text>
-                        <Text style={[styles.transactionCategory, { color: 'rgba(255,255,255,0.7)' }]}>
-                          {transaction.category} • {new Date(transaction.date).toLocaleDateString('en-US', { weekday: 'long' })}, {new Date(transaction.date).toLocaleDateString()}
+                        <View style={styles.transactionDetails}>
+                          <Text style={[styles.transactionDescription, { color: 'white' }]}>{transaction.description}</Text>
+                          <Text style={[styles.transactionCategory, { color: 'rgba(255,255,255,0.7)' }]}>
+                            {transaction.category} • {new Date(transaction.date).toLocaleDateString('en-US', { weekday: 'long' })}, {new Date(transaction.date).toLocaleDateString()}
+                          </Text>
+                        </View>
+
+                        <Text style={[
+                          styles.transactionAmount,
+                          { color: transaction.type === 'income' ? '#4CAF50' : '#FF5252' }
+                        ]}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                         </Text>
-                      </View>
+                      </GlassCard>
+                    </TouchableOpacity>
 
-                      <Text style={[
-                        styles.transactionAmount,
-                        { color: transaction.type === 'income' ? '#4CAF50' : '#FF5252' }
-                      ]}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                      </Text>
-                    </GlassCard>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteTransaction(transaction.id)}
+                    >
+                      <Icon name="trash-can-outline" size={20} color="#FF5252" />
+                    </TouchableOpacity>
+                  </View>
                 ))}
 
                 {filteredTransactions.length === 0 && !transactionsLoading && (
@@ -672,8 +696,23 @@ const createStyles = (theme) => StyleSheet.create({
     color: 'white',
     marginBottom: 15,
   },
-  transactionItem: {
+  transactionItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 10,
+  },
+  transactionItem: {
+    flex: 1,
+    marginRight: 10,
+    marginBottom: 0,
+  },
+  deleteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 82, 82, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   transactionIcon: {
     width: 40,

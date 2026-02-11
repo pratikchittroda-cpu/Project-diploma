@@ -1,13 +1,13 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
   limit,
   startAfter,
   getDoc
@@ -58,9 +58,9 @@ class TransactionService {
         lastDocument = doc;
       });
 
-      return { 
-        success: true, 
-        transactions, 
+      return {
+        success: true,
+        transactions,
         lastDoc: lastDocument,
         hasMore: transactions.length === pageSize
       };
@@ -139,10 +139,21 @@ class TransactionService {
 
   // Delete transaction
   async deleteTransaction(transactionId) {
+    console.log('[TransactionService] Attempting to delete transaction:', transactionId);
     try {
-      await deleteDoc(doc(db, 'transactions', transactionId));
+      if (!transactionId) {
+        console.error('[TransactionService] Error: transactionId is missing');
+        return { success: false, error: 'Transaction ID is missing' };
+      }
+
+      const docRef = doc(db, 'transactions', transactionId);
+      console.log('[TransactionService] DocRef created for path:', docRef.path);
+
+      await deleteDoc(docRef);
+      console.log('[TransactionService] Transaction deleted successfully');
       return { success: true };
     } catch (error) {
+      console.error('[TransactionService] Delete error:', error);
       return { success: false, error: error.message };
     }
   }

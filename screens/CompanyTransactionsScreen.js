@@ -372,29 +372,42 @@ export default function CompanyTransactionsScreen({ navigation }) {
                             ) : (
                                 <>
                                     {filteredTransactions.map((transaction) => (
-                                        <TouchableOpacity
+                                        <View
                                             key={transaction.id}
-                                            style={styles.transactionItem}
-                                            onLongPress={() => handleDeleteTransaction(transaction.id)}
+                                            style={styles.transactionItemContainer}
                                         >
-                                            <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
-                                                <Icon name={transaction.icon} size={20} color={transaction.color} />
-                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.transactionItem}
+                                                onLongPress={() => handleDeleteTransaction(transaction.id)}
+                                                delayLongPress={500}
+                                                activeOpacity={0.7}
+                                            >
+                                                <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}30` }]}>
+                                                    <Icon name={transaction.icon} size={20} color={transaction.color} />
+                                                </View>
 
-                                            <View style={styles.transactionDetails}>
-                                                <Text style={styles.transactionDescription}>{transaction.description || 'Transaction'}</Text>
-                                                <Text style={styles.transactionCategory}>
-                                                    {transaction.category} {transaction.department ? `• ${transaction.department}` : ''} • {new Date(transaction.date || transaction.createdAt).toLocaleDateString()}
+                                                <View style={styles.transactionDetails}>
+                                                    <Text style={styles.transactionDescription}>{transaction.description || 'Transaction'}</Text>
+                                                    <Text style={styles.transactionCategory}>
+                                                        {transaction.category} {transaction.department ? `• ${transaction.department}` : ''} • {new Date(transaction.date || transaction.createdAt).toLocaleDateString()}
+                                                    </Text>
+                                                </View>
+
+                                                <Text style={[
+                                                    styles.transactionAmount,
+                                                    { color: transaction.type === 'income' ? '#4CAF50' : '#FF5252' }
+                                                ]}>
+                                                    {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                                                 </Text>
-                                            </View>
+                                            </TouchableOpacity>
 
-                                            <Text style={[
-                                                styles.transactionAmount,
-                                                { color: transaction.type === 'income' ? '#4CAF50' : '#FF5252' }
-                                            ]}>
-                                                {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                                            </Text>
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.deleteButton}
+                                                onPress={() => handleDeleteTransaction(transaction.id)}
+                                            >
+                                                <Icon name="trash-can-outline" size={20} color="#FF5252" />
+                                            </TouchableOpacity>
+                                        </View>
                                     ))}
 
                                     {filteredTransactions.length === 0 && !transactionsLoading && (
@@ -606,14 +619,28 @@ const createStyles = (theme) => StyleSheet.create({
         color: 'white',
         marginBottom: 15,
     },
+    transactionItemContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
     transactionItem: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.15)',
         borderRadius: 12,
         padding: 15,
-        marginBottom: 10,
+        marginRight: 10,
         borderWidth: 0,
+    },
+    deleteButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 82, 82, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     transactionIcon: {
         width: 40,

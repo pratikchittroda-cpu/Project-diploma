@@ -33,7 +33,7 @@
     "web": {
       "favicon": "./assets/icon.png"
     },
-    "scheme": "Expenzo",
+    "scheme": "expenzo",
     "plugins": [
       "expo-font"
     ],

@@ -23,7 +23,7 @@ import MessageService from '../services/MessageService';
 
 export default function ProfileScreen({ navigation, onClose }) {
   const { isDarkMode, theme, toggleTheme, isLoading } = useTheme();
-  const { user, userData } = useAuth();
+  const { user, userData, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   // Animations
@@ -177,19 +177,40 @@ export default function ProfileScreen({ navigation, onClose }) {
     MessageService.showConfirm(
       'Logout',
       'Are you sure you want to logout?',
-      () => {
-        if (onClose) {
-          onClose();
-          setTimeout(() => navigation.navigate('UserType'), 500);
-        } else {
-          navigation.navigate('UserType');
+      async () => {
+        try {
+          await signOut();
+          if (onClose) {
+            onClose();
+            setTimeout(() => navigation.navigate('UserType'), 500);
+          } else {
+            navigation.navigate('UserType');
+          }
+        } catch (error) {
+          MessageService.showError('Logout Error', 'Failed to sign out properly.');
         }
       },
       () => { },
       {
         buttons: [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Logout', color: theme.error }
+          { text: 'Cancel', style: 'cancel', onPress: () => { } },
+          {
+            text: 'Logout',
+            color: theme.error,
+            onPress: async () => {
+              try {
+                await signOut();
+                if (onClose) {
+                  onClose();
+                  setTimeout(() => navigation.navigate('UserType'), 500);
+                } else {
+                  navigation.navigate('UserType');
+                }
+              } catch (error) {
+                MessageService.showError('Logout Error', 'Failed to sign out properly.');
+              }
+            }
+          }
         ]
       }
     );

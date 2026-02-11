@@ -17,36 +17,65 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import MessageService from '../services/MessageService';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
+import { GOOGLE_CLIENT_IDS } from '../utils/googleAuth';
 
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation, route }) {
-  // Add error boundary for context usage
-  let theme, themeLoading, signIn, authLoading;
+  const { theme, isLoading: themeLoading } = useTheme();
+  const { signIn, signInWithGoogle, resetPassword, loading: authLoading } = useAuth();
 
-  try {
-    const themeContext = useTheme();
-    theme = themeContext.theme;
-    themeLoading = themeContext.isLoading;
+  // Google Auth Request
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: GOOGLE_CLIENT_IDS.androidClientId,
+    iosClientId: GOOGLE_CLIENT_IDS.iosClientId,
+    webClientId: GOOGLE_CLIENT_IDS.webClientId,
+    clientId: GOOGLE_CLIENT_IDS.webClientId,
+    responseType: 'id_token',
+    scopes: ['openid', 'profile', 'email'],
+    redirectUri: 'https://auth.expo.io/@pratik2467/Expenzo',
+  });
 
-    const authContext = useAuth();
-    signIn = authContext.signIn;
-    const resetPassword = authContext.resetPassword;
-    authLoading = authContext.loading;
-  } catch (error) {
-    console.error('Context error in LoginScreen:', error);
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
+  const redirectUri = 'https://auth.expo.io/@pratik2467/Expenzo';
+
+  useEffect(() => {
+    if (request) {
+      console.log('DEBUG [V4]: Final Hardcoded URI:', redirectUri);
+    }
+  }, [request]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      handleGoogleLogin(id_token);
+    } else if (response?.type === 'error') {
+      MessageService.showError('Google Error', response.error?.message || 'Failed to sign in with Google');
+    }
+  }, [response]);
+
+  const handleGoogleLogin = async (idToken) => {
+    setIsLoading(true);
+    try {
+      const result = await signInWithGoogle(idToken, 'personal');
+      if (result.success) {
+        navigation.replace('Dashboard');
+      } else {
+        MessageService.showError('Login Failed', result.error || 'Failed to sign in with Google');
+      }
+    } catch (error) {
+      MessageService.showError('Login Error', 'An unexpected error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   // This screen is only for personal accounts
 
   // Don't render until theme is loaded
@@ -347,6 +376,18 @@ export default function LoginScreen({ navigation, route }) {
                 </TouchableOpacity>
               </View>
 
+              {/* Google Login Button */}
+              <TouchableOpacity
+                style={[styles.socialButton, (isLoading || authLoading) && styles.loginButtonDisabled]}
+                onPress={() => promptAsync()}
+                disabled={isLoading || authLoading || !request}
+              >
+                <View style={styles.socialButtonContent}>
+                  <Icon name="google" size={20} color={theme.text} style={styles.socialIcon} />
+                  <Text style={styles.socialButtonText}>Continue with Google</Text>
+                </View>
+              </TouchableOpacity>
+
               {/* Debug: Create Test Account Button */}
               <TouchableOpacity onPress={createTestAccount} style={styles.debugButton}>
                 <Text style={styles.debugButtonText}>🧪 Create Test Account</Text>
@@ -517,4 +558,26 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-}); 
+  socialButton: {
+    marginTop: 20,
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    height: 55,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  socialButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  socialIcon: {
+    marginRight: 10,
+  },
+  socialButtonText: {
+    color: theme.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -210,8 +211,19 @@ export default function CompanyProfileScreen({ navigation }) {
       () => { },
       {
         buttons: [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign Out', color: theme.error || '#FF5252' }
+          { text: 'Cancel', style: 'cancel', onPress: () => { } },
+          {
+            text: 'Sign Out',
+            color: theme.error || '#FF5252',
+            onPress: async () => {
+              try {
+                await signOut();
+                navigation.replace('UserType');
+              } catch (error) {
+                MessageService.showError('Error', 'Failed to sign out');
+              }
+            }
+          }
         ]
       }
     );

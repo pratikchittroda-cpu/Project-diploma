@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
       try {
         if (firebaseUser) {
           setUser(firebaseUser);
-          
+
           // Get user data from Firestore
           const result = await authService.getUserData(firebaseUser.uid);
           if (result.success) {
@@ -66,7 +66,27 @@ export const AuthProvider = ({ children }) => {
     try {
       const result = await authService.signIn(email, password);
       if (result.success) {
-        // User state will be updated by onAuthStateChanged
+        // Optimistically update state
+        setUser(result.user);
+        setUserData(result.userData);
+        return { success: true, userData: result.userData };
+      }
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithGoogle = async (idToken, userType) => {
+    setLoading(true);
+    try {
+      const result = await authService.signInWithGoogle(idToken, userType);
+      if (result.success) {
+        // Optimistically update state
+        setUser(result.user);
+        setUserData(result.userData);
         return { success: true, userData: result.userData };
       }
       return result;
@@ -98,12 +118,12 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const result = await authService.updateUserData(user.uid, updateData);
-      
+
       if (result.success) {
         // Update local userData
         setUserData(prev => ({ ...prev, ...updateData }));
       }
-      
+
       return result;
     } catch (error) {
       return { success: false, error: error.message };
@@ -146,6 +166,7 @@ export const AuthProvider = ({ children }) => {
     initializing,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     updateUserProfile,
     resetPassword,

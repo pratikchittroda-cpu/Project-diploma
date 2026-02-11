@@ -1,12 +1,12 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
   orderBy,
   getDoc
 } from 'firebase/firestore';
@@ -96,10 +96,21 @@ class BudgetService {
 
   // Delete budget
   async deleteBudget(budgetId) {
+    console.log('[BudgetService] Attempting to delete budget:', budgetId);
     try {
-      await deleteDoc(doc(db, 'budgets', budgetId));
+      if (!budgetId) {
+        console.error('[BudgetService] Error: budgetId is missing');
+        return { success: false, error: 'Budget ID is missing' };
+      }
+
+      const docRef = doc(db, 'budgets', budgetId);
+      console.log('[BudgetService] DocRef created for path:', docRef.path);
+
+      await deleteDoc(docRef);
+      console.log('[BudgetService] Budget deleted successfully');
       return { success: true };
     } catch (error) {
+      console.error('[BudgetService] Delete error:', error);
       return { success: false, error: error.message };
     }
   }
