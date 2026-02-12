@@ -43,7 +43,7 @@ export default function LoginScreen({ navigation, route }) {
 
   useEffect(() => {
     if (request) {
-      console.log('DEBUG [V4]: Final Hardcoded URI:', redirectUri);
+      // debug log removed
     }
   }, [request]);
 

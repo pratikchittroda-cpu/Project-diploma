@@ -139,21 +139,16 @@ class TransactionService {
 
   // Delete transaction
   async deleteTransaction(transactionId) {
-    console.log('[TransactionService] Attempting to delete transaction:', transactionId);
     try {
       if (!transactionId) {
-        console.error('[TransactionService] Error: transactionId is missing');
         return { success: false, error: 'Transaction ID is missing' };
       }
 
       const docRef = doc(db, 'transactions', transactionId);
-      console.log('[TransactionService] DocRef created for path:', docRef.path);
-
       await deleteDoc(docRef);
-      console.log('[TransactionService] Transaction deleted successfully');
+
       return { success: true };
     } catch (error) {
-      console.error('[TransactionService] Delete error:', error);
       return { success: false, error: error.message };
     }
   }

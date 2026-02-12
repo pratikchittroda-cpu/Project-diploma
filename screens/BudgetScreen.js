@@ -566,17 +566,43 @@ export default function BudgetScreen({ navigation }) {
   };
 
   const handleDeleteBudget = async (budgetId) => {
+    // Find the budget to get its category
+    const budgetToDelete = budgets.find(b => b.id === budgetId);
+    if (!budgetToDelete) return;
+
     MessageService.showConfirm(
       'Delete Budget',
-      'Are you sure you want to delete this budget?',
+      `Are you sure you want to delete the ${budgetToDelete.categoryName || budgetToDelete.category} budget? This will remove it from all time periods (Weekly, Monthly, Yearly).`,
       async () => {
         try {
-          const result = await budgetService.deleteBudget(budgetId);
-          if (result.success) {
-            setBudgets(budgets.filter(b => b.id !== budgetId));
-            MessageService.showSuccess('Deleted', 'Budget removed successfully');
+          // Find all budgets with the same category
+          const budgetsToDelete = budgets.filter(b => b.category === budgetToDelete.category);
+
+          let successCount = 0;
+          let failCount = 0;
+
+          // Delete all matching budgets
+          await Promise.all(budgetsToDelete.map(async (budget) => {
+            const result = await budgetService.deleteBudget(budget.id);
+            if (result.success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          }));
+
+          if (successCount > 0) {
+            // Remove all deleted budgets from local state
+            const deletedIds = budgetsToDelete.map(b => b.id);
+            setBudgets(budgets.filter(b => !deletedIds.includes(b.id)));
+
+            if (failCount === 0) {
+              MessageService.showSuccess('Deleted', 'Budget removed from all periods successfully');
+            } else {
+              MessageService.showWarning('Partial Delete', `Deleted from ${successCount} periods, failed for ${failCount}`);
+            }
           } else {
-            MessageService.showError('Error', result.error || 'Failed to delete budget');
+            MessageService.showError('Error', 'Failed to delete budget');
           }
         } catch (error) {
           console.error('Error deleting budget:', error);
@@ -592,16 +618,38 @@ export default function BudgetScreen({ navigation }) {
             onPress: () => { }
           },
           {
-            text: 'Delete',
+            text: 'Delete All',
             color: '#FF5252',
             onPress: async () => {
               try {
-                const result = await budgetService.deleteBudget(budgetId);
-                if (result.success) {
-                  setBudgets(budgets.filter(b => b.id !== budgetId));
-                  MessageService.showSuccess('Deleted', 'Budget removed successfully');
+                // Find all budgets with the same category
+                const budgetsToDelete = budgets.filter(b => b.category === budgetToDelete.category);
+
+                let successCount = 0;
+                let failCount = 0;
+
+                // Delete all matching budgets
+                await Promise.all(budgetsToDelete.map(async (budget) => {
+                  const result = await budgetService.deleteBudget(budget.id);
+                  if (result.success) {
+                    successCount++;
+                  } else {
+                    failCount++;
+                  }
+                }));
+
+                if (successCount > 0) {
+                  // Remove all deleted budgets from local state
+                  const deletedIds = budgetsToDelete.map(b => b.id);
+                  setBudgets(budgets.filter(b => !deletedIds.includes(b.id)));
+
+                  if (failCount === 0) {
+                    MessageService.showSuccess('Deleted', 'Budget removed from all periods successfully');
+                  } else {
+                    MessageService.showWarning('Partial Delete', `Deleted from ${successCount} periods, failed for ${failCount}`);
+                  }
                 } else {
-                  MessageService.showError('Error', result.error || 'Failed to delete budget');
+                  MessageService.showError('Error', 'Failed to delete budget');
                 }
               } catch (error) {
                 console.error('Error deleting budget:', error);

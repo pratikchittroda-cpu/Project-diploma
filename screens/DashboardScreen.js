@@ -145,9 +145,6 @@ export default function DashboardScreen({ navigation }) {
       return [];
     }
 
-    console.log('=== Calculating AI Recommendations ===');
-    console.log('Transactions count:', transactions.length);
-
     const currentMonth = new Date().toISOString().slice(0, 7);
 
     // Use default budgets if none set
@@ -166,7 +163,6 @@ export default function DashboardScreen({ navigation }) {
       currentMonth
     );
 
-    console.log('AI Recommendations generated:', recommendations.length);
     return recommendations;
   }, [transactions?.length, userData?.budgets]); // Only recalculate when count changes
 

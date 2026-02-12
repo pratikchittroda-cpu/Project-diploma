@@ -55,7 +55,7 @@ export default function SignUpScreen({ navigation, route }) {
 
   useEffect(() => {
     if (request) {
-      console.log('DEBUG [V4]: Final Hardcoded URI:', redirectUri);
+      // debug log removed
     }
   }, [request]);
 
