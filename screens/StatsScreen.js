@@ -27,7 +27,7 @@ const { width } = Dimensions.get('window');
 export default function StatsScreen({ navigation }) {
   const { theme, isLoading: themeLoading } = useTheme();
   const { userData, loading: authLoading } = useAuth();
-  const { transactions, loading: transactionsLoading, getTransactionStats } = useTransactions();
+  const { transactions, loading: transactionsLoading, refresh } = useTransactions();
 
   const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
   const [refreshing, setRefreshing] = useState(false);
@@ -86,14 +86,25 @@ export default function StatsScreen({ navigation }) {
     }
   }, [transactions, selectedPeriod, transactionsLoading]);
 
+  // Auto-refresh on screen focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (refresh) {
+        refresh();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, refresh]);
+
   // User Type Check removed to allow company users access
 
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      if (getTransactionStats) {
-        await getTransactionStats();
+      if (refresh) {
+        await refresh();
       }
     } catch (error) {
       console.error('Refresh error:', error);
@@ -143,6 +154,12 @@ export default function StatsScreen({ navigation }) {
         case 'Yearly':
           startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
           endDate = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+          break;
+        case 'Past Year':
+          const pastYearDate = new Date(now);
+          pastYearDate.setFullYear(now.getFullYear() - 1);
+          startDate = pastYearDate.toISOString().split('T')[0];
+          endDate = new Date().toISOString().split('T')[0];
           break;
         default: // Monthly
           startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -320,7 +337,7 @@ export default function StatsScreen({ navigation }) {
         {/* Period Selector */}
         <View style={styles.periodSelectorContainer}>
           <View style={styles.periodSelector}>
-            {['Weekly', 'Monthly', 'Yearly'].map((p) => (
+            {['Weekly', 'Monthly', 'Yearly', 'Past Year'].map((p) => (
               <TouchableOpacity
                 key={p}
                 style={[styles.periodButton, selectedPeriod === p && styles.periodButtonActive]}

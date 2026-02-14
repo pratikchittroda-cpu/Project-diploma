@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import transactionService from '../services/transactionService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,6 +10,7 @@ export const useTransactions = (pageSize = 20) => {
   const [hasMore, setHasMore] = useState(true);
   const [lastDoc, setLastDoc] = useState(null);
   const [error, setError] = useState(null);
+  const lastDocRef = useRef(null);
 
   const loadTransactions = useCallback(async (refresh = false) => {
     if (!user) {
@@ -21,16 +22,20 @@ export const useTransactions = (pageSize = 20) => {
     if (refresh) {
       setRefreshing(true);
       setLastDoc(null);
+      lastDocRef.current = null;
       setHasMore(true);
     } else {
       setLoading(true);
     }
 
     try {
+      // Use ref to get the current lastDoc value
+      const currentLastDoc = refresh ? null : lastDocRef.current;
+
       const result = await transactionService.getUserTransactions(
-        user.uid, 
-        pageSize, 
-        refresh ? null : lastDoc
+        user.uid,
+        pageSize,
+        currentLastDoc
       );
 
       if (result.success) {
@@ -44,16 +49,20 @@ export const useTransactions = (pageSize = 20) => {
         if (refresh) {
           setTransactions(sortedTransactions);
         } else {
-          const combinedTransactions = [...transactions, ...sortedTransactions];
-          // Sort the combined array to maintain order
-          const sortedCombined = combinedTransactions.sort((a, b) => {
-            const dateA = new Date(a.createdAt || a.date);
-            const dateB = new Date(b.createdAt || b.date);
-            return dateB - dateA;
+          // Use functional update to avoid stale closure
+          setTransactions(prevTransactions => {
+            const combinedTransactions = [...prevTransactions, ...sortedTransactions];
+            // Sort the combined array to maintain order
+            const sortedCombined = combinedTransactions.sort((a, b) => {
+              const dateA = new Date(a.createdAt || a.date);
+              const dateB = new Date(b.createdAt || b.date);
+              return dateB - dateA;
+            });
+            return sortedCombined;
           });
-          setTransactions(sortedCombined);
         }
         setLastDoc(result.lastDoc);
+        lastDocRef.current = result.lastDoc;
         setHasMore(result.hasMore);
         setError(null);
       } else {
@@ -65,7 +74,7 @@ export const useTransactions = (pageSize = 20) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, pageSize, lastDoc]);
+  }, [user, pageSize]);
 
   const addTransaction = useCallback(async (transactionData) => {
     if (!user) return { success: false, error: 'No user logged in' };
@@ -87,9 +96,9 @@ export const useTransactions = (pageSize = 20) => {
       const result = await transactionService.updateTransaction(transactionId, updateData);
       if (result.success) {
         // Update local state
-        setTransactions(prev => 
-          prev.map(transaction => 
-            transaction.id === transactionId 
+        setTransactions(prev =>
+          prev.map(transaction =>
+            transaction.id === transactionId
               ? { ...transaction, ...updateData }
               : transaction
           )
@@ -106,7 +115,7 @@ export const useTransactions = (pageSize = 20) => {
       const result = await transactionService.deleteTransaction(transactionId);
       if (result.success) {
         // Remove from local state
-        setTransactions(prev => 
+        setTransactions(prev =>
           prev.filter(transaction => transaction.id !== transactionId)
         );
       }
@@ -134,12 +143,12 @@ export const useTransactions = (pageSize = 20) => {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      
+
       const startDate = startOfMonth.toISOString().split('T')[0];
       const endDate = endOfMonth.toISOString().split('T')[0];
 
       const result = await transactionService.getTransactionStats(user.uid, startDate, endDate);
-      
+
       if (result.success) {
         return {
           success: true,
@@ -152,7 +161,7 @@ export const useTransactions = (pageSize = 20) => {
           }
         };
       }
-      
+
       return result;
     } catch (error) {
       return { success: false, error: error.message };
@@ -192,8 +201,8 @@ export const useTransactionStats = (startDate, endDate) => {
     setLoading(true);
     try {
       const result = await transactionService.getTransactionStats(
-        user.uid, 
-        startDate, 
+        user.uid,
+        startDate,
         endDate
       );
 
