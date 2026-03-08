@@ -355,13 +355,11 @@ const AnimatedAddButton = ({ isFocused, onPress }) => {
   const rotateAnim = React.useRef(new Animated.Value(0)).current;
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
   const pressScaleAnim = React.useRef(new Animated.Value(1)).current;
-  const [backgroundColor, setBackgroundColor] = React.useState(theme.primary);
   const customTabBarStyles = createCustomTabBarStyles(theme);
 
   React.useEffect(() => {
     if (isFocused) {
       // Animate to close icon
-      setBackgroundColor(theme.error);
       Animated.parallel([
         Animated.timing(rotateAnim, {
           toValue: 1,
@@ -377,7 +375,6 @@ const AnimatedAddButton = ({ isFocused, onPress }) => {
       ]).start();
     } else {
       // Animate to plus icon
-      setBackgroundColor(theme.primary);
       Animated.parallel([
         Animated.timing(rotateAnim, {
           toValue: 0,
@@ -429,7 +426,7 @@ const AnimatedAddButton = ({ isFocused, onPress }) => {
         style={[
           customTabBarStyles.addButtonInner,
           {
-            backgroundColor: backgroundColor,
+            backgroundColor: isFocused ? theme.error : theme.primary,
             transform: [
               { scale: scaleAnim },
               { scale: pressScaleAnim }

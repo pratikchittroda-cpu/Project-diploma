@@ -1,5 +1,4 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SplashScreen from '../screens/SplashScreen';
@@ -29,25 +28,14 @@ import CompanyTabNavigator from './CompanyTabNavigator';
 import TabNavigator from './TabNavigator';
 import { screenAnimations } from './AnimationConfig';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
 // Main Stack Navigator
 export default function AppNavigator() {
-  const { theme, isLoading } = useTheme();
-  const { user, userData, initializing } = useAuth();
+  const { theme } = useTheme();
 
-  // Don't render navigation until theme is loaded
-  if (isLoading || !theme) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
-        <ActivityIndicator size="large" color="#667eea" />
-      </View>
-    );
-  }
-
-  // Always start with SplashScreen - it will handle navigation based on auth state
+  // Always start with JS splash; it decides next route.
   const getInitialRouteName = () => {
     return 'Splash';
   };

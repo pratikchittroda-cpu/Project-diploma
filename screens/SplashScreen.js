@@ -5,388 +5,261 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
   TouchableWithoutFeedback,
-  SafeAreaView,
-  Image,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import * as NativeSplashScreen from 'expo-splash-screen';
 
-const { width, height } = Dimensions.get('window');
-const DURATION = 3500;
-
-const currencyIcons = [
-  'currency-usd', 'currency-eur', 'currency-btc', 'currency-gbp', 'currency-inr', 'currency-jpy', 'currency-cny', 'currency-eth'
-];
+const DURATION = 1800;
 
 export default function SplashScreen({ navigation }) {
-  const { theme, isLoading: themeLoading } = useTheme();
+  const { theme } = useTheme();
   const { user, userData, initializing } = useAuth();
 
-  // Animation values
-  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
-  const titleScale = useRef(new Animated.Value(0.9)).current;
+  const titleY = useRef(new Animated.Value(10)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
-  const bgRotate = useRef(new Animated.Value(0)).current;
-  const waveAnim = useRef(new Animated.Value(0)).current;
-  const globalAnim = useRef(new Animated.Value(0)).current;
+  const ringScale = useRef(new Animated.Value(0.75)).current;
+  const ringOpacity = useRef(new Animated.Value(0.55)).current;
+  const orbDrift = useRef(new Animated.Value(0)).current;
+  const didHideNativeSplash = useRef(false);
 
-  // Don't render until theme is loaded
-  if (themeLoading || !theme) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#4A6CF7', paddingTop: StatusBar.currentHeight || 0 }}>
-        <ActivityIndicator size="large" color="white" />
-      </View>
-    );
-  }
+  const primary = theme?.primary || '#18b5be';
+  const primaryLight = theme?.primaryLight || '#6dd5da';
 
-  // Animation sequence
+  const navigateForUser = (authUserData) => {
+    if (authUserData?.userType === 'company') {
+      navigation.replace('CompanyDashboard');
+    } else {
+      navigation.replace('Dashboard');
+    }
+  };
+
+  const handleNavigation = () => {
+    if (initializing) {
+      setTimeout(handleNavigation, 500);
+      return;
+    }
+
+    if (user && userData) {
+      navigateForUser(userData);
+      return;
+    }
+
+    if (user && !userData) {
+      setTimeout(() => {
+        if (userData) {
+          navigateForUser(userData);
+        } else {
+          navigation.replace('UserType');
+        }
+      }, 900);
+      return;
+    }
+
+    navigation.replace('UserType');
+  };
+
   useEffect(() => {
-    // Background rotation
-    Animated.loop(
-      Animated.timing(bgRotate, {
-        toValue: 1,
-        duration: DURATION * 4,
-        easing: Easing.linear,
-        useNativeDriver: true
-      })
-    ).start();
+    const ringLoop = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(ringScale, {
+            toValue: 1.2,
+            duration: 1500,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringOpacity, {
+            toValue: 0.08,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(ringScale, {
+            toValue: 0.75,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringOpacity, {
+            toValue: 0.55,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
 
-    // Wave animation
-    Animated.loop(
-      Animated.timing(waveAnim, {
-        toValue: 1,
-        duration: DURATION,
-        easing: Easing.linear,
-        useNativeDriver: true
-      })
-    ).start();
+    const orbLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(orbDrift, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(orbDrift, {
+          toValue: 0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
 
-    // Global animation driver
-    Animated.loop(
-      Animated.timing(globalAnim, {
-        toValue: 1,
-        duration: DURATION,
-        easing: Easing.linear,
-        useNativeDriver: true
-      })
-    ).start();
+    ringLoop.start();
+    orbLoop.start();
 
-    // Logo animation
     Animated.parallel([
       Animated.spring(logoScale, {
         toValue: 1,
-        friction: 5,
-        tension: 60,
-        delay: 300,
-        useNativeDriver: true
+        friction: 6,
+        tension: 80,
+        delay: 180,
+        useNativeDriver: true,
       }),
       Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 800,
-        useNativeDriver: true
-      })
-    ]).start();
-
-    // Title animation
-    Animated.parallel([
-      Animated.spring(titleScale, {
-        toValue: 1,
-        friction: 4,
-        tension: 40,
-        delay: 600,
-        useNativeDriver: true
+        duration: 650,
+        useNativeDriver: true,
       }),
       Animated.timing(titleOpacity, {
         toValue: 1,
-        duration: 1000,
-        delay: 600,
-        useNativeDriver: true
-      })
+        delay: 420,
+        duration: 550,
+        useNativeDriver: true,
+      }),
+      Animated.spring(titleY, {
+        toValue: 0,
+        delay: 420,
+        friction: 8,
+        tension: 70,
+        useNativeDriver: true,
+      }),
     ]).start();
 
-    // Auto navigation after animation completes
-    const timer = setTimeout(() => {
-      handleNavigation();
-    }, DURATION);
+    const timer = setTimeout(handleNavigation, DURATION);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      ringLoop.stop();
+      orbLoop.stop();
+    };
   }, [user, userData, initializing]);
 
-  // Handle authentication state changes during splash screen
   useEffect(() => {
-    // If authentication state changes and we have complete data, navigate immediately
     if (!initializing && user && userData) {
-      const quickTimer = setTimeout(() => {
-        if (userData.userType === 'company') {
-          navigation.replace('CompanyDashboard');
-        } else {
-          navigation.replace('Dashboard');
-        }
-      }, 1000); // Small delay to ensure smooth transition
-
+      const quickTimer = setTimeout(() => navigateForUser(userData), 750);
       return () => clearTimeout(quickTimer);
     }
   }, [user, userData, initializing, navigation]);
 
-  // Handle navigation based on authentication state
-  const handleNavigation = () => {
-    // If still initializing, wait a bit more
-    if (initializing) {
-      setTimeout(() => handleNavigation(), 500);
-      return;
-    }
-
-    // If user is authenticated and userData is available
-    if (user && userData) {
-      if (userData.userType === 'company') {
-        navigation.replace('CompanyDashboard');
-      } else {
-        navigation.replace('Dashboard');
-      }
-      return;
-    }
-
-    // If user is authenticated but userData is not yet loaded
-    if (user && !userData) {
-      // Wait a bit more for userData to load
-      setTimeout(() => {
-        if (userData) {
-          if (userData.userType === 'company') {
-            navigation.replace('CompanyDashboard');
-          } else {
-            navigation.replace('Dashboard');
-          }
-        } else {
-          // If userData still not available, go to user type selection
-          navigation.replace('UserType');
-        }
-      }, 1000);
-      return;
-    }
-
-    // If no user is authenticated, go to user type selection
-    navigation.replace('UserType');
-  };
-
-  // Background rotation interpolation
-  const bgInterpolate = bgRotate.interpolate({
+  const orbTranslateY = orbDrift.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg']
+    outputRange: [0, -16],
   });
 
-  // Wave animation interpolation
-  const waveInterpolate = waveAnim.interpolate({
+  const orbTranslateX = orbDrift.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -width]
+    outputRange: [0, 12],
   });
-
-  // Create floating currency icons with beautiful animations
-  const floatingCurrencies = (() => {
-    const positions = [];
-    const minSpacing = 100; // Further increased spacing for maximum spread
-
-    return currencyIcons.map((icon, index) => {
-      let x, y, attempts = 0;
-      const randomSize = Math.random() * 16 + 28; // Size between 28-44, slightly larger
-
-      // Create grid distribution with bottom row for extra currencies
-      let gridCols, gridRows, col, row;
-
-      if (index < 6) {
-        // First 6 currencies in 2x3 grid
-        gridCols = 2;
-        gridRows = 3;
-        col = index % gridCols;
-        row = Math.floor(index / gridCols);
-
-        const cellWidth = (width - 80) / gridCols;
-        const cellHeight = (height - 450) / gridRows; // Leave more space for bottom currencies
-
-        x = col * cellWidth + Math.random() * (cellWidth - 40) + 40;
-        y = row * cellHeight + Math.random() * (cellHeight - 40) + 100;
-      } else {
-        // Last 2 currencies at the bottom
-        const bottomIndex = index - 6;
-        const bottomCols = 2;
-        const bottomCellWidth = (width - 120) / bottomCols; // More spacing for bottom row
-
-        col = bottomIndex % bottomCols;
-        x = col * bottomCellWidth + Math.random() * (bottomCellWidth - 60) + 60;
-        y = height - 200 + Math.random() * 80; // Bottom area with some randomness
-      }
-
-      // No spacing check needed with grid positioning
-
-      positions.push({ x, y, size: randomSize });
-
-      // Create unique animations for each icon
-      const floatAnim = globalAnim.interpolate({
-        inputRange: [0, 0.5, 1],
-        outputRange: [0, -15, 0]
-      });
-
-      const rotateAnim = globalAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', `${index % 2 === 0 ? '360deg' : '-360deg'}`]
-      });
-
-      const scaleAnim = globalAnim.interpolate({
-        inputRange: [0, 0.5, 1],
-        outputRange: [1, 1.2, 1]
-      });
-
-      const opacityAnim = globalAnim.interpolate({
-        inputRange: [0, 0.3, 0.7, 1],
-        outputRange: [0.7, 1, 0.8, 0.7]
-      });
-
-      return (
-        <Animated.View
-          key={icon}
-          style={[
-            styles.floatingCurrency,
-            {
-              left: x - randomSize / 2,
-              top: y - randomSize / 2,
-              width: randomSize + 12,
-              height: randomSize + 12,
-              transform: [
-                { translateY: floatAnim },
-                { rotate: rotateAnim },
-                { scale: scaleAnim }
-              ],
-              opacity: opacityAnim
-            }
-          ]}
-        >
-          <Icon
-            name={icon}
-            size={randomSize}
-            color="#fff"
-            style={styles.currencyIcon}
-          />
-        </Animated.View>
-      );
-    });
-  })();
-
-  // Wave path data
-  const wavePath = `M0,60 Q${width / 4},30 ${width / 2},60 T${width},60 V120 H0 Z`;
 
   return (
-    <TouchableWithoutFeedback onPress={() => {
-      if (!initializing) {
-        handleNavigation();
-      }
-    }}>
-      <View style={styles.container}>
-        {/* Animated Gradient Background */}
-        <Animated.View style={[
-          styles.background,
-          {
-            transform: [
-              { rotate: bgInterpolate },
-              { scale: 1.2 }
-            ]
-          }
-        ]}>
-          <LinearGradient
-            colors={[theme.primary, theme.primaryLight, theme.primary]}
-            style={styles.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-        </Animated.View>
+    <TouchableWithoutFeedback
+      onPress={() => {
+        if (!initializing) {
+          handleNavigation();
+        }
+      }}
+    >
+      <View
+        style={styles.container}
+        onLayout={() => {
+          if (didHideNativeSplash.current) return;
+          didHideNativeSplash.current = true;
+          NativeSplashScreen.hideAsync().catch(() => {
+            // Ignore hide races in reloads.
+          });
+        }}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-        {/* Animated Wave */}
-        <Animated.View style={[
-          styles.waveContainer,
-          { transform: [{ translateX: waveInterpolate }] }
-        ]}>
-          <Svg width={width * 2} height={120} style={styles.wave}>
-            <Path
-              d={wavePath}
-              fill="rgba(255,255,255,0.15)"
-            />
-          </Svg>
-        </Animated.View>
-        <Animated.View style={[
-          styles.waveContainer,
-          {
-            transform: [{ translateX: Animated.add(width, waveInterpolate) }],
-            opacity: 0.8
-          }
-        ]}>
-          <Svg width={width * 2} height={120} style={styles.wave}>
-            <Path
-              d={wavePath}
-              fill="rgba(255,255,255,0.1)"
-            />
-          </Svg>
-        </Animated.View>
+        <LinearGradient
+          colors={[primaryLight, primary, '#1f2937']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.background}
+        />
 
-        {/* Floating Currency Icons */}
-        {floatingCurrencies}
-
-        {/* Main Content */}
-        <View style={styles.content}>
-          <Animated.View style={[
-            styles.logoContainer,
+        <Animated.View
+          style={[
+            styles.orbTop,
             {
-              transform: [{ scale: logoScale }],
-              opacity: logoOpacity
-            }
-          ]}>
-            <Icon name="wallet" size={80} color="#FFFFFF" />
-          </Animated.View>
+              transform: [{ translateY: orbTranslateY }, { translateX: orbTranslateX }],
+            },
+          ]}
+        />
 
-          <Animated.View style={[
-            styles.titleContainer,
+        <Animated.View
+          style={[
+            styles.orbBottom,
             {
-              transform: [{ scale: titleScale }],
-              opacity: titleOpacity
-            }
-          ]}>
+              transform: [{ translateY: Animated.multiply(orbTranslateY, -1) }],
+            },
+          ]}
+        />
+
+        <View style={styles.centerWrap}>
+          <View style={styles.logoWrap}>
+            <Animated.View
+              style={[
+                styles.pulseRing,
+                {
+                  opacity: ringOpacity,
+                  transform: [{ scale: ringScale }],
+                },
+              ]}
+            />
+
+            <Animated.View
+              style={[
+                styles.logoBadge,
+                {
+                  opacity: logoOpacity,
+                  transform: [{ scale: logoScale }],
+                },
+              ]}
+            >
+              <Image
+                source={require('../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </Animated.View>
+          </View>
+
+          <Animated.View
+            style={{
+              opacity: titleOpacity,
+              transform: [{ translateY: titleY }],
+              alignItems: 'center',
+            }}
+          >
             <Text style={styles.title}>Expenzo</Text>
             <Text style={styles.subtitle}>Smart Finance Management</Text>
           </Animated.View>
         </View>
 
-        {/* Animated Loader */}
-        <Animated.View style={[styles.footer, { opacity: titleOpacity }]}>
-          <View style={styles.loader}>
-            {[0, 1, 2].map((i) => (
-              <Animated.View
-                key={i}
-                style={[
-                  styles.loaderDot,
-                  {
-                    transform: [{
-                      translateY: globalAnim.interpolate({
-                        inputRange: [0, 0.3, 0.6, 1],
-                        outputRange: [0, -12, 0, 0],
-                        extrapolate: 'clamp'
-                      })
-                    }],
-                    backgroundColor: globalAnim.interpolate({
-                      inputRange: [0, 0.3, 0.6, 1],
-                      outputRange: ['#FFFFFF', '#FFD700', '#FFFFFF', '#FFFFFF'],
-                      extrapolate: 'clamp'
-                    })
-                  }
-                ]}
-              />
-            ))}
-          </View>
-        </Animated.View>
+        <View style={styles.footer}>
+          <ActivityIndicator size="small" color="rgba(255,255,255,0.95)" />
+        </View>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -395,96 +268,88 @@ export default function SplashScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden'
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#4A6CF7',
+    paddingTop: StatusBar.currentHeight || 0,
   },
   background: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  orbTop: {
     position: 'absolute',
-    width: '150%',
-    height: '150%',
-    top: '-25%',
-    left: '-25%'
+    top: -90,
+    right: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
   },
-  gradient: {
-    flex: 1
-  },
-  waveContainer: {
+  orbBottom: {
     position: 'absolute',
-    bottom: 0,
-    left: 0
+    bottom: -120,
+    left: -80,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  wave: {
-    position: 'absolute',
-    bottom: 0
-  },
-  content: {
+  centerWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 100,
-    zIndex: 2
   },
-  logoContainer: {
-    marginBottom: 30,
+  logoWrap: {
+    width: 170,
+    height: 170,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 26,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 168,
+    height: 168,
+    borderRadius: 84,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.55)',
+  },
+  logoBadge: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   logoImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 0,
-  },
-  titleContainer: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-    borderRadius: 30,
-    borderWidth: 0,
+    width: 74,
+    height: 74,
   },
   title: {
-    fontSize: 36,
+    color: '#ffffff',
+    fontSize: 38,
     fontWeight: '800',
-    color: 'white',
-    letterSpacing: 1.5,
-    marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 5
+    letterSpacing: 1.2,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    letterSpacing: 1.5,
-    fontWeight: '500'
-  },
-  floatingCurrency: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1
-  },
-  currencyIcon: {
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3
+    marginTop: 8,
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 14,
+    letterSpacing: 1.1,
+    fontWeight: '500',
   },
   footer: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 56,
     alignItems: 'center',
-    zIndex: 2
-  },
-  loader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  loaderDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'white',
-    marginHorizontal: 6,
+    justifyContent: 'center',
   },
 });

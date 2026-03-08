@@ -1,31 +1,16 @@
-import { View, ActivityIndicator, StatusBar } from 'react-native';
+import { View, StatusBar } from 'react-native';
+import * as NativeSplashScreen from 'expo-splash-screen';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import MessageBoxProvider from './components/MessageBoxProvider';
 
-const AppContent = () => {
-  const { isLoading, theme } = useTheme();
-  const { initializing } = useAuth();
+NativeSplashScreen.preventAutoHideAsync().catch(() => {
+  // Native splash may already be controlled or hidden.
+});
 
-  // Show loading screen only while theme is initializing
-  if (isLoading) {
-    return (
-      <View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: theme?.background || '#f8f9fa'
-      }}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor="transparent"
-          translucent={true}
-        />
-        <ActivityIndicator size="large" color="#667eea" />
-      </View>
-    );
-  }
+const AppContent = () => {
+  const { theme } = useTheme();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme?.background || '#f8f9fa' }}>
