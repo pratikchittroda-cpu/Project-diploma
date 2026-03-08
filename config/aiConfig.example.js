@@ -1,10 +1,13 @@
-import { HUGGINGFACE_API_KEY } from '@env';
+import { AI_PROXY_BASE_URL } from '@env';
 
-// AI Configuration for Hugging Face API
+// AI configuration (client-safe: no provider secrets in app bundle)
 export const AI_CONFIG = {
-    // Hugging Face API
-    API_KEY: HUGGINGFACE_API_KEY,
-    API_ENDPOINT: 'https://api-inference.huggingface.co/models/facebook/bart-large-mnli',
+    // Your secure backend/proxy URL that performs AI calls server-side
+    AI_PROXY_BASE_URL: AI_PROXY_BASE_URL || '',
+    PROXY_ENDPOINTS: {
+        CATEGORIZE: '/ai/categorize',
+        PARSE_RECEIPT: '/ai/parse-receipt',
+    },
 
     // Categories for classification
     CATEGORIES: [

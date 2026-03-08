@@ -9,7 +9,7 @@
 
 2. **Add your API keys to `.env`:**
    ```
-   HUGGINGFACE_API_KEY=your_actual_key_here
+   AI_PROXY_BASE_URL=https://your-secure-backend.example.com
    FIREBASE_API_KEY=your_firebase_api_key
    FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
    FIREBASE_PROJECT_ID=your_project_id
@@ -29,14 +29,12 @@
    npx expo start --clear
    ```
 
-## 🔑 Getting API Keys
+## 🔑 Getting Credentials
 
-### Hugging Face API Key
-1. Go to https://huggingface.co/
-2. Sign up / Log in
-3. Go to Settings → Access Tokens
-4. Create a new token with "Read" permission
-5. Copy the token (starts with `hf_`)
+### AI Proxy URL
+1. Deploy a secure backend endpoint (for example Cloud Functions, your API server, or serverless route).
+2. Keep provider API keys (Hugging Face/OpenAI/etc.) on the backend only.
+3. Expose only your backend base URL to the app via `AI_PROXY_BASE_URL`.
 
 ### Firebase Configuration
 1. Go to [Firebase Console](https://console.firebase.google.com/)
@@ -50,7 +48,7 @@
 - ✅ `.env` is in `.gitignore` - never committed
 - ✅ Config files are in `.gitignore` - never committed
 - ✅ Example files are safe to commit
-- ✅ API keys are loaded from environment variables
+- ✅ Provider API keys stay server-side and are never shipped in the mobile app
 
 ## ⚠️ Important
 
@@ -68,9 +66,9 @@
 - Make sure you ran `npm install`
 - Restart Metro bundler: `npx expo start --clear`
 
-### "API_KEY is undefined"
+### "AI proxy is not configured"
 - Check `.env` file exists
-- Check API keys are set correctly
+- Check `AI_PROXY_BASE_URL` is set correctly
 - Restart the app
 
 ### Changes not reflecting

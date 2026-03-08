@@ -1,6 +1,36 @@
 import { AI_CONFIG } from '../config/aiConfig';
 
 class AIService {
+    getProxyUrl(path) {
+        const baseUrl = (AI_CONFIG.AI_PROXY_BASE_URL || '').trim();
+        if (!baseUrl) return null;
+
+        const normalizedBase = baseUrl.replace(/\/+$/, '');
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        return `${normalizedBase}${normalizedPath}`;
+    }
+
+    async postToProxy(path, payload) {
+        const url = this.getProxyUrl(path);
+        if (!url) {
+            return null;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            throw new Error(`AI proxy error: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
     /**
      * Categorize transaction using AI
      */
@@ -10,48 +40,22 @@ class AIService {
         }
 
         try {
-            console.log('AI: Categorizing transaction:', description);
-
-            // Use a reliable model for categorization (overriding config if needed)
-            // Switched to mDeBERTa as BART was returning 410
-            const response = await fetch('https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-mnli-xnli', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${AI_CONFIG.API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    inputs: description,
-                    parameters: {
-                        candidate_labels: AI_CONFIG.CATEGORIES,
-                        multi_label: false
-                    }
-                })
+            const result = await this.postToProxy(AI_CONFIG.PROXY_ENDPOINTS.CATEGORIZE, {
+                description,
+                candidateLabels: AI_CONFIG.CATEGORIES,
+                categoryMap: AI_CONFIG.CATEGORY_MAP,
             });
 
-            if (!response.ok) {
-                throw new Error(`AI API error: ${response.status}`);
+            if (!result || !result.category) {
+                throw new Error('Invalid AI categorization response');
             }
 
-            const result = await response.json();
-
-            // Get the top category
-            const topLabel = result.labels[0];
-            const confidence = result.scores[0];
-
-            // Map to app category
-            const category = AI_CONFIG.CATEGORY_MAP[topLabel] || 'other';
-
-            console.log(`AI: Categorized as "${category}" (${(confidence * 100).toFixed(0)}% confidence)`);
-
             return {
-                category,
-                confidence,
+                category: result.category,
+                confidence: typeof result.confidence === 'number' ? result.confidence : 0,
                 aiSuggested: true
             };
         } catch (error) {
-            console.error('AI categorization error:', error);
-
             // Fallback to keyword matching
             return this.fallbackCategorize(description);
         }
@@ -87,62 +91,20 @@ class AIService {
      */
     async parseReceiptWithAI(receiptText) {
         try {
-            console.log('🤖 AI: Parsing receipt with AI...');
-
-            // Create a smart prompt for the AI to extract items
-            const prompt = `Analyze this receipt text and extract valid line items.
-            
-Rules:
-1. Pair each product description with its correct price.
-2. Handle different layouts:
-   - Same line: "Coffee 5.00"
-   - Two columns: Items listed first, then prices later. Match them by order.
-   - Columnar Blocks: A block of descriptions followed by a block of prices.
-   - Next line: Item on one line, price on next.
-3. Ignore totals, subtotals, taxes, cash, change, and payment details.
-4. Convert all prices to numbers.
-
-Receipt text:
-${receiptText}
-
-Return ONLY a valid JSON array of objects with 'description' and 'amount' fields. No other text.
-Example: [{"description": "Coffee", "amount": 5.00}, {"description": "Pizza", "amount": 12.50}]`;
-
-            // Switched to Zephyr-7b-beta as Mistral was returning 410 Gone
-            const response = await fetch('https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${AI_CONFIG.API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    inputs: prompt,
-                    parameters: {
-                        max_new_tokens: 500,
-                        temperature: 0.1,
-                        return_full_text: false
-                    }
-                })
+            const result = await this.postToProxy(AI_CONFIG.PROXY_ENDPOINTS.PARSE_RECEIPT, {
+                receiptText
             });
 
-            if (!response.ok) {
-                throw new Error(`AI parsing error: ${response.status}`);
+            if (Array.isArray(result?.items)) {
+                return result.items;
             }
 
-            const result = await response.json();
-            const generatedText = result[0]?.generated_text || '';
-
-            // Try to extract JSON from the response
-            const jsonMatch = generatedText.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-                const items = JSON.parse(jsonMatch[0]);
-                console.log('✅ AI parsed items:', items);
-                return items;
+            if (Array.isArray(result)) {
+                return result;
             }
 
-            throw new Error('Could not parse AI response');
+            throw new Error('Invalid AI receipt response');
         } catch (error) {
-            console.error('AI parsing failed:', error);
             return null; // Return null to fall back to regex parsing
         }
     }
