@@ -106,7 +106,7 @@ export default function UserTypeScreen({ navigation }) {
 
       {/* Modern Background */}
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={[theme.primary, theme.primaryLight]}
         style={styles.backgroundGradient}
       />
 
@@ -147,7 +147,7 @@ export default function UserTypeScreen({ navigation }) {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#4facfe', '#00f2fe']}
+                colors={[theme.primary, theme.primaryLight]}
                 style={styles.cardGradient}
               >
                 <View style={styles.cardContent}>
@@ -191,7 +191,7 @@ export default function UserTypeScreen({ navigation }) {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#a18cd1', '#fbc2eb']}
+                colors={[theme.primaryLight, theme.primary]}
                 style={styles.cardGradient}
               >
                 <View style={styles.cardContent}>
@@ -237,7 +237,7 @@ export default function UserTypeScreen({ navigation }) {
 const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#667eea',
+    backgroundColor: theme.primary,
   },
   backgroundGradient: {
     position: 'absolute',

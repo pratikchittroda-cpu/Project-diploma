@@ -254,7 +254,6 @@ export default function DashboardScreen({ navigation }) {
       >
         <View style={styles.overviewHeader}>
           <Text style={[styles.overviewTitle, { color: 'rgba(255,255,255,0.9)' }]}>Total Balance</Text>
-          <AppIcons.Eye size={22} color="rgba(255,255,255,0.9)" />
         </View>
         <Text style={[styles.balanceAmount, { color: 'white' }]}>{formatCurrency(dashboardStats.totalBalance)}</Text>
 

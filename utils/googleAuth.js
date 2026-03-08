@@ -4,14 +4,17 @@ import {
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_WEB_CLIENT_ID
 } from '@env';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // Exported client IDs for use in components/hooks
 // Exported client IDs with fallbacks to avoid undefined crashes
 export const GOOGLE_CLIENT_IDS = {
-  expoClientId: GOOGLE_EXPO_CLIENT_ID || '',
-  iosClientId: GOOGLE_IOS_CLIENT_ID || '',
-  androidClientId: GOOGLE_ANDROID_CLIENT_ID || '',
-  webClientId: GOOGLE_WEB_CLIENT_ID || '',
+  expoClientId: (GOOGLE_EXPO_CLIENT_ID || '').trim(),
+  iosClientId: ((GOOGLE_IOS_CLIENT_ID || '').trim()),
+  androidClientId: ((GOOGLE_ANDROID_CLIENT_ID || '').trim()),
+  webClientId: ((GOOGLE_WEB_CLIENT_ID || GOOGLE_EXPO_CLIENT_ID || '').trim()),
+  clientId: ((GOOGLE_EXPO_CLIENT_ID || GOOGLE_WEB_CLIENT_ID || '').trim()),
 };
 
 // Force cache bust: 2024-02-06T14:02:00
@@ -25,3 +28,78 @@ if (__DEV__) {
     }
   });
 }
+
+const baseRequestConfig = {
+  scopes: ['openid', 'profile', 'email'],
+};
+
+export const getGoogleAuthSetup = () => {
+  const isExpoGo = Constants.appOwnership === 'expo';
+  const nativeClientId = Platform.OS === 'ios' ? GOOGLE_CLIENT_IDS.iosClientId : GOOGLE_CLIENT_IDS.androidClientId;
+  const proxyClientId = GOOGLE_CLIENT_IDS.expoClientId || GOOGLE_CLIENT_IDS.webClientId;
+  const shouldUseProxy = false;
+  const fallbackClientId = proxyClientId || nativeClientId || GOOGLE_CLIENT_IDS.clientId || 'MISSING_GOOGLE_CLIENT_ID';
+  const safeRequestConfig = {
+    ...baseRequestConfig,
+    expoClientId: GOOGLE_CLIENT_IDS.expoClientId || proxyClientId || fallbackClientId,
+    iosClientId: GOOGLE_CLIENT_IDS.iosClientId || fallbackClientId,
+    androidClientId: GOOGLE_CLIENT_IDS.androidClientId || fallbackClientId,
+    webClientId: GOOGLE_CLIENT_IDS.webClientId || proxyClientId || fallbackClientId,
+  };
+
+  if (isExpoGo) {
+    return {
+      isConfigured: false,
+      requestConfig: safeRequestConfig,
+      promptOptions: undefined,
+      reason: 'Google sign-in is not supported in Expo Go. Use an Android/iOS development build',
+    };
+  }
+
+  if (shouldUseProxy && !proxyClientId) {
+    return {
+      isConfigured: false,
+      requestConfig: safeRequestConfig,
+      promptOptions: { useProxy: true },
+      reason: 'Missing GOOGLE_EXPO_CLIENT_ID or GOOGLE_WEB_CLIENT_ID',
+    };
+  }
+
+  if (!nativeClientId) {
+    return {
+      isConfigured: false,
+      requestConfig: safeRequestConfig,
+      promptOptions: undefined,
+      reason: Platform.OS === 'ios'
+        ? 'Missing GOOGLE_IOS_CLIENT_ID'
+        : 'Missing GOOGLE_ANDROID_CLIENT_ID',
+    };
+  }
+
+  if (shouldUseProxy) {
+    return {
+      isConfigured: true,
+      requestConfig: safeRequestConfig,
+      promptOptions: { useProxy: true },
+      reason: null,
+    };
+  }
+
+  return {
+    isConfigured: true,
+    requestConfig: safeRequestConfig,
+    promptOptions: undefined,
+    reason: null,
+  };
+};
+
+export const hasValidGoogleClientId = (request) => {
+  if (!request?.url) return false;
+  try {
+    const url = new URL(request.url);
+    return !!url.searchParams.get('client_id');
+  } catch (error) {
+    const match = request.url.match(/[?&]client_id=([^&]+)/);
+    return !!(match && match[1]);
+  }
+};

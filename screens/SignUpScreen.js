@@ -9,19 +9,17 @@ import {
   Dimensions,
   ActivityIndicator,
   StatusBar,
-  SafeAreaView,
-  ScrollView,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import MessageService from '../services/MessageService';
 import * as Google from 'expo-auth-session/providers/google';
-import * as AuthSession from 'expo-auth-session';
-import { GOOGLE_CLIENT_IDS } from '../utils/googleAuth';
+import { getGoogleAuthSetup, hasValidGoogleClientId } from '../utils/googleAuth';
 
 
 const { width, height } = Dimensions.get('window');
@@ -29,6 +27,9 @@ const { width, height } = Dimensions.get('window');
 export default function SignUpScreen({ navigation, route }) {
   const { theme, isLoading: themeLoading } = useTheme();
   const { signUp } = useAuth();
+  const insets = useSafeAreaInsets();
+  const googleAuthSetup = getGoogleAuthSetup();
+  const hasGoogleClientId = googleAuthSetup.isConfigured;
   const testData = route?.params?.testData;
 
   const [fullName, setFullName] = useState(testData?.fullName || '');
@@ -41,17 +42,8 @@ export default function SignUpScreen({ navigation, route }) {
   const { signInWithGoogle, loading: authLoading } = useAuth();
 
   // Google Auth Request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: GOOGLE_CLIENT_IDS.androidClientId,
-    iosClientId: GOOGLE_CLIENT_IDS.iosClientId,
-    webClientId: GOOGLE_CLIENT_IDS.webClientId,
-    clientId: GOOGLE_CLIENT_IDS.webClientId,
-    responseType: 'id_token',
-    scopes: ['openid', 'profile', 'email'],
-    redirectUri: 'https://auth.expo.io/@pratik2467/Expenzo',
-  });
-
-  const redirectUri = 'https://auth.expo.io/@pratik2467/Expenzo';
+  const [request, response, promptAsync] = Google.useAuthRequest(googleAuthSetup.requestConfig);
+  const isGoogleRequestReady = hasValidGoogleClientId(request);
 
   useEffect(() => {
     if (request) {
@@ -61,8 +53,12 @@ export default function SignUpScreen({ navigation, route }) {
 
   useEffect(() => {
     if (response?.type === 'success') {
-      const { id_token } = response.params;
-      handleGoogleLogin(id_token);
+      const idToken = response.params?.id_token || response.authentication?.idToken;
+      if (idToken) {
+        handleGoogleLogin(idToken);
+      } else {
+        MessageService.showError('Google Error', 'Google sign-in did not return an ID token.');
+      }
     } else if (response?.type === 'error') {
       MessageService.showError('Google Error', response.error?.message || 'Failed to sign in with Google');
     }
@@ -189,28 +185,22 @@ export default function SignUpScreen({ navigation, route }) {
   const styles = createStyles(theme);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar backgroundColor={theme.primary} barStyle="light-content" translucent={true} />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.container}>
-            <LinearGradient
-              colors={[theme.primary, theme.primaryLight]}
-              style={styles.background}
-            >
+        <View style={styles.screenContent}>
+          <LinearGradient
+            colors={[theme.primary, theme.primaryLight]}
+            style={styles.background}
+          >
               {/* Header */}
               <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
                 <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
-                  <Icon name="finance" size={60} color="white" />
+                  <Icon name="finance" size={42} color="white" />
                 </Animated.View>
                 <Text style={styles.appName}>Expenzo</Text>
                 <Text style={styles.tagline}>Track. Save. Succeed.</Text>
@@ -338,8 +328,17 @@ export default function SignUpScreen({ navigation, route }) {
                   {/* Google Login Button */}
                   <TouchableOpacity
                     style={[styles.socialButton, (isLoading || authLoading) && styles.socialButtonDisabled]}
-                    onPress={() => promptAsync()}
-                    disabled={isLoading || authLoading || !request}
+                    onPress={() => {
+                      if (!hasGoogleClientId || !isGoogleRequestReady) {
+                        const reason = googleAuthSetup.reason
+                          ? ` ${googleAuthSetup.reason}.`
+                          : '';
+                        MessageService.showError('Google Config Error', `Google sign-in is not ready.${reason}`);
+                        return;
+                      }
+                      promptAsync(googleAuthSetup.promptOptions);
+                    }}
+                    disabled={isLoading || authLoading}
                   >
                     <View style={styles.socialButtonContent}>
                       <Icon name="google" size={20} color={theme.text} style={styles.socialIcon} />
@@ -356,24 +355,24 @@ export default function SignUpScreen({ navigation, route }) {
                   </View>
                 </View>
               </Animated.View>
-            </LinearGradient>
-          </View>
-        </ScrollView>
+          </LinearGradient>
+        </View>
       </KeyboardAvoidingView>
+      <View style={[styles.bottomInsetFill, { height: insets.bottom }]} />
     </SafeAreaView>
   );
 }
 
-const createStyles = (theme) => StyleSheet.create({
+const createStyles = (theme) => {
+  const compact = height <= 850;
+
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.primary,
   },
-  scrollView: {
+  screenContent: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
   },
   container: {
     flex: 1,
@@ -383,55 +382,55 @@ const createStyles = (theme) => StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: Math.max(StatusBar.currentHeight || 0, 40) + 20,
-    paddingBottom: Math.max(height * 0.02, 15),
+    paddingTop: compact ? 18 : 34,
+    paddingBottom: compact ? 8 : 14,
     paddingHorizontal: 20,
   },
   logoContainer: {
-    width: Math.min(80, width * 0.2),
-    height: Math.min(80, width * 0.2),
-    borderRadius: Math.min(40, width * 0.1),
+    width: compact ? 60 : Math.min(80, width * 0.2),
+    height: compact ? 60 : Math.min(80, width * 0.2),
+    borderRadius: compact ? 30 : Math.min(40, width * 0.1),
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: compact ? 8 : 12,
   },
   appName: {
-    fontSize: Math.min(24, width * 0.06),
+    fontSize: compact ? 17 : Math.min(24, width * 0.06),
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 5,
+    marginBottom: compact ? 2 : 5,
     textAlign: 'center',
   },
   tagline: {
-    fontSize: Math.min(14, width * 0.035),
+    fontSize: compact ? 11 : Math.min(14, width * 0.035),
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
     textAlign: 'center',
   },
   formContainer: {
+    flex: 1,
     backgroundColor: theme.surface,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: Math.max(20, width * 0.05),
-    paddingTop: 25,
-    paddingBottom: 40,
-    minHeight: height * 0.7,
+    paddingTop: compact ? 14 : 25,
+    paddingBottom: compact ? 12 : 24,
   },
   formContent: {
-    paddingBottom: 200,
+    paddingBottom: compact ? 6 : 20,
   },
   welcomeText: {
-    fontSize: Math.min(24, width * 0.06),
+    fontSize: compact ? 16 : Math.min(24, width * 0.06),
     fontWeight: 'bold',
     color: theme.text,
-    marginBottom: 5,
+    marginBottom: compact ? 2 : 5,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: Math.min(16, width * 0.04),
+    fontSize: compact ? 14 : Math.min(16, width * 0.04),
     color: theme.textSecondary,
-    marginBottom: 20,
+    marginBottom: compact ? 8 : 20,
     textAlign: 'center',
   },
   inputContainer: {
@@ -439,11 +438,11 @@ const createStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.inputBackground,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: compact ? 8 : 12,
     paddingHorizontal: 15,
-    height: Math.max(50, height * 0.065),
+    height: compact ? 46 : Math.max(50, height * 0.065),
     borderWidth: 0,
-    minHeight: 55,
+    minHeight: compact ? 46 : 55,
   },
   inputIcon: {
     marginRight: 10,
@@ -461,14 +460,14 @@ const createStyles = (theme) => StyleSheet.create({
   signUpButton: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: compact ? 6 : 10,
+    marginBottom: compact ? 8 : 20,
   },
   signUpButtonDisabled: {
     opacity: 0.7,
   },
   gradientButton: {
-    paddingVertical: 15,
+    paddingVertical: compact ? 10 : 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -484,7 +483,7 @@ const createStyles = (theme) => StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: compact ? 8 : 20,
   },
   dividerLine: {
     flex: 1,
@@ -500,8 +499,8 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 30,
+    marginTop: compact ? 6 : 10,
+    marginBottom: compact ? 8 : 24,
   },
   signInText: {
     color: theme.textSecondary,
@@ -513,15 +512,15 @@ const createStyles = (theme) => StyleSheet.create({
     fontWeight: 'bold',
   },
   socialButton: {
-    marginTop: 10,
+    marginTop: compact ? 6 : 10,
     backgroundColor: theme.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.divider,
-    height: 55,
+    height: compact ? 46 : 55,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: compact ? 6 : 20,
   },
   socialButtonDisabled: {
     opacity: 0.7,
@@ -538,4 +537,8 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-});
+  bottomInsetFill: {
+    backgroundColor: theme.surface,
+  },
+  });
+};

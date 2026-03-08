@@ -17,8 +17,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import MessageService from '../services/MessageService';
 import * as Google from 'expo-auth-session/providers/google';
-import * as AuthSession from 'expo-auth-session';
-import { GOOGLE_CLIENT_IDS } from '../utils/googleAuth';
+import { getGoogleAuthSetup, hasValidGoogleClientId } from '../utils/googleAuth';
 
 
 // Get screen dimensions
@@ -28,23 +27,16 @@ const { width, height } = screenDimensions;
 export default function CompanyLoginScreen({ navigation }) {
   const { theme, isLoading: themeLoading } = useTheme();
   const { signIn, resetPassword, loading: authLoading, signInWithGoogle } = useAuth();
+  const googleAuthSetup = getGoogleAuthSetup();
+  const hasGoogleClientId = googleAuthSetup.isConfigured;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Google Auth Request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: GOOGLE_CLIENT_IDS.androidClientId,
-    iosClientId: GOOGLE_CLIENT_IDS.iosClientId,
-    webClientId: GOOGLE_CLIENT_IDS.webClientId,
-    clientId: GOOGLE_CLIENT_IDS.webClientId,
-    responseType: 'id_token',
-    scopes: ['openid', 'profile', 'email'],
-    redirectUri: 'https://auth.expo.io/@pratik2467/Expenzo',
-  });
-
-  const redirectUri = 'https://auth.expo.io/@pratik2467/Expenzo';
+  const [request, response, promptAsync] = Google.useAuthRequest(googleAuthSetup.requestConfig);
+  const isGoogleRequestReady = hasValidGoogleClientId(request);
 
   useEffect(() => {
     if (request) {
@@ -54,8 +46,12 @@ export default function CompanyLoginScreen({ navigation }) {
 
   useEffect(() => {
     if (response?.type === 'success') {
-      const { id_token } = response.params;
-      handleGoogleLogin(id_token);
+      const idToken = response.params?.id_token || response.authentication?.idToken;
+      if (idToken) {
+        handleGoogleLogin(idToken);
+      } else {
+        MessageService.showError('Google Error', 'Google sign-in did not return an ID token.');
+      }
     } else if (response?.type === 'error') {
       MessageService.showError('Google Error', response.error?.message || 'Failed to sign in with Google');
     }
@@ -352,8 +348,17 @@ export default function CompanyLoginScreen({ navigation }) {
             {/* Google Login Button */}
             <TouchableOpacity
               style={[styles.socialButton, (isLoading || authLoading) && styles.loginButtonDisabled]}
-              onPress={() => promptAsync()}
-              disabled={isLoading || authLoading || !request}
+              onPress={() => {
+                if (!hasGoogleClientId || !isGoogleRequestReady) {
+                  const reason = googleAuthSetup.reason
+                    ? ` ${googleAuthSetup.reason}.`
+                    : '';
+                  MessageService.showError('Google Config Error', `Google sign-in is not ready.${reason}`);
+                  return;
+                }
+                promptAsync(googleAuthSetup.promptOptions);
+              }}
+              disabled={isLoading || authLoading}
             >
               <View style={styles.socialButtonContent}>
                 <Icon name="google" size={20} color={theme.text} style={styles.socialIcon} />
