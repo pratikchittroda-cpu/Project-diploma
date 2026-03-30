@@ -248,23 +248,6 @@ export default function CompanyProfileScreen({ navigation }) {
     ]}>
       <View style={styles.profileGradient}>
         <View style={styles.profileInfo}>
-          <BlurView
-            intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
-            tint={theme.isDarkMode ? 'dark' : 'light'}
-            experimentalBlurMethod="none"
-            style={StyleSheet.absoluteFill}
-          />
-          {/* Dynamic overlay for extra glass effect */}
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: theme.isDarkMode
-                  ? 'rgba(0, 0, 0, 0.1)'
-                  : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
-              }
-            ]}
-          />
           <View style={styles.avatarContainer}>
             <Icon name="office-building" size={40} color="white" />
           </View>
@@ -528,23 +511,6 @@ export default function CompanyProfileScreen({ navigation }) {
       <Text style={styles.sectionTitle}>Settings</Text>
 
       <View style={styles.settingItem}>
-        <BlurView
-          intensity={Platform.OS === 'android' ? 100 : (theme.isDarkMode ? 30 : 60)}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          experimentalBlurMethod="none"
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Dynamic overlay for extra glass effect */}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: theme.isDarkMode
-                ? 'rgba(0, 0, 0, 0.1)'
-                : 'rgba(255, 255, 255, 0.1)'
-            }
-          ]}
-        />
         <View style={styles.settingInfo}>
           <View style={[styles.menuIcon, { backgroundColor: 'rgba(33, 150, 243, 0.2)' }]}>
             <Icon name="bell" size={20} color="#2196F3" />
@@ -915,6 +881,7 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 16,
     marginBottom: 8,
     borderWidth: 0,
+    overflow: 'hidden',
   },
   settingInfo: {
     flexDirection: 'row',

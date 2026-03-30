@@ -17,6 +17,7 @@ import {
 import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -251,10 +252,21 @@ export default function TeamManagementScreen({ navigation }) {
         try {
           const result = await teamService.checkAndCreateMonthlySalaries(user.uid);
           if (result.success) {
-            MessageService.showSuccess(
-              'Success',
-              `Monthly salary expenses generated for ${result.results.filter(r => r.success).length} team members!`
-            );
+            if (result.createdCount === 0 && result.skippedCount > 0) {
+              MessageService.showError(
+                'Already Generated',
+                `Monthly salaries for ${result.salaryMonth} have already been generated for all active members.`
+              );
+            } else {
+              const skippedMessage = result.skippedCount > 0
+                ? ` ${result.skippedCount} member(s) were skipped because salary was already generated this month.`
+                : '';
+
+              MessageService.showSuccess(
+                'Success',
+                `Monthly salary expenses generated for ${result.createdCount} team member(s).${skippedMessage}`
+              );
+            }
           } else {
             MessageService.showError('Error', result.error || 'Failed to generate salary expenses');
           }

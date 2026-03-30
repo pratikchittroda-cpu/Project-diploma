@@ -289,6 +289,102 @@ const ThemedMessageBox = ({
 
   if (!isVisible) return null;
 
+  const messageBoxContent = (
+    <Animated.View
+      pointerEvents="auto"
+      style={[
+        styles.messageBox,
+        { backgroundColor: theme.isDarkMode ? '#1a1a1a' : '#ffffff' },
+        type !== 'confirm' && styles.toastBox,
+        type === 'confirm' && styles.confirmBox,
+        getAnimationStyle(),
+      ]}
+    >
+      <View style={[
+        styles.contentWrapper,
+        type === 'confirm' ? styles.confirmContent : styles.toastContent
+      ]}>
+        {showIcon && type !== 'confirm' && (
+          <View style={[
+            styles.iconContainer,
+            { backgroundColor: typeConfig.backgroundColor }
+          ]}>
+            <Icon
+              name={iconName}
+              size={24}
+              color={typeConfig.color}
+            />
+          </View>
+        )}
+
+        <View style={[
+          styles.textContent,
+          type === 'confirm' && styles.confirmTextContent,
+          type === 'confirm' && { flex: 0, width: '100%' }
+        ]}>
+          {title && (
+            <Text style={[
+              styles.toastTitle,
+              type === 'confirm' && styles.confirmTitle,
+              { color: theme.isDarkMode ? '#ffffff' : '#000000' }
+            ]}>
+              {title}
+            </Text>
+          )}
+          {message && (
+            <Text style={[
+              styles.toastMessage,
+              type === 'confirm' && styles.confirmMessage,
+              { color: theme.isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }
+            ]}>
+              {message}
+            </Text>
+          )}
+
+          {showInput && (
+            <View style={[styles.inputContainer, {
+              borderColor: theme.border,
+              backgroundColor: theme.isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'
+            }]}>
+              <TextInput
+                style={[styles.input, { color: theme.isDarkMode ? 'white' : 'black' }]}
+                placeholder={placeholder}
+                placeholderTextColor={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"}
+                secureTextEntry={secureTextEntry}
+                value={internalInputValue}
+                onChangeText={setInternalInputValue}
+                autoFocus={true}
+                autoCapitalize="none"
+              />
+            </View>
+          )}
+        </View>
+
+        {type === 'confirm' ? (
+          <View style={styles.modalButtonWrapper}>
+            {renderButtons()}
+          </View>
+        ) : (
+          <View style={styles.toastRight}>
+            {buttons.length > 0 ? renderButtons() : (
+              <TouchableOpacity onPress={handleDismiss} style={styles.closeButton}>
+                <Icon name="close" size={20} color={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
+    </Animated.View>
+  );
+
+  if (type !== 'confirm') {
+    return (
+      <View pointerEvents="box-none" style={[styles.overlay, styles.toastOverlay]}>
+        {messageBoxContent}
+      </View>
+    );
+  }
+
   return (
     <Modal
       transparent
@@ -297,95 +393,8 @@ const ThemedMessageBox = ({
       statusBarTranslucent
       onRequestClose={handleDismiss}
     >
-      <View style={[styles.overlay, type !== 'confirm' && styles.toastOverlay]}>
-        <Animated.View
-          style={[
-            styles.messageBox,
-            { backgroundColor: theme.isDarkMode ? '#1a1a1a' : '#ffffff' },
-            type !== 'confirm' && styles.toastBox,
-            type === 'confirm' && styles.confirmBox,
-            getAnimationStyle(),
-          ]}
-        >
-
-          <View style={[
-            styles.contentWrapper,
-            type === 'confirm' ? styles.confirmContent : styles.toastContent
-          ]}>
-            {/* Icon - Hidden for confirm type based on user request */}
-            {showIcon && type !== 'confirm' && (
-              <View style={[
-                styles.iconContainer,
-                { backgroundColor: typeConfig.backgroundColor }
-              ]}>
-                <Icon
-                  name={iconName}
-                  size={24}
-                  color={typeConfig.color}
-                />
-              </View>
-            )}
-
-            {/* Text Content */}
-            <View style={[
-              styles.textContent,
-              type === 'confirm' && styles.confirmTextContent,
-              type === 'confirm' && { flex: 0, width: '100%' }
-            ]}>
-              {title && (
-                <Text style={[
-                  styles.toastTitle,
-                  type === 'confirm' && styles.confirmTitle,
-                  { color: theme.isDarkMode ? '#ffffff' : '#000000' }
-                ]}>
-                  {title}
-                </Text>
-              )}
-              {message && (
-                <Text style={[
-                  styles.toastMessage,
-                  type === 'confirm' && styles.confirmMessage,
-                  { color: theme.isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }
-                ]}>
-                  {message}
-                </Text>
-              )}
-
-              {showInput && (
-                <View style={[styles.inputContainer, {
-                  borderColor: theme.border,
-                  backgroundColor: theme.isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'
-                }]}>
-                  <TextInput
-                    style={[styles.input, { color: theme.isDarkMode ? 'white' : 'black' }]}
-                    placeholder={placeholder}
-                    placeholderTextColor={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"}
-                    secureTextEntry={secureTextEntry}
-                    value={internalInputValue}
-                    onChangeText={setInternalInputValue}
-                    autoFocus={true}
-                    autoCapitalize="none"
-                  />
-                </View>
-              )}
-            </View>
-
-            {/* Buttons / Close */}
-            {type === 'confirm' ? (
-              <View style={styles.modalButtonWrapper}>
-                {renderButtons()}
-              </View>
-            ) : (
-              <View style={styles.toastRight}>
-                {buttons.length > 0 ? renderButtons() : (
-                  <TouchableOpacity onPress={handleDismiss} style={styles.closeButton}>
-                    <Icon name="close" size={20} color={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-        </Animated.View>
+      <View style={styles.overlay}>
+        {messageBoxContent}
       </View>
     </Modal>
   );
@@ -393,7 +402,7 @@ const ThemedMessageBox = ({
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
