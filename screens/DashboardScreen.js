@@ -33,10 +33,14 @@ export default function DashboardScreen({ navigation }) {
 
 
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [dashboardStats, setDashboardStats] = useState({
-    totalBalance: 0,
+    week: { balance: 0, income: 0, expenses: 0 },
     monthlyIncome: 0,
     monthlyExpenses: 0,
+    month: { balance: 0, income: 0, expenses: 0 },
+    year: { balance: 0, income: 0, expenses: 0 },
+    totalBalance: 0,
     budgetUsed: 0,
     budgetLimit: 0,
   });
@@ -90,6 +94,9 @@ export default function DashboardScreen({ navigation }) {
     const calculateDashboardStats = () => {
       if (!transactions || transactions.length === 0) {
         setDashboardStats({
+          week: { balance: 0, income: 0, expenses: 0 },
+          month: { balance: 0, income: 0, expenses: 0 },
+          year: { balance: 0, income: 0, expenses: 0 },
           totalBalance: 0,
           monthlyIncome: 0,
           monthlyExpenses: 0,
@@ -109,29 +116,51 @@ export default function DashboardScreen({ navigation }) {
 
       const totalBalance = totalIncome - totalExpenses;
 
-      // Calculate current month data
       const now = new Date();
+      const currentWeekStart = new Date(now);
+      currentWeekStart.setHours(0, 0, 0, 0);
+      currentWeekStart.setDate(now.getDate() - now.getDay());
+      const currentWeekEnd = new Date(currentWeekStart);
+      currentWeekEnd.setDate(currentWeekStart.getDate() + 7);
+
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const currentYearStart = new Date(now.getFullYear(), 0, 1);
+      const currentYearEnd = new Date(now.getFullYear() + 1, 0, 1);
 
-      const currentMonthTransactions = transactions.filter(t => {
-        const transactionDate = new Date(t.date || t.createdAt);
-        return transactionDate >= currentMonthStart && transactionDate <= currentMonthEnd;
-      });
+      const getPeriodStats = (startDate, endDate) => {
+        const periodTransactions = transactions.filter(t => {
+          const transactionDate = new Date(t.date || t.createdAt);
+          return transactionDate >= startDate && transactionDate < endDate;
+        });
 
-      const monthlyIncome = currentMonthTransactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
+        const income = periodTransactions
+          .filter(t => t.type === 'income')
+          .reduce((sum, t) => sum + t.amount, 0);
 
-      const monthlyExpenses = currentMonthTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
+        const expenses = periodTransactions
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        return {
+          balance: income - expenses,
+          income,
+          expenses,
+        };
+      };
+
+      const weeklyStats = getPeriodStats(currentWeekStart, currentWeekEnd);
+      const monthlyStats = getPeriodStats(currentMonthStart, currentMonthEnd);
+      const yearlyStats = getPeriodStats(currentYearStart, currentYearEnd);
 
       setDashboardStats({
+        week: weeklyStats,
+        month: monthlyStats,
+        year: yearlyStats,
         totalBalance,
-        monthlyIncome,
-        monthlyExpenses,
-        budgetUsed: monthlyExpenses,
+        monthlyIncome: monthlyStats.income,
+        monthlyExpenses: monthlyStats.expenses,
+        budgetUsed: monthlyStats.expenses,
         budgetLimit: userData?.monthlyBudget || 0,
       });
     };
@@ -245,6 +274,9 @@ export default function DashboardScreen({ navigation }) {
     navigation.navigate('Profile');
   };
 
+  const selectedStats = dashboardStats[selectedPeriod] || dashboardStats.month;
+  const periodLabel = selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1);
+
   const renderOverviewCard = () => (
     <Animated.View style={[styles.overviewContainer, { opacity: fadeAnim, transform: [{ scale: cardScale }] }]}>
       <GlassCard
@@ -253,9 +285,26 @@ export default function DashboardScreen({ navigation }) {
         padding={24}
       >
         <View style={styles.overviewHeader}>
-          <Text style={[styles.overviewTitle, { color: 'rgba(255,255,255,0.9)' }]}>Total Balance</Text>
+          <Text style={[styles.overviewTitle, { color: 'rgba(255,255,255,0.9)' }]}>{periodLabel} Balance</Text>
+          <View style={styles.periodToggle}>
+            {['week', 'month', 'year'].map((period) => {
+              const isActive = selectedPeriod === period;
+              return (
+                <TouchableOpacity
+                  key={period}
+                  style={[styles.periodButton, isActive && styles.periodButtonActive]}
+                  onPress={() => setSelectedPeriod(period)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.periodButtonText, isActive && styles.periodButtonTextActive]}>
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-        <Text style={[styles.balanceAmount, { color: 'white' }]}>{formatCurrency(dashboardStats.totalBalance)}</Text>
+        <Text style={[styles.balanceAmount, { color: 'white' }]}>{formatCurrency(selectedStats.balance)}</Text>
 
         <View style={styles.incomeExpenseRow}>
           <View style={styles.incomeExpenseItem}>
@@ -264,7 +313,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
             <View>
               <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.7)' }]}>Income</Text>
-              <Text style={styles.incomeAmount}>{formatCurrency(dashboardStats.monthlyIncome)}</Text>
+              <Text style={styles.incomeAmount}>{formatCurrency(selectedStats.income)}</Text>
             </View>
           </View>
           <View style={styles.incomeExpenseItem}>
@@ -273,7 +322,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
             <View>
               <Text style={[styles.incomeExpenseLabel, { color: 'rgba(255,255,255,0.7)' }]}>Expenses</Text>
-              <Text style={styles.expenseAmount}>{formatCurrency(dashboardStats.monthlyExpenses)}</Text>
+              <Text style={styles.expenseAmount}>{formatCurrency(selectedStats.expenses)}</Text>
             </View>
           </View>
         </View>
@@ -358,6 +407,17 @@ export default function DashboardScreen({ navigation }) {
         >
           {/* Overview Section */}
           {renderOverviewCard()}
+
+          <TouchableOpacity style={styles.aiChatButton} onPress={() => navigation.navigate('AIChat')}>
+            <View style={styles.aiChatIcon}>
+              <Icon name="robot-excited-outline" size={18} color="white" />
+            </View>
+            <View style={styles.aiChatTextWrap}>
+              <Text style={styles.aiChatTitle}>Ask Financial AI</Text>
+              <Text style={styles.aiChatSubtitle}>Get advice based on your spending data</Text>
+            </View>
+            <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
 
           {/* AI Budget Advisor */}
           {aiRecommendations.length > 0 && (
@@ -452,6 +512,37 @@ const styles = StyleSheet.create({
   overviewContainer: {
     marginBottom: 25,
   },
+  aiChatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 24,
+  },
+  aiChatIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  aiChatTextWrap: {
+    flex: 1,
+  },
+  aiChatTitle: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  aiChatSubtitle: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+  },
   overviewCard: {
     // Styling handled by GlassCard
   },
@@ -463,6 +554,34 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
+    gap: 12,
+  },
+  periodToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 18,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  periodButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  periodButtonActive: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  periodButtonText: {
+    color: 'rgba(255,255,255,0.68)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  periodButtonTextActive: {
+    color: 'white',
+    fontWeight: '700',
   },
   overviewTitle: {
     fontSize: 16,

@@ -1,12 +1,16 @@
-import { AI_PROXY_BASE_URL } from '@env';
+import { AI_PROXY_BASE_URL, NVIDIA_API_KEY } from '@env';
 
 // AI configuration (client-safe: no provider secrets in app bundle)
 export const AI_CONFIG = {
     // Your secure backend/proxy URL that performs AI calls server-side
     AI_PROXY_BASE_URL: AI_PROXY_BASE_URL || '',
+    NVIDIA_API_KEY: NVIDIA_API_KEY || '',
+    NVIDIA_BASE_URL: 'https://integrate.api.nvidia.com/v1',
+    NVIDIA_MODEL: 'nvidia/nemotron-3-super-120b-a12b',
     PROXY_ENDPOINTS: {
         CATEGORIZE: '/ai/categorize',
         PARSE_RECEIPT: '/ai/parse-receipt',
+        FINANCIAL_CHAT: '/ai/financial-chat',
     },
 
     // Categories for classification

@@ -64,6 +64,8 @@ export default function AddBudgetModal({
     { id: 'entertainment', name: 'Entertainment', icon: 'movie', color: '#FF5722' },
     { id: 'bills', name: 'Bills & Utilities', icon: 'receipt', color: '#607D8B' },
     { id: 'health', name: 'Healthcare', icon: 'medical-bag', color: '#4CAF50' },
+    { id: 'education', name: 'Education', icon: 'school', color: '#3F51B5' },
+    { id: 'other', name: 'Other', icon: 'help-circle', color: '#9E9E9E' },
   ];
 
   const selectedCategoryData = categories.find(c => c.id === selectedCategory);

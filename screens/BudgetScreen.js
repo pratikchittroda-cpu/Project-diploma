@@ -26,6 +26,44 @@ import CircularProgress from '../components/budget/CircularProgress';
 import AddBudgetModal from '../components/budget/AddBudgetModal';
 import BudgetInsights from '../components/budget/BudgetInsights';
 
+const WEEKS_PER_YEAR = 52;
+const MONTHS_PER_YEAR = 12;
+const WEEKS_PER_MONTH = WEEKS_PER_YEAR / MONTHS_PER_YEAR;
+
+const normalizePersonalCategory = (category) => {
+  const value = String(category || '').trim().toLowerCase();
+
+  const categoryMap = {
+    'food': 'food',
+    'food & dining': 'food',
+    'food and dining': 'food',
+    'transport': 'transport',
+    'transportation': 'transport',
+    'shopping': 'shopping',
+    'entertainment': 'entertainment',
+    'bills': 'bills',
+    'bills & utilities': 'bills',
+    'bills and utilities': 'bills',
+    'utilities': 'bills',
+    'health': 'health',
+    'healthcare': 'health',
+    'medical': 'health',
+    'education': 'education',
+    'other': 'other',
+  };
+
+  return categoryMap[value] || value || 'other';
+};
+
+const normalizeTransactionType = (type) => {
+  const value = String(type || '').trim().toLowerCase();
+
+  if (value === 'expense' || value === 'expenses') return 'expense';
+  if (value === 'income' || value === 'revenue') return 'income';
+
+  return value;
+};
+
 export default function BudgetScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
 
@@ -149,16 +187,19 @@ export default function BudgetScreen({ navigation }) {
 
     switch (selectedPeriod) {
       case 'Weekly':
-        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
-        endDate = new Date(now.setDate(now.getDate() - now.getDay() + 6));
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        startDate.setDate(now.getDate() - now.getDay());
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 7);
         break;
       case 'Yearly':
         startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
+        endDate = new Date(now.getFullYear() + 1, 0, 1);
         break;
       default: // Monthly
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     }
 
     return { startDate, endDate };
@@ -169,16 +210,17 @@ export default function BudgetScreen({ navigation }) {
 
     // Filter transactions for period
     const periodTransactions = transactions.filter(t => {
-      const transactionDate = t.date || t.createdAt?.split('T')[0];
-      return transactionDate >= startDate.toISOString().split('T')[0] &&
-        transactionDate <= endDate.toISOString().split('T')[0] &&
-        t.type === 'expense';
+      const rawDate = t.date || t.createdAt;
+      if (!rawDate || normalizeTransactionType(t.type) !== 'expense') return false;
+
+      const transactionDate = new Date(rawDate);
+      return transactionDate >= startDate && transactionDate < endDate;
     });
 
     // Calculate spending by category
     const categorySpending = {};
     periodTransactions.forEach(transaction => {
-      const category = transaction.category || 'other';
+      const category = normalizePersonalCategory(transaction.category);
       categorySpending[category] = (categorySpending[category] || 0) + transaction.amount;
     });
 
@@ -189,15 +231,21 @@ export default function BudgetScreen({ navigation }) {
       { id: 'entertainment', name: 'Entertainment', color: '#FF5722', icon: 'movie' },
       { id: 'bills', name: 'Bills & Utilities', color: '#607D8B', icon: 'receipt' },
       { id: 'health', name: 'Healthcare', color: '#4CAF50', icon: 'medical-bag' },
+      { id: 'education', name: 'Education', color: '#3F51B5', icon: 'school' },
+      { id: 'other', name: 'Other', color: '#9E9E9E', icon: 'help-circle' },
     ];
 
     // Map categories with their budget and spending data
     const categoriesWithData = categoryData.map(cat => {
       const spent = categorySpending[cat.id] || 0;
-      const budget = budgets.find(b => b.category === cat.id && b.period === selectedPeriod)?.amount || 0;
+      const budget = budgets.find(
+        b => normalizePersonalCategory(b.category) === cat.id && b.period === selectedPeriod
+      )?.amount || 0;
       const remaining = Math.max(0, budget - spent);
       const percentage = budget > 0 ? Math.round((spent / budget) * 100) : 0;
-      const transactionCount = periodTransactions.filter(t => t.category === cat.id).length;
+      const transactionCount = periodTransactions.filter(
+        t => normalizePersonalCategory(t.category) === cat.id
+      ).length;
 
       return {
         ...cat,
@@ -303,7 +351,7 @@ export default function BudgetScreen({ navigation }) {
     try {
       if (editingBudget) {
         // Update existing budget
-        const result = await budgetService.updateBudget(user.uid, editingBudget.id, budgetData);
+        const result = await budgetService.updateBudget(editingBudget.id, budgetData);
         if (result.success) {
           // Update local state
           const updatedBudgets = budgets.map(b =>
@@ -347,9 +395,9 @@ export default function BudgetScreen({ navigation }) {
       let updatedBudgets = [...currentBudgets];
 
       if (budgetData.period === 'Weekly') {
-        // Weekly budget created/updated - sync to Monthly (weekly * 4) and Yearly (weekly * 52)
-        const monthlyAmount = budgetData.amount * 4;
-        const yearlyAmount = budgetData.amount * 52;
+        // Weekly budget created/updated - sync using consistent annualized conversions
+        const monthlyAmount = budgetData.amount * WEEKS_PER_MONTH;
+        const yearlyAmount = budgetData.amount * WEEKS_PER_YEAR;
 
         // Sync Monthly
         const existingMonthly = updatedBudgets.find(
@@ -357,7 +405,7 @@ export default function BudgetScreen({ navigation }) {
         );
 
         if (existingMonthly) {
-          const result = await budgetService.updateBudget(user.uid, existingMonthly.id, {
+          const result = await budgetService.updateBudget(existingMonthly.id, {
             ...existingMonthly,
             amount: monthlyAmount,
           });
@@ -390,7 +438,7 @@ export default function BudgetScreen({ navigation }) {
         );
 
         if (existingYearly) {
-          const result = await budgetService.updateBudget(user.uid, existingYearly.id, {
+          const result = await budgetService.updateBudget(existingYearly.id, {
             ...existingYearly,
             amount: yearlyAmount,
           });
@@ -417,9 +465,9 @@ export default function BudgetScreen({ navigation }) {
           }
         }
       } else if (budgetData.period === 'Monthly') {
-        // Monthly budget created/updated - sync to Weekly (monthly / 4) and Yearly (monthly * 12)
-        const weeklyAmount = budgetData.amount / 4;
-        const yearlyAmount = budgetData.amount * 12;
+        // Monthly budget created/updated - sync using consistent annualized conversions
+        const weeklyAmount = budgetData.amount / WEEKS_PER_MONTH;
+        const yearlyAmount = budgetData.amount * MONTHS_PER_YEAR;
 
         // Sync Weekly
         const existingWeekly = updatedBudgets.find(
@@ -427,7 +475,7 @@ export default function BudgetScreen({ navigation }) {
         );
 
         if (existingWeekly) {
-          const result = await budgetService.updateBudget(user.uid, existingWeekly.id, {
+          const result = await budgetService.updateBudget(existingWeekly.id, {
             ...existingWeekly,
             amount: weeklyAmount,
           });
@@ -460,7 +508,7 @@ export default function BudgetScreen({ navigation }) {
         );
 
         if (existingYearly) {
-          const result = await budgetService.updateBudget(user.uid, existingYearly.id, {
+          const result = await budgetService.updateBudget(existingYearly.id, {
             ...existingYearly,
             amount: yearlyAmount,
           });
@@ -487,9 +535,9 @@ export default function BudgetScreen({ navigation }) {
           }
         }
       } else if (budgetData.period === 'Yearly') {
-        // Yearly budget created/updated - sync to Monthly (yearly / 12) and Weekly (yearly / 52)
-        const monthlyAmount = budgetData.amount / 12;
-        const weeklyAmount = budgetData.amount / 52;
+        // Yearly budget created/updated - sync using consistent annualized conversions
+        const monthlyAmount = budgetData.amount / MONTHS_PER_YEAR;
+        const weeklyAmount = budgetData.amount / WEEKS_PER_YEAR;
 
         // Sync Monthly
         const existingMonthly = updatedBudgets.find(
@@ -497,7 +545,7 @@ export default function BudgetScreen({ navigation }) {
         );
 
         if (existingMonthly) {
-          const result = await budgetService.updateBudget(user.uid, existingMonthly.id, {
+          const result = await budgetService.updateBudget(existingMonthly.id, {
             ...existingMonthly,
             amount: monthlyAmount,
           });
@@ -530,7 +578,7 @@ export default function BudgetScreen({ navigation }) {
         );
 
         if (existingWeekly) {
-          const result = await budgetService.updateBudget(user.uid, existingWeekly.id, {
+          const result = await budgetService.updateBudget(existingWeekly.id, {
             ...existingWeekly,
             amount: weeklyAmount,
           });
@@ -871,7 +919,9 @@ export default function BudgetScreen({ navigation }) {
         </View>
 
         {budgetStats.categories.map((category) => {
-          const budget = budgets.find(b => b.category === category.id && b.period === selectedPeriod);
+      const budget = budgets.find(
+        b => normalizePersonalCategory(b.category) === category.id && b.period === selectedPeriod
+      );
           const isExpanded = expandedCards[category.id];
 
           return (
@@ -979,30 +1029,30 @@ export default function BudgetScreen({ navigation }) {
                       {selectedPeriod === 'Weekly' && (
                         <>
                           <Text style={styles.syncInfoText}>
-                            Monthly: ₹{(category.budget * 4).toFixed(2)} (Weekly × 4)
+                            Monthly: ₹{(category.budget * WEEKS_PER_MONTH).toFixed(2)} (Weekly × 52 ÷ 12)
                           </Text>
                           <Text style={styles.syncInfoText}>
-                            Yearly: ₹{(category.budget * 52).toFixed(2)} (Weekly × 52)
+                            Yearly: ₹{(category.budget * WEEKS_PER_YEAR).toFixed(2)} (Weekly × 52)
                           </Text>
                         </>
                       )}
                       {selectedPeriod === 'Monthly' && (
                         <>
                           <Text style={styles.syncInfoText}>
-                            Weekly: ₹{(category.budget / 4).toFixed(2)} (Monthly ÷ 4)
+                            Weekly: ₹{(category.budget / WEEKS_PER_MONTH).toFixed(2)} (Monthly × 12 ÷ 52)
                           </Text>
                           <Text style={styles.syncInfoText}>
-                            Yearly: ₹{(category.budget * 12).toFixed(2)} (Monthly × 12)
+                            Yearly: ₹{(category.budget * MONTHS_PER_YEAR).toFixed(2)} (Monthly × 12)
                           </Text>
                         </>
                       )}
                       {selectedPeriod === 'Yearly' && (
                         <>
                           <Text style={styles.syncInfoText}>
-                            Monthly: ₹{(category.budget / 12).toFixed(2)} (Yearly ÷ 12)
+                            Monthly: ₹{(category.budget / MONTHS_PER_YEAR).toFixed(2)} (Yearly ÷ 12)
                           </Text>
                           <Text style={styles.syncInfoText}>
-                            Weekly: ₹{(category.budget / 52).toFixed(2)} (Yearly ÷ 52)
+                            Weekly: ₹{(category.budget / WEEKS_PER_YEAR).toFixed(2)} (Yearly ÷ 52)
                           </Text>
                         </>
                       )}

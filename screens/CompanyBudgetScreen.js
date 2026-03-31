@@ -24,6 +24,46 @@ import MessageService from '../services/MessageService';
 import UserTypeGuard from '../components/UserTypeGuard';
 import CircularProgress from '../components/budget/CircularProgress';
 
+const normalizeCompanyCategory = (category) => {
+  const value = String(category || '').trim().toLowerCase();
+
+  const categoryMap = {
+    'office-supplies': 'office-supplies',
+    'office supplies': 'office-supplies',
+    'marketing': 'marketing',
+    'transport': 'transport',
+    'transportation': 'transport',
+    'travel': 'travel',
+    'travel & expenses': 'travel',
+    'travel and expenses': 'travel',
+    'utilities': 'utilities',
+    'rent': 'rent',
+    'equipment': 'equipment',
+    'software': 'software',
+    'software & subscriptions': 'software',
+    'software and subscriptions': 'software',
+    'salaries': 'salaries',
+    'salary': 'salaries',
+    'professional-services': 'professional-services',
+    'professional services': 'professional-services',
+    'services': 'professional-services',
+    'insurance': 'insurance',
+    'other': 'other',
+    'other business expenses': 'other',
+  };
+
+  return categoryMap[value] || value || 'other';
+};
+
+const normalizeTransactionType = (type) => {
+  const value = String(type || '').trim().toLowerCase();
+
+  if (value === 'expense' || value === 'expenses') return 'expense';
+  if (value === 'income' || value === 'revenue') return 'income';
+
+  return value;
+};
+
 export default function CompanyBudgetScreen({ navigation }) {
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -97,26 +137,29 @@ export default function CompanyBudgetScreen({ navigation }) {
 
       switch (selectedPeriod) {
         case 'Weekly':
-          const day = now.getDay();
-          const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-          startDate = new Date(now.setDate(diff));
+          const weekStart = new Date(now);
+          const day = weekStart.getDay();
+          const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
+          startDate = new Date(weekStart.setDate(diff));
           startDate.setHours(0, 0, 0, 0);
           endDate = new Date(startDate);
-          endDate.setDate(startDate.getDate() + 6);
-          endDate.setHours(23, 59, 59, 999);
+          endDate.setDate(startDate.getDate() + 7);
+          endDate.setHours(0, 0, 0, 0);
           break;
         case 'Yearly':
           startDate = new Date(now.getFullYear(), 0, 1);
-          endDate = new Date(now.getFullYear(), 11, 31);
+          endDate = new Date(now.getFullYear() + 1, 0, 1);
           break;
         default:
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       }
 
       const periodTransactions = transactions.filter(t => {
         const transactionDate = new Date(t.date || t.createdAt);
-        return transactionDate >= startDate && transactionDate <= endDate;
+        return transactionDate >= startDate &&
+          transactionDate < endDate &&
+          normalizeTransactionType(t.type) === 'expense';
       });
 
       // Calculate total budget for the period
@@ -125,12 +168,10 @@ export default function CompanyBudgetScreen({ navigation }) {
 
       // Calculate total spent by category
       const categorySpending = {};
-      periodTransactions
-        .filter(t => t.type === 'expense')
-        .forEach(t => {
-          const category = t.category || 'other';
-          categorySpending[category] = (categorySpending[category] || 0) + t.amount;
-        });
+      periodTransactions.forEach(t => {
+        const category = normalizeCompanyCategory(t.category);
+        categorySpending[category] = (categorySpending[category] || 0) + t.amount;
+      });
 
       const totalSpent = Object.values(categorySpending).reduce((sum, amount) => sum + amount, 0);
       const totalRemaining = Math.max(0, totalBudget - totalSpent);
@@ -138,22 +179,23 @@ export default function CompanyBudgetScreen({ navigation }) {
 
       // Create department data
       const departments = periodBudgets.map((budget, index) => {
-        const spent = categorySpending[budget.category] || 0;
+        const normalizedBudgetCategory = normalizeCompanyCategory(budget.category);
+        const spent = categorySpending[normalizedBudgetCategory] || 0;
         const remaining = Math.max(0, budget.amount - spent);
         const deptPercentage = budget.amount > 0 ? Math.round((spent / budget.amount) * 100) : 0;
         const colors = ['#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#607D8B'];
 
         return {
           id: budget.id || index + 1,
-          name: budget.name || getCompanyCategoryName(budget.category),
+          name: budget.name || getCompanyCategoryName(normalizedBudgetCategory),
           budget: budget.amount,
           spent,
           remaining,
           percentage: deptPercentage,
           color: colors[index % colors.length],
-          icon: getCategoryIcon(budget.category),
+          icon: getCategoryIcon(normalizedBudgetCategory),
           categories: [
-            { name: budget.name || getCompanyCategoryName(budget.category), budget: budget.amount, spent }
+            { name: budget.name || getCompanyCategoryName(normalizedBudgetCategory), budget: budget.amount, spent }
           ]
         };
       });
@@ -245,11 +287,13 @@ export default function CompanyBudgetScreen({ navigation }) {
     const categories = {
       'office-supplies': 'Office Supplies',
       'marketing': 'Marketing',
+      'transport': 'Transportation',
       'travel': 'Travel',
       'utilities': 'Utilities',
       'rent': 'Rent',
       'equipment': 'Equipment',
       'software': 'Software',
+      'salaries': 'Salaries',
       'professional-services': 'Services',
       'insurance': 'Insurance',
       'other': 'Other'
@@ -261,11 +305,13 @@ export default function CompanyBudgetScreen({ navigation }) {
     const iconMap = {
       'office-supplies': 'office-building',
       'marketing': 'bullhorn',
+      'transport': 'car',
       'travel': 'airplane',
       'utilities': 'flash',
       'rent': 'home',
       'equipment': 'desktop-mac',
       'software': 'application',
+      'salaries': 'account-group',
       'professional-services': 'account-tie',
       'insurance': 'shield-check',
       'other': 'dots-horizontal'
@@ -285,11 +331,13 @@ export default function CompanyBudgetScreen({ navigation }) {
   const companyCategories = [
     { id: 'office-supplies', name: 'Office Supplies', icon: 'office-building' },
     { id: 'marketing', name: 'Marketing', icon: 'bullhorn' },
+    { id: 'transport', name: 'Transportation', icon: 'car' },
     { id: 'travel', name: 'Travel & Expenses', icon: 'airplane' },
     { id: 'utilities', name: 'Utilities', icon: 'flash' },
     { id: 'rent', name: 'Rent & Facilities', icon: 'home' },
     { id: 'equipment', name: 'Equipment', icon: 'desktop-mac' },
     { id: 'software', name: 'Software & Subscriptions', icon: 'application' },
+    { id: 'salaries', name: 'Salaries', icon: 'account-group' },
     { id: 'professional-services', name: 'Professional Services', icon: 'account-tie' },
     { id: 'insurance', name: 'Insurance', icon: 'shield-check' },
     { id: 'other', name: 'Other Business Expenses', icon: 'dots-horizontal' }

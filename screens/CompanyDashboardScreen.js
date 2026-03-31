@@ -64,11 +64,11 @@ export default function CompanyDashboardScreen({ navigation }) {
 
       const now = new Date();
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
       const currentMonthTransactions = transactions.filter((t) => {
         const transactionDate = new Date(t.date || t.createdAt);
-        return transactionDate >= currentMonthStart && transactionDate <= currentMonthEnd;
+        return transactionDate >= currentMonthStart && transactionDate < currentMonthEnd;
       });
 
       const monthlyIncome = currentMonthTransactions
@@ -300,6 +300,17 @@ export default function CompanyDashboardScreen({ navigation }) {
           >
             {renderOverviewCard()}
 
+            <TouchableOpacity style={styles.aiChatButton} onPress={() => navigation.navigate('AIChat')}>
+              <View style={styles.aiChatIcon}>
+                <Icon name="robot-excited-outline" size={18} color="white" />
+              </View>
+              <View style={styles.aiChatTextWrap}>
+                <Text style={styles.aiChatTitle}>Ask Financial AI</Text>
+                <Text style={styles.aiChatSubtitle}>Review company spending and cash flow</Text>
+              </View>
+              <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.8)" />
+            </TouchableOpacity>
+
             <Animated.View style={[styles.sectionContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -382,6 +393,37 @@ const styles = StyleSheet.create({
   },
   overviewContainer: {
     marginBottom: 25,
+  },
+  aiChatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 24,
+  },
+  aiChatIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  aiChatTextWrap: {
+    flex: 1,
+  },
+  aiChatTitle: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  aiChatSubtitle: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
   },
   overviewCard: {},
   overviewHeader: {

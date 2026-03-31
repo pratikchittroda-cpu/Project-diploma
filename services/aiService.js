@@ -31,6 +31,73 @@ class AIService {
         return response.json();
     }
 
+    async postToNvidiaChat(messages, options = {}) {
+        const apiKey = (AI_CONFIG.NVIDIA_API_KEY || '').trim();
+        if (!apiKey) {
+            throw new Error('Missing NVIDIA API key');
+        }
+
+        const response = await fetch(`${AI_CONFIG.NVIDIA_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: AI_CONFIG.NVIDIA_MODEL,
+                messages,
+                temperature: options.temperature ?? 0.35,
+                top_p: options.topP ?? 0.95,
+                max_tokens: options.maxTokens ?? 1400,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`NVIDIA AI error: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data?.choices?.[0]?.message?.content?.trim() || '';
+    }
+
+    normalizeFinancialAnswer(answer) {
+        if (!answer || typeof answer !== 'string') {
+            return 'I could not prepare a clear financial answer right now.';
+        }
+
+        let normalized = answer
+            .replace(/\r/g, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+
+        const lines = normalized
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        normalized = lines.join('\n');
+
+        if (normalized.length > 1200) {
+            const candidate = normalized.slice(0, 1200);
+            const lastSentenceBreak = Math.max(
+                candidate.lastIndexOf('. '),
+                candidate.lastIndexOf('! '),
+                candidate.lastIndexOf('? '),
+                candidate.lastIndexOf('\n')
+            );
+
+            if (lastSentenceBreak > 400) {
+                normalized = `${candidate.slice(0, lastSentenceBreak + 1).trim()}...`;
+            } else {
+                normalized = `${candidate.trim()}...`;
+            }
+        }
+
+        return normalized;
+    }
+
     /**
      * Categorize transaction using AI
      */
@@ -106,6 +173,143 @@ class AIService {
             throw new Error('Invalid AI receipt response');
         } catch (error) {
             return null; // Return null to fall back to regex parsing
+        }
+    }
+
+    buildFinancialContext({ user, userData, transactions = [] }) {
+        const safeTransactions = [...transactions]
+            .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt))
+            .slice(0, 150);
+
+        const totals = safeTransactions.reduce((acc, transaction) => {
+            const amount = Number(transaction.amount) || 0;
+            if (transaction.type === 'income') {
+                acc.totalIncome += amount;
+            } else if (transaction.type === 'expense') {
+                acc.totalExpenses += amount;
+            }
+            return acc;
+        }, { totalIncome: 0, totalExpenses: 0 });
+
+        const categoryTotals = safeTransactions.reduce((acc, transaction) => {
+            if (transaction.type !== 'expense') return acc;
+            const category = transaction.category || 'other';
+            acc[category] = (acc[category] || 0) + (Number(transaction.amount) || 0);
+            return acc;
+        }, {});
+
+        const topCategories = Object.entries(categoryTotals)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8)
+            .map(([category, amount]) => ({ category, amount }));
+
+        return {
+            userId: user?.uid || null,
+            userType: userData?.userType || 'personal',
+            profile: {
+                fullName: userData?.fullName || null,
+                companyName: userData?.companyName || null,
+                monthlyBudget: userData?.monthlyBudget || userData?.companyMonthlyBudget || 0,
+                email: userData?.email || user?.email || null,
+            },
+            totals: {
+                totalIncome: totals.totalIncome,
+                totalExpenses: totals.totalExpenses,
+                netBalance: totals.totalIncome - totals.totalExpenses,
+            },
+            topCategories,
+            recentTransactions: safeTransactions.map((transaction) => ({
+                id: transaction.id,
+                type: transaction.type,
+                amount: Number(transaction.amount) || 0,
+                category: transaction.category || 'other',
+                description: transaction.description || transaction.note || 'Transaction',
+                date: transaction.date || transaction.createdAt || null,
+                department: transaction.department || null,
+            })),
+        };
+    }
+
+    async getFinancialChatResponse({
+        question,
+        user,
+        userData,
+        transactions = [],
+        conversationHistory = [],
+    }) {
+        if (!question || question.trim().length < 2) {
+            return { success: false, error: 'Please enter a finance-related question.' };
+        }
+
+        const financeContext = this.buildFinancialContext({ user, userData, transactions });
+
+        try {
+            const trimmedQuestion = question.trim();
+            const instructions = [
+                'Answer only questions related to personal or company finance.',
+                'Use the provided finance context for the signed-in user only.',
+                'If the question is unrelated to finance, refuse briefly and steer back to financial topics.',
+                'Do not claim access to any data outside the provided user context.',
+                'Keep the answer short, direct, and easy to scan.',
+                'Use at most 4 short bullet points when listing actions.',
+                'Prefer 2 to 5 sentences total.',
+                'Do not include long explanations, disclaimers, or repeated context.'
+            ];
+
+            if (AI_CONFIG.AI_PROXY_BASE_URL) {
+                const result = await this.postToProxy(AI_CONFIG.PROXY_ENDPOINTS.FINANCIAL_CHAT, {
+                    question: trimmedQuestion,
+                    conversationHistory,
+                    financeContext,
+                    scope: 'financial_advice_only',
+                    instructions,
+                });
+
+                if (!result || !result.answer) {
+                    throw new Error('Invalid AI chat response');
+                }
+
+                return {
+                    success: true,
+                    answer: this.normalizeFinancialAnswer(result.answer),
+                };
+            }
+
+            const messages = [
+                {
+                    role: 'system',
+                    content: [
+                        'You are Expenzo Financial AI.',
+                        ...instructions,
+                        `Finance context for the current signed-in user: ${JSON.stringify(financeContext)}`
+                    ].join(' '),
+                },
+                ...conversationHistory
+                    .filter((message) => message && typeof message.content === 'string')
+                    .slice(-12)
+                    .map((message) => ({
+                        role: message.role === 'assistant' ? 'assistant' : 'user',
+                        content: message.content,
+                    })),
+                {
+                    role: 'user',
+                    content: trimmedQuestion,
+                },
+            ];
+
+            const answer = await this.postToNvidiaChat(messages);
+
+            return {
+                success: true,
+                answer: this.normalizeFinancialAnswer(answer),
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: AI_CONFIG.AI_PROXY_BASE_URL || AI_CONFIG.NVIDIA_API_KEY
+                    ? 'Unable to reach the AI assistant right now.'
+                    : 'AI chat is not configured yet. Add AI_PROXY_BASE_URL or NVIDIA_API_KEY to your environment.',
+            };
         }
     }
 

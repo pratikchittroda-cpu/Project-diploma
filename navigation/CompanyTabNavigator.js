@@ -237,7 +237,7 @@ const AnimatedTabButton = ({ focused, iconName, onPress, size = 28 }) => {
         <Icon
           name={iconName}
           size={focused ? size + 3 : size}
-          color={focused ? 'white' : 'rgba(255, 255, 255, 0.6)'}
+          color={focused ? theme.primary : theme.textSecondary}
         />
         {focused && (
           <Animated.View
@@ -489,14 +489,14 @@ const createCustomTabBarStyles = (theme) => StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: theme.primaryContainer,
   },
   focusedBackground: {
     position: 'absolute',
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: theme.primaryContainer,
   },
   focusedDot: {
     width: 5,

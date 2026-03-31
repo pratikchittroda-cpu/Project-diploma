@@ -14,6 +14,7 @@ import TeamManagementScreen from '../screens/TeamManagementScreen';
 import CompanyBudgetScreen from '../screens/CompanyBudgetScreen';
 import CompanyTransactionsScreen from '../screens/CompanyTransactionsScreen';
 import AddCompanyTransactionScreen from '../screens/AddCompanyTransactionScreen';
+import AIChatScreen from '../screens/AIChatScreen';
 // Personal Profile Screens
 import EditProfileScreen from '../screens/EditProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -62,6 +63,9 @@ export default function AppNavigator() {
         screenOptions={{
           headerShown: false,
           gestureEnabled: true,
+          contentStyle: {
+            backgroundColor: theme.background,
+          },
         }}
       >
         <Stack.Screen
@@ -168,6 +172,17 @@ export default function AppNavigator() {
           options={{
             animation: 'slide_from_bottom',
             animationDuration: 300,
+          }}
+        />
+        <Stack.Screen
+          name="AIChat"
+          component={AIChatScreen}
+          options={{
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            contentStyle: {
+              backgroundColor: theme.background,
+            },
           }}
         />
 
