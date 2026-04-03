@@ -1,26 +1,31 @@
-declare module 'react' {
-  import * as React from 'react';
-  export = React;
-  export as namespace React;
-}
-
-declare module 'react-native' {
-  export * from 'react-native';
-}
+/// <reference types="react" />
+/// <reference types="react-native" />
 
 declare module 'react-native-vector-icons/MaterialCommunityIcons' {
   import { Component } from 'react';
-  export default class Icon extends Component<any> {}
+  import { TextStyle, ViewStyle } from 'react-native';
+
+  interface IconProps {
+    name: string;
+    size?: number;
+    color?: string;
+    style?: TextStyle | ViewStyle;
+    [key: string]: any;
+  }
+
+  export default class Icon extends Component<IconProps> {}
 }
 
-declare module 'expo-linear-gradient' {
-  export const LinearGradient: any;
-}
-
-declare module '@react-navigation/bottom-tabs' {
-  export function createBottomTabNavigator(): any;
-}
-
-declare module '@react-navigation/native' {
-  export * from '@react-navigation/native';
+declare module 'react-native-dotenv' {
+  interface Env {
+    API_KEY: string;
+    AUTH_DOMAIN: string;
+    PROJECT_ID: string;
+    STORAGE_BUCKET: string;
+    MESSAGING_SENDER_ID: string;
+    APP_ID: string;
+    [key: string]: string | undefined;
+  }
+  const env: Env;
+  export = env;
 }
