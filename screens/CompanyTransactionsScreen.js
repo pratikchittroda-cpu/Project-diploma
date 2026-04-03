@@ -85,13 +85,44 @@ export default function CompanyTransactionsScreen({ navigation }) {
         }
     };
 
+    const isWithinPeriod = (date, period) => {
+        const d = new Date(date);
+        const now = new Date();
+
+        switch (period) {
+            case 'This Week': {
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay());
+                startOfWeek.setHours(0, 0, 0, 0);
+                return d >= startOfWeek;
+            }
+            case 'This Month': {
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                return d >= startOfMonth;
+            }
+            case 'This Year': {
+                const startOfYear = new Date(now.getFullYear(), 0, 1);
+                return d >= startOfYear;
+            }
+            case 'Past Year': {
+                const oneYearAgo = new Date(now);
+                oneYearAgo.setFullYear(now.getFullYear() - 1);
+                return d >= oneYearAgo;
+            }
+            default:
+                return true;
+        }
+    };
+
     // Calculate transaction summary
     const transactionSummary = React.useMemo(() => {
-        const totalRevenue = transactions
+        const periodTransactions = transactions.filter(t => isWithinPeriod(t.date || t.createdAt, selectedPeriod));
+
+        const totalRevenue = periodTransactions
             .filter(t => t.type === 'income')
             .reduce((sum, t) => sum + t.amount, 0);
 
-        const totalExpenses = transactions
+        const totalExpenses = periodTransactions
             .filter(t => t.type === 'expense')
             .reduce((sum, t) => sum + t.amount, 0);
 
@@ -100,7 +131,7 @@ export default function CompanyTransactionsScreen({ navigation }) {
             totalExpenses,
             netProfit: totalRevenue - totalExpenses,
         };
-    }, [transactions]);
+    }, [transactions, selectedPeriod]);
 
     // Helper functions for category icons and colors
     const getCategoryIcon = (category) => {
@@ -146,6 +177,9 @@ export default function CompanyTransactionsScreen({ navigation }) {
     const filteredTransactions = React.useMemo(() => {
         let filtered = transactions;
 
+        // Filter by period
+        filtered = filtered.filter(t => isWithinPeriod(t.date || t.createdAt, selectedPeriod));
+
         // Filter by type
         if (selectedFilter !== 'all') {
             filtered = filtered.filter(t => t.type === selectedFilter);
@@ -167,7 +201,7 @@ export default function CompanyTransactionsScreen({ navigation }) {
             icon: getCategoryIcon(transaction.category),
             color: getCategoryColor(transaction.category, transaction.type)
         }));
-    }, [transactions, selectedFilter, searchQuery, theme]);
+    }, [transactions, selectedFilter, searchQuery, selectedPeriod, theme]);
 
     const handleDeleteTransaction = async (transactionId) => {
         MessageService.showConfirm(
@@ -183,9 +217,25 @@ export default function CompanyTransactionsScreen({ navigation }) {
             },
             () => { },
             {
+                animationType: 'slide',
                 buttons: [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive' }
+                    {
+                        text: 'Cancel',
+                        style: 'cancel',
+                        onPress: () => { }
+                    },
+                    {
+                        text: 'Delete',
+                        color: '#FF5252',
+                        onPress: async () => {
+                            const result = await deleteTransaction(transactionId);
+                            if (!result.success) {
+                                MessageService.showError('Error', result.error || 'Failed to delete transaction');
+                            } else {
+                                MessageService.showSuccess('Deleted', 'Transaction has been removed');
+                            }
+                        }
+                    }
                 ]
             }
         );
@@ -211,7 +261,7 @@ export default function CompanyTransactionsScreen({ navigation }) {
         }
     };
 
-    const periods = ['This Week', 'This Month', 'This Year'];
+    const periods = ['This Week', 'This Month', 'This Year', 'Past Year'];
     const filters = [
         { id: 'all', name: 'All', icon: 'format-list-bulleted' },
         { id: 'income', name: 'Revenue', icon: 'trending-up' },

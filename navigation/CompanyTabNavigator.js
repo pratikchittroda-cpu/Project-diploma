@@ -634,7 +634,7 @@ export default function CompanyTabNavigator() {
           headerShown: false,
           animationEnabled: true,
           lazy: false,
-          unmountOnBlur: false,
+          unmountOnBlur: true,
         }}
       >
         <Tab.Screen

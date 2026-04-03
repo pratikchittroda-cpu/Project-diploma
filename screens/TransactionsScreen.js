@@ -102,7 +102,9 @@ export default function TransactionsScreen({ navigation }) {
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         return d >= startOfYear;
       case 'Past Year':
-        return true;
+        const oneYearAgo = new Date(now);
+        oneYearAgo.setFullYear(now.getFullYear() - 1);
+        return d >= oneYearAgo;
       default:
         return true;
     }

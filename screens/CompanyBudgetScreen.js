@@ -24,6 +24,10 @@ import MessageService from '../services/MessageService';
 import UserTypeGuard from '../components/UserTypeGuard';
 import CircularProgress from '../components/budget/CircularProgress';
 
+const WEEKS_PER_YEAR = 52;
+const MONTHS_PER_YEAR = 12;
+const WEEKS_PER_MONTH = WEEKS_PER_YEAR / MONTHS_PER_YEAR;
+
 const normalizeCompanyCategory = (category) => {
   const value = String(category || '').trim().toLowerCase();
 
@@ -67,10 +71,11 @@ const normalizeTransactionType = (type) => {
 export default function CompanyBudgetScreen({ navigation }) {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const { transactions } = useTransactions();
+  const { transactions, refresh: refreshTransactions } = useTransactions();
 
   const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
   const [budgets, setBudgets] = useState([]);
+  const [editingBudget, setEditingBudget] = useState(null);
   const [realBudgetData, setRealBudgetData] = useState({
     totalBudget: 0,
     totalSpent: 0,
@@ -86,6 +91,19 @@ export default function CompanyBudgetScreen({ navigation }) {
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+
+  const loadBudgets = async () => {
+    if (!user) return;
+
+    try {
+      const result = await budgetService.getUserBudgets(user.uid);
+      if (result.success) {
+        setBudgets(result.budgets.filter((budget) => budget.type === 'company'));
+      }
+    } catch (error) {
+      console.error('Error loading company budgets:', error);
+    }
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -104,31 +122,36 @@ export default function CompanyBudgetScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    const loadBudgets = async () => {
-      if (user) {
-        try {
-          const result = await budgetService.getUserBudgets(user.uid);
-          if (result.success) {
-            setBudgets(result.budgets.filter(b => b.type === 'company'));
-          }
-        } catch (error) {
-          console.error("Error loading budgets:", error);
-        }
-      }
-    };
     loadBudgets();
 
-    // Reload budgets when screen comes into focus
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadBudgets();
+    // Reload budgets and transactions whenever the screen opens
+    const unsubscribe = navigation.addListener('focus', async () => {
+      await Promise.all([
+        refreshTransactions(),
+        loadBudgets(),
+      ]);
     });
 
     return unsubscribe;
-  }, [user, navigation]);
+  }, [user, navigation, refreshTransactions]);
 
   useEffect(() => {
     calculateBudgetData();
   }, [selectedPeriod, transactions, budgets]);
+
+  useEffect(() => {
+    if (!showAddBudgetModal) {
+      setEditingBudget(null);
+      setBudgetAmount('');
+      setBudgetCategory('office-supplies');
+      return;
+    }
+
+    if (editingBudget) {
+      setBudgetAmount(String(editingBudget.amount || ''));
+      setBudgetCategory(normalizeCompanyCategory(editingBudget.category));
+    }
+  }, [showAddBudgetModal, editingBudget]);
 
   const calculateBudgetData = () => {
     try {
@@ -226,7 +249,19 @@ export default function CompanyBudgetScreen({ navigation }) {
     }
   };
 
-  const handleAddBudget = async () => {
+  const openAddBudgetModal = () => {
+    setEditingBudget(null);
+    setBudgetAmount('');
+    setBudgetCategory('office-supplies');
+    setShowAddBudgetModal(true);
+  };
+
+  const openEditBudgetModal = (budget) => {
+    setEditingBudget(budget);
+    setShowAddBudgetModal(true);
+  };
+
+  const handleSaveBudget = async () => {
     if (!budgetAmount || parseFloat(budgetAmount) <= 0) {
       MessageService.showError('Invalid Amount', 'Please enter a valid budget amount');
       return;
@@ -235,44 +270,238 @@ export default function CompanyBudgetScreen({ navigation }) {
     try {
       const budgetData = {
         category: budgetCategory,
+        categoryName: getCompanyCategoryName(budgetCategory),
         amount: parseFloat(budgetAmount),
         period: selectedPeriod,
         name: getCompanyCategoryName(budgetCategory),
         type: 'company'
       };
 
-      const result = await budgetService.createBudget(user.uid, budgetData);
-
-      if (result.success) {
-        const newBudget = { id: result.budgetId, ...budgetData };
-        const updatedBudgets = budgets.filter(b => !(b.category === budgetCategory && b.period === selectedPeriod));
-        setBudgets([...updatedBudgets, newBudget]);
-
-        setBudgetAmount('');
-        setBudgetCategory('office-supplies');
-        setShowAddBudgetModal(false);
-
-        MessageService.showSuccess('Success', 'Budget created successfully');
+      if (editingBudget) {
+        const result = await budgetService.updateBudget(editingBudget.id, budgetData);
+        if (result.success) {
+          const updatedBudgets = budgets.map((budget) =>
+            budget.id === editingBudget.id ? { ...budget, ...budgetData } : budget
+          );
+          const syncedBudgets = await syncBudgetWithOtherPeriod(updatedBudgets, budgetData);
+          setBudgets(syncedBudgets);
+          setShowAddBudgetModal(false);
+          MessageService.showSuccess('Updated', 'Budget updated successfully');
+        } else {
+          MessageService.showError('Error', result.error || 'Failed to update budget');
+        }
       } else {
-        MessageService.showError('Error', 'Failed to create budget');
+        const result = await budgetService.createBudget(user.uid, budgetData);
+        if (result.success) {
+          const newBudget = { id: result.budgetId, ...budgetData };
+          const updatedBudgets = budgets.filter(
+            (budget) => !(normalizeCompanyCategory(budget.category) === budgetCategory && budget.period === selectedPeriod)
+          );
+          const syncedBudgets = await syncBudgetWithOtherPeriod([...updatedBudgets, newBudget], budgetData);
+          setBudgets(syncedBudgets);
+          setShowAddBudgetModal(false);
+          MessageService.showSuccess('Success', 'Budget created successfully');
+        } else {
+          MessageService.showError('Error', result.error || 'Failed to create budget');
+        }
       }
     } catch (error) {
       MessageService.showError('Error', 'An unexpected error occurred');
     }
   };
 
+  const syncBudgetWithOtherPeriod = async (currentBudgets, budgetData) => {
+    try {
+      let updatedBudgets = [...currentBudgets];
+      const syncCreateData = {
+        category: budgetData.category,
+        categoryName: budgetData.categoryName || getCompanyCategoryName(budgetData.category),
+        name: budgetData.name || getCompanyCategoryName(budgetData.category),
+        type: 'company',
+      };
+
+      if (budgetData.period === 'Weekly') {
+        const monthlyAmount = budgetData.amount * WEEKS_PER_MONTH;
+        const yearlyAmount = budgetData.amount * WEEKS_PER_YEAR;
+
+        const existingMonthly = updatedBudgets.find(
+          (budget) => normalizeCompanyCategory(budget.category) === budgetData.category && budget.period === 'Monthly'
+        );
+        if (existingMonthly) {
+          const result = await budgetService.updateBudget(existingMonthly.id, {
+            ...existingMonthly,
+            amount: monthlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map((budget) =>
+              budget.id === existingMonthly.id ? { ...budget, amount: monthlyAmount } : budget
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            ...syncCreateData,
+            amount: monthlyAmount,
+            period: 'Monthly',
+          });
+          if (result.success) {
+            updatedBudgets.push({ id: result.budgetId, ...syncCreateData, amount: monthlyAmount, period: 'Monthly' });
+          }
+        }
+
+        const existingYearly = updatedBudgets.find(
+          (budget) => normalizeCompanyCategory(budget.category) === budgetData.category && budget.period === 'Yearly'
+        );
+        if (existingYearly) {
+          const result = await budgetService.updateBudget(existingYearly.id, {
+            ...existingYearly,
+            amount: yearlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map((budget) =>
+              budget.id === existingYearly.id ? { ...budget, amount: yearlyAmount } : budget
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            ...syncCreateData,
+            amount: yearlyAmount,
+            period: 'Yearly',
+          });
+          if (result.success) {
+            updatedBudgets.push({ id: result.budgetId, ...syncCreateData, amount: yearlyAmount, period: 'Yearly' });
+          }
+        }
+      } else if (budgetData.period === 'Monthly') {
+        const weeklyAmount = budgetData.amount / WEEKS_PER_MONTH;
+        const yearlyAmount = budgetData.amount * MONTHS_PER_YEAR;
+
+        const existingWeekly = updatedBudgets.find(
+          (budget) => normalizeCompanyCategory(budget.category) === budgetData.category && budget.period === 'Weekly'
+        );
+        if (existingWeekly) {
+          const result = await budgetService.updateBudget(existingWeekly.id, {
+            ...existingWeekly,
+            amount: weeklyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map((budget) =>
+              budget.id === existingWeekly.id ? { ...budget, amount: weeklyAmount } : budget
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            ...syncCreateData,
+            amount: weeklyAmount,
+            period: 'Weekly',
+          });
+          if (result.success) {
+            updatedBudgets.push({ id: result.budgetId, ...syncCreateData, amount: weeklyAmount, period: 'Weekly' });
+          }
+        }
+
+        const existingYearly = updatedBudgets.find(
+          (budget) => normalizeCompanyCategory(budget.category) === budgetData.category && budget.period === 'Yearly'
+        );
+        if (existingYearly) {
+          const result = await budgetService.updateBudget(existingYearly.id, {
+            ...existingYearly,
+            amount: yearlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map((budget) =>
+              budget.id === existingYearly.id ? { ...budget, amount: yearlyAmount } : budget
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            ...syncCreateData,
+            amount: yearlyAmount,
+            period: 'Yearly',
+          });
+          if (result.success) {
+            updatedBudgets.push({ id: result.budgetId, ...syncCreateData, amount: yearlyAmount, period: 'Yearly' });
+          }
+        }
+      } else if (budgetData.period === 'Yearly') {
+        const monthlyAmount = budgetData.amount / MONTHS_PER_YEAR;
+        const weeklyAmount = budgetData.amount / WEEKS_PER_YEAR;
+
+        const existingMonthly = updatedBudgets.find(
+          (budget) => normalizeCompanyCategory(budget.category) === budgetData.category && budget.period === 'Monthly'
+        );
+        if (existingMonthly) {
+          const result = await budgetService.updateBudget(existingMonthly.id, {
+            ...existingMonthly,
+            amount: monthlyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map((budget) =>
+              budget.id === existingMonthly.id ? { ...budget, amount: monthlyAmount } : budget
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            ...syncCreateData,
+            amount: monthlyAmount,
+            period: 'Monthly',
+          });
+          if (result.success) {
+            updatedBudgets.push({ id: result.budgetId, ...syncCreateData, amount: monthlyAmount, period: 'Monthly' });
+          }
+        }
+
+        const existingWeekly = updatedBudgets.find(
+          (budget) => normalizeCompanyCategory(budget.category) === budgetData.category && budget.period === 'Weekly'
+        );
+        if (existingWeekly) {
+          const result = await budgetService.updateBudget(existingWeekly.id, {
+            ...existingWeekly,
+            amount: weeklyAmount,
+          });
+          if (result.success) {
+            updatedBudgets = updatedBudgets.map((budget) =>
+              budget.id === existingWeekly.id ? { ...budget, amount: weeklyAmount } : budget
+            );
+          }
+        } else {
+          const result = await budgetService.createBudget(user.uid, {
+            ...syncCreateData,
+            amount: weeklyAmount,
+            period: 'Weekly',
+          });
+          if (result.success) {
+            updatedBudgets.push({ id: result.budgetId, ...syncCreateData, amount: weeklyAmount, period: 'Weekly' });
+          }
+        }
+      }
+
+      return updatedBudgets;
+    } catch (error) {
+      console.error('Error syncing company budget:', error);
+      return currentBudgets;
+    }
+  };
+
   const handleDeleteBudget = async (budgetId) => {
+    const budgetToDelete = budgets.find((budget) => budget.id === budgetId);
+    if (!budgetToDelete) return;
+
     MessageService.showConfirm(
       'Delete Budget',
-      'Are you sure you want to delete this budget?',
+      `Are you sure you want to delete the ${budgetToDelete.name || getCompanyCategoryName(normalizeCompanyCategory(budgetToDelete.category))} budget? This will remove it from all time periods.`,
       async () => {
         try {
-          const result = await budgetService.deleteBudget(budgetId);
-          if (result.success) {
-            setBudgets(prev => prev.filter(b => b.id !== budgetId));
+          const budgetsToDelete = budgets.filter(
+            (budget) => normalizeCompanyCategory(budget.category) === normalizeCompanyCategory(budgetToDelete.category)
+          );
+
+          const results = await Promise.all(budgetsToDelete.map((budget) => budgetService.deleteBudget(budget.id)));
+          if (results.every((result) => result.success)) {
+            const deletedIds = budgetsToDelete.map((budget) => budget.id);
+            setBudgets((prev) => prev.filter((budget) => !deletedIds.includes(budget.id)));
             MessageService.showSuccess('Success', 'Budget deleted successfully');
           } else {
-            MessageService.showError('Error', 'Failed to delete budget');
+            MessageService.showError('Error', 'Failed to delete all synced budgets');
           }
         } catch (error) {
           MessageService.showError('Error', 'An unexpected error occurred');
@@ -354,7 +583,7 @@ export default function CompanyBudgetScreen({ navigation }) {
       <Text style={styles.headerTitle}>Company Budget</Text>
       <TouchableOpacity
         style={styles.createButton}
-        onPress={() => setShowAddBudgetModal(true)}
+        onPress={openAddBudgetModal}
       >
         <Icon name="plus" size={20} color="white" />
       </TouchableOpacity>
@@ -440,6 +669,10 @@ export default function CompanyBudgetScreen({ navigation }) {
           <TouchableOpacity
             key={dept.id}
             style={styles.departmentCard}
+            onPress={() => {
+              const budget = budgets.find((item) => item.id === dept.id);
+              if (budget) openEditBudgetModal(budget);
+            }}
             onLongPress={() => handleDeleteBudget(dept.id)}
             delayLongPress={500}
             activeOpacity={0.7}
@@ -476,7 +709,7 @@ export default function CompanyBudgetScreen({ navigation }) {
           <Text style={styles.emptyText}>No budgets set for this period</Text>
           <TouchableOpacity
             style={styles.createFirstButton}
-            onPress={() => setShowAddBudgetModal(true)}
+            onPress={openAddBudgetModal}
           >
             <Text style={styles.createFirstButtonText}>Create First Budget</Text>
           </TouchableOpacity>
@@ -518,7 +751,9 @@ export default function CompanyBudgetScreen({ navigation }) {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Set {selectedPeriod} Budget</Text>
+                <Text style={styles.modalTitle}>
+                  {editingBudget ? `Edit ${selectedPeriod} Budget` : `Set ${selectedPeriod} Budget`}
+                </Text>
                 <TouchableOpacity onPress={() => setShowAddBudgetModal(false)}>
                   <Icon name="close" size={24} color="white" />
                 </TouchableOpacity>
@@ -564,12 +799,12 @@ export default function CompanyBudgetScreen({ navigation }) {
                 />
               </View>
 
-              <TouchableOpacity style={styles.saveButton} onPress={handleAddBudget}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveBudget}>
                 <LinearGradient
                   colors={[theme.primary, theme.primaryLight]}
                   style={styles.saveGradient}
                 >
-                  <Text style={styles.saveButtonText}>Save Budget</Text>
+                  <Text style={styles.saveButtonText}>{editingBudget ? 'Update Budget' : 'Save Budget'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import MessageService from '../services/MessageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';

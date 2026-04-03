@@ -279,6 +279,98 @@ export default function TeamManagementScreen({ navigation }) {
     );
   };
 
+  const handleDeleteMember = (member) => {
+    MessageService.showConfirm(
+      'Delete Member',
+      `Are you sure you want to delete ${member.name}?`,
+      async () => {
+        const result = await teamService.deleteMember(member.id);
+        if (result.success) {
+          setTeamData((prev) => ({
+            ...prev,
+            members: prev.members.filter((m) => m.id !== member.id),
+          }));
+          MessageService.showSuccess('Deleted', 'Team member deleted successfully');
+        } else {
+          MessageService.showError('Error', result.error || 'Failed to delete member');
+        }
+      },
+      () => { },
+      {
+        animationType: 'slide',
+        buttons: [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => { },
+          },
+          {
+            text: 'Delete',
+            color: '#FF5252',
+            onPress: async () => {
+              const result = await teamService.deleteMember(member.id);
+              if (result.success) {
+                setTeamData((prev) => ({
+                  ...prev,
+                  members: prev.members.filter((m) => m.id !== member.id),
+                }));
+                MessageService.showSuccess('Deleted', 'Team member deleted successfully');
+              } else {
+                MessageService.showError('Error', result.error || 'Failed to delete member');
+              }
+            },
+          },
+        ],
+      }
+    );
+  };
+
+  const handleDeleteTeam = (team) => {
+    MessageService.showConfirm(
+      'Delete Team',
+      `Are you sure you want to delete ${team.name}?`,
+      async () => {
+        const result = await teamService.deleteTeam(team.id);
+        if (result.success) {
+          setTeamData((prev) => ({
+            ...prev,
+            departments: prev.departments.filter((dept) => dept.id !== team.id),
+          }));
+          MessageService.showSuccess('Deleted', 'Team deleted successfully');
+        } else {
+          MessageService.showError('Error', result.error || 'Failed to delete team');
+        }
+      },
+      () => { },
+      {
+        animationType: 'slide',
+        buttons: [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => { },
+          },
+          {
+            text: 'Delete',
+            color: '#FF5252',
+            onPress: async () => {
+              const result = await teamService.deleteTeam(team.id);
+              if (result.success) {
+                setTeamData((prev) => ({
+                  ...prev,
+                  departments: prev.departments.filter((dept) => dept.id !== team.id),
+                }));
+                MessageService.showSuccess('Deleted', 'Team deleted successfully');
+              } else {
+                MessageService.showError('Error', result.error || 'Failed to delete team');
+              }
+            },
+          },
+        ],
+      }
+    );
+  };
+
   const renderHeader = () => (
     <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
       <TouchableOpacity
@@ -414,10 +506,15 @@ export default function TeamManagementScreen({ navigation }) {
               <Text style={styles.salaryLabel}>Annual Salary</Text>
               <Text style={styles.salaryValue}>{formatCurrency(member.salary)}</Text>
             </View>
-            <TouchableOpacity style={styles.editSalaryButton} onPress={() => openSalaryEdit(member)}>
-              <Icon name="pencil" size={16} color="white" />
-              <Text style={styles.editSalaryText}>Edit</Text>
-            </TouchableOpacity>
+            <View style={styles.memberActions}>
+              <TouchableOpacity style={styles.editSalaryButton} onPress={() => openSalaryEdit(member)}>
+                <Icon name="pencil" size={16} color="white" />
+                <Text style={styles.editSalaryText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteActionButton} onPress={() => handleDeleteMember(member)}>
+                <Icon name="trash-can-outline" size={16} color="#FF5252" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       ))
@@ -461,13 +558,18 @@ export default function TeamManagementScreen({ navigation }) {
               ]}
             />
             <View style={styles.teamHeader}>
-              <View style={[styles.teamIcon, { backgroundColor: `${dept.color}20` }]}>
-                <Icon name={dept.icon} size={24} color={dept.color} />
+              <View style={styles.teamHeaderLeft}>
+                <View style={[styles.teamIcon, { backgroundColor: `${dept.color}20` }]}>
+                  <Icon name={dept.icon} size={24} color={dept.color} />
+                </View>
+                <View style={styles.teamInfo}>
+                  <Text style={styles.teamName}>{dept.name}</Text>
+                  <Text style={styles.teamMembers}>{memberCount} Members</Text>
+                </View>
               </View>
-              <View style={styles.teamInfo}>
-                <Text style={styles.teamName}>{dept.name}</Text>
-                <Text style={styles.teamMembers}>{memberCount} Members</Text>
-              </View>
+              <TouchableOpacity style={styles.deleteActionButton} onPress={() => handleDeleteTeam(dept)}>
+                <Icon name="trash-can-outline" size={16} color="#FF5252" />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.teamStats}>
@@ -905,6 +1007,21 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  memberActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  deleteActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 82, 82, 0.35)',
+    backgroundColor: 'rgba(255, 82, 82, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   // Team Card
   teamCard: {
@@ -917,7 +1034,13 @@ const createStyles = (theme) => StyleSheet.create({
   teamHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  teamHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   teamIcon: {
     width: 40,

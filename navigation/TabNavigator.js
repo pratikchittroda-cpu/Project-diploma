@@ -762,7 +762,7 @@ export default function TabNavigator() {
           headerShown: false,
           animationEnabled: true,
           lazy: false,
-          unmountOnBlur: false,
+          unmountOnBlur: true,
         }}
       >
         <Tab.Screen
