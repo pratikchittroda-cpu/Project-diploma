@@ -1,9 +1,12 @@
 import { View, StatusBar } from 'react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import MessageBoxProvider from './components/MessageBoxProvider';
+
+WebBrowser.maybeCompleteAuthSession();
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {
   // Native splash may already be controlled or hidden.

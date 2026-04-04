@@ -6,6 +6,7 @@ import {
 } from '@env';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { makeRedirectUri } from 'expo-auth-session';
 
 // Exported client IDs for use in components/hooks
 // Exported client IDs with fallbacks to avoid undefined crashes
@@ -31,6 +32,18 @@ if (__DEV__) {
 
 const baseRequestConfig = {
   scopes: ['openid', 'profile', 'email'],
+  selectAccount: true,
+};
+
+const getNativeRedirectScheme = (clientId) => {
+  const normalized = (clientId || '').trim();
+  if (!normalized) return null;
+
+  const suffix = '.apps.googleusercontent.com';
+  if (!normalized.endsWith(suffix)) return null;
+
+  const prefix = normalized.slice(0, -suffix.length);
+  return `com.googleusercontent.apps.${prefix}`;
 };
 
 export const getGoogleAuthSetup = () => {
@@ -39,13 +52,28 @@ export const getGoogleAuthSetup = () => {
   const proxyClientId = GOOGLE_CLIENT_IDS.expoClientId || GOOGLE_CLIENT_IDS.webClientId;
   const shouldUseProxy = false;
   const fallbackClientId = proxyClientId || nativeClientId || GOOGLE_CLIENT_IDS.clientId || 'MISSING_GOOGLE_CLIENT_ID';
+  const nativeRedirectScheme = getNativeRedirectScheme(nativeClientId) || 'expenzo';
   const safeRequestConfig = {
     ...baseRequestConfig,
+    redirectUri: makeRedirectUri({
+      native: `${nativeRedirectScheme}:/oauthredirect`,
+    }),
     expoClientId: GOOGLE_CLIENT_IDS.expoClientId || proxyClientId || fallbackClientId,
     iosClientId: GOOGLE_CLIENT_IDS.iosClientId || fallbackClientId,
     androidClientId: GOOGLE_CLIENT_IDS.androidClientId || fallbackClientId,
     webClientId: GOOGLE_CLIENT_IDS.webClientId || proxyClientId || fallbackClientId,
   };
+
+  if (__DEV__) {
+    console.log('[GoogleAuth] Native platform config', {
+      platform: Platform.OS,
+      appOwnership: Constants.appOwnership,
+      nativeClientId,
+      redirectUri: safeRequestConfig.redirectUri,
+      nativeRedirectScheme,
+      hasWebClientId: !!GOOGLE_CLIENT_IDS.webClientId,
+    });
+  }
 
   if (isExpoGo) {
     return {

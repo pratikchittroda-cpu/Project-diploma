@@ -35,7 +35,7 @@ export default function LoginScreen({ navigation, route }) {
 
   useEffect(() => {
     if (request) {
-      // debug log removed
+      console.log('[GoogleAuth][Personal] Request URL', request.url);
     }
   }, [request]);
 
@@ -62,7 +62,7 @@ export default function LoginScreen({ navigation, route }) {
     try {
       const result = await signInWithGoogle(idToken, 'personal');
       if (result.success) {
-        navigation.replace('Dashboard');
+        navigation.replace(result.userData?.userType === 'company' ? 'CompanyDashboard' : 'Dashboard');
       } else {
         MessageService.showError('Login Failed', result.error || 'Failed to sign in with Google');
       }

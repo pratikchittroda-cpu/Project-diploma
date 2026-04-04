@@ -40,6 +40,13 @@ class AuthService {
         await setDoc(userDocRef, userData);
       } else {
         userData = userDocSnap.data();
+        if (userData.userType && userData.userType !== userType) {
+          await signOut(auth);
+          return {
+            success: false,
+            error: `This Google account is registered as a ${userData.userType} account.`,
+          };
+        }
       }
 
       return { success: true, user, userData };

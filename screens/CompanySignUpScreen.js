@@ -48,7 +48,7 @@ export default function CompanySignUpScreen({ navigation }) {
 
   useEffect(() => {
     if (request) {
-      // debug log removed
+      console.log('[GoogleAuth][Company SignUp] Request URL', request.url);
     }
   }, [request]);
 
@@ -70,7 +70,7 @@ export default function CompanySignUpScreen({ navigation }) {
     try {
       const result = await signInWithGoogle(idToken, 'company');
       if (result.success) {
-        navigation.replace('CompanyDashboard');
+        navigation.replace(result.userData?.userType === 'company' ? 'CompanyDashboard' : 'Dashboard');
       } else {
         MessageService.showError('Login Failed', result.error || 'Failed to sign in with Google');
       }
