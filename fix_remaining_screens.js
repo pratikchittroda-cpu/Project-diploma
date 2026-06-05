@@ -12,18 +12,18 @@ const path = require('path');
 
 // List of screens that need responsive design fixes
 const screensToFix = [
-  'AddTransactionScreen.js',
-  'BudgetScreen.js', 
-  'StatsScreen.js',
-  'TransactionsScreen.js',
-  'ProfileScreen.js',
-  'SettingsScreen.js',
-  'CompanyDashboardScreen.js',
-  'CompanyBudgetScreen.js',
-  'AddCompanyTransactionScreen.js',
-  'CompanyReportsScreen.js',
-  'CompanyProfileScreen.js',
-  'CompanySettingsScreen.js'
+  'personal/AddTransactionScreen.js',
+  'personal/BudgetScreen.js',
+  'personal/StatsScreen.js',
+  'personal/TransactionsScreen.js',
+  'personal/ProfileScreen.js',
+  'personal/SettingsScreen.js',
+  'company/CompanyDashboardScreen.js',
+  'company/CompanyBudgetScreen.js',
+  'company/AddCompanyTransactionScreen.js',
+  'company/CompanyReportsScreen.js',
+  'company/CompanyProfileScreen.js',
+  'company/CompanySettingsScreen.js'
 ];
 
 // Responsive design patterns to apply
@@ -175,7 +175,7 @@ export default function`
 // Function to apply responsive design to a single screen
 function fixScreen(screenPath) {
   try {
-    console.log(`🔧 Fixing ${path.basename(screenPath)}...`);
+    console.log(`🔧 Fixing ${path.relative(path.join(__dirname, 'screens'), screenPath)}...`);
     
     let content = fs.readFileSync(screenPath, 'utf8');
     
@@ -189,7 +189,7 @@ function fixScreen(screenPath) {
     // Write the updated content back
     fs.writeFileSync(screenPath, content, 'utf8');
     
-    console.log(`✅ Fixed ${path.basename(screenPath)}`);
+    console.log(`✅ Fixed ${path.relative(path.join(__dirname, 'screens'), screenPath)}`);
     
   } catch (error) {
     console.error(`❌ Error fixing ${path.basename(screenPath)}:`, error.message);

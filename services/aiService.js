@@ -1,5 +1,21 @@
 import { AI_CONFIG } from '../config/aiConfig';
 
+const safeGet = (obj, key, defaultValue = undefined) => {
+    if (!obj || typeof key !== 'string') return defaultValue;
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        return defaultValue;
+    }
+    return Object.prototype.hasOwnProperty.call(obj, key) ? Reflect.get(obj, key) : defaultValue;
+};
+
+const safeSet = (obj, key, value) => {
+    if (!obj || typeof key !== 'string') return false;
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        return false;
+    }
+    return Reflect.set(obj, key, value);
+};
+
 class AIService {
     getProxyUrl(path) {
         const baseUrl = (AI_CONFIG.AI_PROXY_BASE_URL || '').trim();
@@ -194,7 +210,8 @@ class AIService {
         const categoryTotals = safeTransactions.reduce((acc, transaction) => {
             if (transaction.type !== 'expense') return acc;
             const category = transaction.category || 'other';
-            acc[category] = (acc[category] || 0) + (Number(transaction.amount) || 0);
+            const current = safeGet(acc, category, 0);
+            safeSet(acc, category, current + (Number(transaction.amount) || 0));
             return acc;
         }, {});
 
@@ -329,7 +346,7 @@ class AIService {
         const currentMonthSpending = this.calculateSpending(transactions, currentMonth);
 
         for (const [category, budget] of Object.entries(budgets)) {
-            const spent = currentMonthSpending[category] || 0;
+            const spent = safeGet(currentMonthSpending, category, 0);
             const percentage = budget > 0 ? spent / budget : 0;
 
             if (percentage >= AI_CONFIG.BUDGET_THRESHOLDS.EXCEEDED) {
@@ -388,7 +405,7 @@ class AIService {
         // Sort by priority
         recommendations.sort((a, b) => {
             const priority = { critical: 3, warning: 2, tip: 1 };
-            return (priority[b.type] || 0) - (priority[a.type] || 0);
+            return safeGet(priority, b.type, 0) - safeGet(priority, a.type, 0);
         });
 
         // Ensure we don't return duplicates or too many
@@ -426,7 +443,8 @@ class AIService {
 
             if (tMonth === targetMonth && transaction.type === 'expense') {
                 const category = transaction.category || 'other';
-                spending[category] = (spending[category] || 0) + transaction.amount;
+                const current = safeGet(spending, category, 0);
+                safeSet(spending, category, current + transaction.amount);
             }
         });
 
@@ -454,7 +472,8 @@ class AIService {
                 // Check against non-essential keywords
                 for (const [type, keywords] of Object.entries(AI_CONFIG.NON_ESSENTIAL_KEYWORDS)) {
                     if (keywords.some(keyword => desc.includes(keyword))) {
-                        breakdown[type] = (breakdown[type] || 0) + transaction.amount;
+                        const current = safeGet(breakdown, type, 0);
+                        safeSet(breakdown, type, current + transaction.amount);
                         totalAmount += transaction.amount;
                         break;
                     }
@@ -538,7 +557,7 @@ class AIService {
 
         return {
             type: 'tip',
-            title: titles[type] || 'Savings Opportunity',
+            title: safeGet(titles, type, 'Savings Opportunity'),
             message: `You've spent ₹${amount.toFixed(0)} on ${type} recently.`,
             icon: '💰',
             suggestions: [
@@ -604,7 +623,12 @@ class AIService {
             }
         };
 
-        return suggestions[category]?.[severity] || [
+        const categorySuggestions = safeGet(suggestions, category);
+        if (categorySuggestions) {
+            const severitySuggestions = safeGet(categorySuggestions, severity);
+            if (severitySuggestions) return severitySuggestions;
+        }
+        return [
             'Review your spending',
             'Cut unnecessary expenses',
             'Stick to essentials only'
@@ -623,7 +647,7 @@ class AIService {
             entertainment: 'Try free activities like parks, reading'
         };
 
-        return alternatives[type] || 'Find cheaper alternatives';
+        return safeGet(alternatives, type, 'Find cheaper alternatives');
     }
 }
 

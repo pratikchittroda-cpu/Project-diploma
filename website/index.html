@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Expenzo is a personal and company finance app for budgets, transactions, reports, AI insights, team spending, and profile-based finance workflows."
+    />
+    <title>Expenzo | Personal and Company Finance</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header" data-header>
+      <a class="brand" href="#top" aria-label="Expenzo home">
+        <img src="../assets/logo.png" alt="" />
+        <span>Expenzo</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#product">Product</a>
+        <a href="#modes">Modes</a>
+        <a href="#insights">Insights</a>
+        <a href="#security">Security</a>
+      </nav>
+
+      <a class="nav-action" href="#download">Explore App</a>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-scene" aria-hidden="true">
+          <div class="scene-grid"></div>
+          <div class="scene-ledger ledger-left">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="scene-ledger ledger-right">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="hero-content">
+          <p class="eyebrow">Finance clarity for real life and real teams</p>
+          <h1 id="hero-title">Expenzo</h1>
+          <p class="hero-copy">
+            Track personal money, manage company spending, build budgets, review reports, and ask AI for finance guidance from one focused app.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#product">See Product</a>
+            <a class="button secondary" href="#modes">Compare Modes</a>
+          </div>
+          <div class="hero-metrics" aria-label="Product highlights">
+            <div>
+              <strong>2</strong>
+              <span>account modes</span>
+            </div>
+            <div>
+              <strong>AI</strong>
+              <span>finance chat</span>
+            </div>
+            <div>
+              <strong>INR</strong>
+              <span>native tracking</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-product" aria-label="Expenzo app preview">
+          <div class="phone-shell">
+            <div class="phone-screen">
+              <div class="app-topbar">
+                <div>
+                  <span>Good Morning</span>
+                  <strong>Welcome back</strong>
+                </div>
+                <img src="../assets/logo.png" alt="Expenzo logo" />
+              </div>
+
+              <div class="balance-card">
+                <span>Total Balance</span>
+                <strong>INR 84,250</strong>
+                <div class="balance-row">
+                  <span>Income INR 38,000</span>
+                  <span>Expense INR 12,750</span>
+                </div>
+              </div>
+
+              <div class="mini-chart" aria-hidden="true">
+                <span style="height: 38%"></span>
+                <span style="height: 72%"></span>
+                <span style="height: 48%"></span>
+                <span style="height: 88%"></span>
+                <span style="height: 62%"></span>
+                <span style="height: 76%"></span>
+              </div>
+
+              <div class="transaction-card">
+                <div class="transaction-icon food"></div>
+                <div>
+                  <strong>Groceries</strong>
+                  <span>Food budget</span>
+                </div>
+                <em>- INR 1,250</em>
+              </div>
+              <div class="transaction-card">
+                <div class="transaction-icon salary"></div>
+                <div>
+                  <strong>Salary</strong>
+                  <span>Monthly income</span>
+                </div>
+                <em class="positive">+ INR 38,000</em>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section product-section" id="product" aria-labelledby="product-title">
+        <div class="section-heading">
+          <p class="eyebrow">The product</p>
+          <h2 id="product-title">A finance workspace that adapts to the account.</h2>
+          <p>
+            Expenzo separates personal and company workflows while keeping the same fast rhythm: add, review, budget, report, and act.
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-icon">01</span>
+            <h3>Transaction Control</h3>
+            <p>Add income and expenses, browse recent activity, filter by type, and keep a clean running picture of money movement.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon coral">02</span>
+            <h3>Budget Planning</h3>
+            <p>Build category budgets, monitor spend, and spot pressure early before a category gets away from you.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon amber">03</span>
+            <h3>Reports and Stats</h3>
+            <p>Review income, expenses, net balance, categories, and company performance with summary views built for scanning.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon green">04</span>
+            <h3>AI Finance Assistant</h3>
+            <p>Ask questions about spending, savings, budgets, and financial patterns using your account data as context.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="scroll-showcase" id="feature-tour" data-scroll-showcase aria-labelledby="tour-title">
+        <div class="showcase-sticky">
+          <div class="showcase-copy">
+            <p class="eyebrow">Scroll tour</p>
+            <h2 id="tour-title">Watch Expenzo move through the workflow.</h2>
+            <div class="feature-steps" aria-label="Expenzo feature walkthrough">
+              <article class="feature-step is-active" data-step>
+                <span>01</span>
+                <h3>Dashboard</h3>
+                <p>Start with a clear balance view, month income, expenses, and recent activity.</p>
+              </article>
+              <article class="feature-step" data-step>
+                <span>02</span>
+                <h3>Transactions</h3>
+                <p>Log income or expenses, search history, and understand what changed today.</p>
+              </article>
+              <article class="feature-step" data-step>
+                <span>03</span>
+                <h3>Budgets</h3>
+                <p>Track category limits and spot when spending is moving faster than planned.</p>
+              </article>
+              <article class="feature-step" data-step>
+                <span>04</span>
+                <h3>AI Insights</h3>
+                <p>Ask the assistant what to cut, where money is going, and how to stay on plan.</p>
+              </article>
+            </div>
+          </div>
+
+          <div class="showcase-device" aria-hidden="true">
+            <div class="showcase-phone">
+              <div class="showcase-screen">
+                <div class="screen-stack">
+                  <div class="tour-screen dashboard-screen">
+                    <div class="tour-top">
+                      <span>Dashboard</span>
+                      <strong>INR 84,250</strong>
+                    </div>
+                    <div class="tour-balance"></div>
+                    <div class="tour-bars">
+                      <i style="height: 46%"></i>
+                      <i style="height: 72%"></i>
+                      <i style="height: 58%"></i>
+                      <i style="height: 88%"></i>
+                    </div>
+                  </div>
+                  <div class="tour-screen transactions-screen">
+                    <div class="tour-top">
+                      <span>Transactions</span>
+                      <strong>Today</strong>
+                    </div>
+                    <div class="tour-list">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </div>
+                  </div>
+                  <div class="tour-screen budget-screen">
+                    <div class="tour-top">
+                      <span>Budget</span>
+                      <strong>68% used</strong>
+                    </div>
+                    <div class="tour-ring"></div>
+                    <div class="tour-budget-lines">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </div>
+                  </div>
+                  <div class="tour-screen ai-screen">
+                    <div class="tour-top">
+                      <span>AI Chat</span>
+                      <strong>Advice</strong>
+                    </div>
+                    <div class="tour-message user-message">What should I cut?</div>
+                    <div class="tour-message bot-message">Food is trending high. Try a weekly cap first.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section mode-section" id="modes" aria-labelledby="modes-title">
+        <div class="section-heading compact">
+          <p class="eyebrow">Two focused modes</p>
+          <h2 id="modes-title">Personal money and company finance stay distinct.</h2>
+        </div>
+
+        <div class="mode-grid">
+          <article class="mode-panel personal-panel">
+            <div class="mode-header">
+              <span>Personal</span>
+              <strong>For everyday finance</strong>
+            </div>
+            <ul>
+              <li>Personal dashboard with balance, income, and expenses.</li>
+              <li>Category budgets for food, transport, bills, shopping, and more.</li>
+              <li>Stats, transaction history, profile, settings, themes, and backup tools.</li>
+            </ul>
+          </article>
+
+          <article class="mode-panel company-panel">
+            <div class="mode-header">
+              <span>Company</span>
+              <strong>For business operations</strong>
+            </div>
+            <ul>
+              <li>Company dashboard with revenue, expenses, and cash flow.</li>
+              <li>Team management, department-aware transactions, and company reports.</li>
+              <li>Company profile, billing, subscription, settings, and business budgets.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section insight-section" id="insights" aria-labelledby="insights-title">
+        <div class="insight-copy">
+          <p class="eyebrow">Built-in intelligence</p>
+          <h2 id="insights-title">Ask better finance questions without leaving the app.</h2>
+          <p>
+            Expenzo includes an AI chat surface for finance-only guidance. It can help summarize spending, identify expensive categories, and suggest practical next steps.
+          </p>
+          <div class="question-list">
+            <span>How can I reduce spending this month?</span>
+            <span>What category is costing me the most?</span>
+            <span>Am I staying within budget?</span>
+          </div>
+        </div>
+        <div class="assistant-preview" aria-label="AI assistant preview">
+          <div class="assistant-line user">What should I cut first?</div>
+          <div class="assistant-line bot">
+            Your highest variable spend is food. Start with a weekly cap, then review transport next.
+          </div>
+          <div class="assistant-pulse"></div>
+        </div>
+      </section>
+
+      <section class="section security-section" id="security" aria-labelledby="security-title">
+        <div class="section-heading compact">
+          <p class="eyebrow">Account-ready</p>
+          <h2 id="security-title">Designed around user identity, settings, and continuity.</h2>
+        </div>
+        <div class="security-grid">
+          <div>
+            <strong>Firebase Authentication</strong>
+            <span>Email, password, and Google sign-in flows are part of the app.</span>
+          </div>
+          <div>
+            <strong>Profile Customization</strong>
+            <span>Personal and company profiles include editable details and profile images.</span>
+          </div>
+          <div>
+            <strong>Theme Control</strong>
+            <span>Users can switch between visual themes and dark mode preferences.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="download-section" id="download" aria-labelledby="download-title">
+        <div>
+          <p class="eyebrow">Product information</p>
+          <h2 id="download-title">Expenzo brings personal budgets and company finance into one clean app experience.</h2>
+        </div>
+        <a class="button primary" href="#top">Back to Top</a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="brand footer-brand">
+        <img src="../assets/logo.png" alt="" />
+        <span>Expenzo</span>
+      </div>
+      <p>Personal finance. Company clarity. AI-assisted decisions.</p>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

@@ -13,10 +13,10 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import MessageBoxProvider from './components/MessageBoxProvider';
 
 // Import your screens
-import SplashScreen from './screens/SplashScreen';
-import UserTypeScreen from './screens/UserTypeScreen';
-import LoginScreen from './screens/LoginScreen';
-import CompanyBudgetScreen from './screens/CompanyBudgetScreen';
+import SplashScreen from './screens/personal/SplashScreen';
+import UserTypeScreen from './screens/personal/UserTypeScreen';
+import LoginScreen from './screens/personal/LoginScreen';
+import CompanyBudgetScreen from './screens/company/CompanyBudgetScreen';
 // ... other screens
 
 const Stack = createStackNavigator();

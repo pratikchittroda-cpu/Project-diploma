@@ -10,7 +10,7 @@ npm-debug.*
 *.orig.*
 web-build/
 dist/
-
+.claude/
 # macOS
 .DS_Store
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import authService from '../services/authService';
@@ -38,14 +38,14 @@ export const AuthProvider = ({ children }) => {
         console.error('Auth state change error:', error);
       } finally {
         setLoading(false);
-        if (initializing) setInitializing(false);
+        setInitializing(false);
       }
     });
 
     return unsubscribe;
-  }, [initializing]);
+  }, []);
 
-  const signUp = async (email, password, additionalData) => {
+  const signUp = useCallback(async (email, password, additionalData) => {
     setLoading(true);
     try {
       const result = await authService.signUp(email, password, additionalData);
@@ -59,9 +59,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const signIn = async (email, password) => {
+  const signIn = useCallback(async (email, password) => {
     setLoading(true);
     try {
       const result = await authService.signIn(email, password);
@@ -77,9 +77,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const signInWithGoogle = async (idToken, userType) => {
+  const signInWithGoogle = useCallback(async (idToken, userType) => {
     setLoading(true);
     try {
       const result = await authService.signInWithGoogle(idToken, userType);
@@ -95,9 +95,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     setLoading(true);
     try {
       const result = await authService.signOut();
@@ -111,9 +111,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const updateUserProfile = async (updateData) => {
+  const updateUserProfile = useCallback(async (updateData) => {
     if (!user) return { success: false, error: 'No user logged in' };
 
     try {
@@ -128,25 +128,25 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { success: false, error: error.message };
     }
-  };
+  }, [user]);
 
-  const resetPassword = async (email) => {
+  const resetPassword = useCallback(async (email) => {
     try {
       return await authService.resetPassword(email);
     } catch (error) {
       return { success: false, error: error.message };
     }
-  };
+  }, []);
 
-  const updatePassword = async (currentPassword, newPassword) => {
+  const updatePassword = useCallback(async (currentPassword, newPassword) => {
     try {
       return await authService.updateUserPassword(currentPassword, newPassword);
     } catch (error) {
       return { success: false, error: error.message };
     }
-  };
+  }, []);
 
-  const refreshUserData = async () => {
+  const refreshUserData = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -157,9 +157,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Refresh user data error:', error);
     }
-  };
+  }, [user]);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     userData,
     loading,
@@ -175,7 +175,20 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isPersonalUser: userData?.userType === 'personal',
     isCompanyUser: userData?.userType === 'company',
-  };
+  }), [
+    user,
+    userData,
+    loading,
+    initializing,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    signOut,
+    updateUserProfile,
+    resetPassword,
+    updatePassword,
+    refreshUserData,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>

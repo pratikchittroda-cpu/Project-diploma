@@ -8,20 +8,25 @@ export const useTransactions = (pageSize = 20) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [lastDoc, setLastDoc] = useState(null);
   const [error, setError] = useState(null);
   const lastDocRef = useRef(null);
+  const isLoadingRef = useRef(false);
 
   const loadTransactions = useCallback(async (refresh = false) => {
     if (!user) {
+      setTransactions([]);
+      setHasMore(true);
+      lastDocRef.current = null;
       setLoading(false);
       setRefreshing(false);
       return;
     }
 
+    if (isLoadingRef.current && !refresh) return;
+    isLoadingRef.current = true;
+
     if (refresh) {
       setRefreshing(true);
-      setLastDoc(null);
       lastDocRef.current = null;
       setHasMore(true);
     } else {
@@ -39,29 +44,15 @@ export const useTransactions = (pageSize = 20) => {
       );
 
       if (result.success) {
-        // Sort transactions by date (newest first) as a fallback
-        const sortedTransactions = result.transactions.sort((a, b) => {
-          const dateA = new Date(a.createdAt || a.date);
-          const dateB = new Date(b.createdAt || b.date);
-          return dateB - dateA;
-        });
-
         if (refresh) {
-          setTransactions(sortedTransactions);
+          setTransactions(result.transactions);
         } else {
-          // Use functional update to avoid stale closure
           setTransactions(prevTransactions => {
-            const combinedTransactions = [...prevTransactions, ...sortedTransactions];
-            // Sort the combined array to maintain order
-            const sortedCombined = combinedTransactions.sort((a, b) => {
-              const dateA = new Date(a.createdAt || a.date);
-              const dateB = new Date(b.createdAt || b.date);
-              return dateB - dateA;
-            });
-            return sortedCombined;
+            const existingIds = new Set(prevTransactions.map(transaction => transaction.id));
+            const nextTransactions = result.transactions.filter(transaction => !existingIds.has(transaction.id));
+            return [...prevTransactions, ...nextTransactions];
           });
         }
-        setLastDoc(result.lastDoc);
         lastDocRef.current = result.lastDoc;
         setHasMore(result.hasMore);
         setError(null);
@@ -71,10 +62,11 @@ export const useTransactions = (pageSize = 20) => {
     } catch (err) {
       setError(err.message);
     } finally {
+      isLoadingRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, pageSize]);
+  }, [user?.uid, pageSize]);
 
   const addTransaction = useCallback(async (transactionData) => {
     if (!user) return { success: false, error: 'No user logged in' };
@@ -89,7 +81,7 @@ export const useTransactions = (pageSize = 20) => {
     } catch (error) {
       return { success: false, error: error.message };
     }
-  }, [user, loadTransactions]);
+  }, [user?.uid, loadTransactions]);
 
   const updateTransaction = useCallback(async (transactionId, updateData) => {
     try {
@@ -171,8 +163,12 @@ export const useTransactions = (pageSize = 20) => {
   useEffect(() => {
     if (user) {
       loadTransactions(true);
+    } else {
+      setTransactions([]);
+      setHasMore(true);
+      lastDocRef.current = null;
     }
-  }, [user]);
+  }, [user?.uid, loadTransactions]);
 
   return {
     transactions,

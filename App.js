@@ -1,10 +1,14 @@
 import { View, StatusBar } from 'react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
 import * as WebBrowser from 'expo-web-browser';
+import { enableFreeze, enableScreens } from 'react-native-screens';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import MessageBoxProvider from './components/MessageBoxProvider';
+
+enableScreens(true);
+enableFreeze(true);
 
 WebBrowser.maybeCompleteAuthSession();
 

@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.nustudent.expenzo",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to scan receipts.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to select receipts.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to select receipts and profile pictures.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

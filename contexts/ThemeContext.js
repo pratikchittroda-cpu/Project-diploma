@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Enhanced typography system
@@ -556,28 +556,28 @@ export const ThemeProvider = ({ children }) => {
 
     // Load theme preferences from storage
     useEffect(() => {
+        const loadThemePreferences = async () => {
+            try {
+                const savedDarkMode = await AsyncStorage.getItem('isDarkMode');
+                const savedThemeId = await AsyncStorage.getItem('currentThemeId');
+
+                if (savedDarkMode !== null) {
+                    setIsDarkMode(JSON.parse(savedDarkMode));
+                }
+                if (savedThemeId !== null) {
+                    setCurrentThemeId(savedThemeId);
+                }
+            } catch (error) {
+                console.log('Error loading theme preferences:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
         loadThemePreferences();
     }, []);
 
-    const loadThemePreferences = async () => {
-        try {
-            const savedDarkMode = await AsyncStorage.getItem('isDarkMode');
-            const savedThemeId = await AsyncStorage.getItem('currentThemeId');
-            
-            if (savedDarkMode !== null) {
-                setIsDarkMode(JSON.parse(savedDarkMode));
-            }
-            if (savedThemeId !== null) {
-                setCurrentThemeId(savedThemeId);
-            }
-        } catch (error) {
-            console.log('Error loading theme preferences:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const toggleTheme = async () => {
+    const toggleTheme = useCallback(async () => {
         try {
             const newDarkMode = !isDarkMode;
             setIsDarkMode(newDarkMode);
@@ -585,26 +585,23 @@ export const ThemeProvider = ({ children }) => {
         } catch (error) {
             console.log('Error saving dark mode preference:', error);
         }
-    };
+    }, [isDarkMode]);
 
-    const changeTheme = async (themeId) => {
+    const changeTheme = useCallback(async (themeId) => {
         try {
             setCurrentThemeId(themeId);
             await AsyncStorage.setItem('currentThemeId', themeId);
         } catch (error) {
             console.log('Error saving theme preference:', error);
         }
-    };
+    }, []);
 
-    // Generate current theme based on selected theme and dark mode
-    const getCurrentTheme = () => {
+    const theme = useMemo(() => {
         const themeConfig = themeConfigs[currentThemeId] || themeConfigs.default;
         return createTheme(themeConfig.primary, themeConfig.primaryLight, isDarkMode);
-    };
+    }, [currentThemeId, isDarkMode]);
 
-    const theme = getCurrentTheme();
-
-    const value = {
+    const value = useMemo(() => ({
         isDarkMode,
         currentThemeId,
         theme: theme || lightTheme, // Ensure theme is never undefined
@@ -612,7 +609,7 @@ export const ThemeProvider = ({ children }) => {
         toggleTheme,
         changeTheme,
         isLoading,
-    };
+    }), [isDarkMode, currentThemeId, theme, toggleTheme, changeTheme, isLoading]);
 
     return (
         <ThemeContext.Provider value={value}>
