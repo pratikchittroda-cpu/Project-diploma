@@ -113,6 +113,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await authService.deleteAccount();
+      if (result.success) {
+        setUser(null);
+        setUserData(null);
+      }
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const updateUserProfile = useCallback(async (updateData) => {
     if (!user) return { success: false, error: 'No user logged in' };
 
@@ -168,6 +184,7 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signInWithGoogle,
     signOut,
+    deleteAccount,
     updateUserProfile,
     resetPassword,
     updatePassword,
@@ -184,6 +201,7 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signInWithGoogle,
     signOut,
+    deleteAccount,
     updateUserProfile,
     resetPassword,
     updatePassword,

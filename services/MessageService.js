@@ -87,6 +87,7 @@ class MessageService {
         },
         {
           text: options.confirmButtonText || 'OK',
+          color: options.confirmButtonColor,
           onPress: onConfirm,
         },
       ],

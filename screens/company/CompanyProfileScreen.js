@@ -28,7 +28,7 @@ import { pickEditableProfileImage } from '../../utils/profileImage';
 
 export default function CompanyProfileScreen({ navigation }) {
   const { isDarkMode, theme, toggleTheme, isLoading } = useTheme();
-  const { user, userData, signOut, updateUserProfile, loading: authLoading } = useAuth();
+  const { user, userData, signOut, deleteAccount, updateUserProfile, loading: authLoading } = useAuth();
   const { transactions, refresh: refreshTransactions } = useTransactions();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailReportsEnabled, setEmailReportsEnabled] = useState(true);
@@ -254,6 +254,39 @@ export default function CompanyProfileScreen({ navigation }) {
             }
           }
         ]
+      }
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    MessageService.showPrompt(
+      'Delete Account',
+      'This will permanently delete the company account and app data. Type delete to confirm.',
+      async (inputValue) => {
+        if ((inputValue || '').trim().toLowerCase() !== 'delete') {
+          MessageService.showError('Not Deleted', 'Please type delete to confirm account deletion.');
+          return;
+        }
+
+        const result = await deleteAccount();
+
+        if (result.success) {
+          MessageService.showSuccess('Account Deleted', 'Your company account has been deleted.', {
+            onDismiss: () => navigation.replace('UserType'),
+          });
+        } else if (result.requiresRecentLogin) {
+          MessageService.showError('Sign In Required', result.error || 'Please sign in again before deleting your account.');
+        } else {
+          MessageService.showError('Delete Failed', result.error || 'Unable to delete account.');
+        }
+      },
+      () => { },
+      {
+        placeholder: 'Type delete',
+        confirmButtonText: 'Delete Account',
+        confirmButtonColor: theme.error || '#FF5252',
+        cancelButtonText: 'Cancel',
+        animationType: 'slide',
       }
     );
   };
@@ -650,6 +683,16 @@ export default function CompanyProfileScreen({ navigation }) {
         </View>
         <Icon name="chevron-right" size={20} color="#FF5252" />
       </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.actionButton, styles.deleteAccountButton]} onPress={handleDeleteAccount}>
+        <View style={styles.actionButtonLeft}>
+          <View style={[styles.menuIcon, { backgroundColor: 'rgba(255, 82, 82, 0.2)' }]}>
+            <Icon name="delete-alert" size={20} color="#FF5252" />
+          </View>
+          <Text style={[styles.actionText, { color: '#FF5252' }]}>Delete Account</Text>
+        </View>
+        <Icon name="chevron-right" size={20} color="#FF5252" />
+      </TouchableOpacity>
     </Animated.View>
   );
 
@@ -986,6 +1029,10 @@ const createStyles = (theme) => StyleSheet.create({
   },
   signOutButton: {
     marginTop: 10,
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    borderWidth: 0,
+  },
+  deleteAccountButton: {
     backgroundColor: 'rgba(255, 82, 82, 0.1)',
     borderWidth: 0,
   },

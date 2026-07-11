@@ -8,9 +8,20 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   GoogleAuthProvider,
-  signInWithCredential
+  signInWithCredential,
+  deleteUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+  writeBatch
+} from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 class AuthService {
@@ -170,6 +181,72 @@ class AuthService {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+
+  async deleteAccount() {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        return { success: false, error: 'No user logged in' };
+      }
+
+      const tokenResult = await user.getIdTokenResult();
+      const authTime = new Date(tokenResult.authTime).getTime();
+      const recentLoginWindowMs = 5 * 60 * 1000;
+
+      if (Date.now() - authTime > recentLoginWindowMs) {
+        return {
+          success: false,
+          requiresRecentLogin: true,
+          error: 'Please sign in again before deleting your account.',
+        };
+      }
+
+      await this.deleteUserOwnedData(user.uid);
+      await deleteUser(user);
+
+      return { success: true };
+    } catch (error) {
+      if (error.code === 'auth/requires-recent-login') {
+        return {
+          success: false,
+          requiresRecentLogin: true,
+          error: 'Please sign in again before deleting your account.',
+        };
+      }
+
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deleteUserOwnedData(uid) {
+    const userOwnedCollections = ['transactions', 'budgets', 'teams', 'members'];
+    let batch = writeBatch(db);
+    let operationCount = 0;
+
+    const commitIfNeeded = async (force = false) => {
+      if (operationCount === 0 || (!force && operationCount < 450)) return;
+
+      await batch.commit();
+      batch = writeBatch(db);
+      operationCount = 0;
+    };
+
+    for (const collectionName of userOwnedCollections) {
+      const snapshot = await getDocs(
+        query(collection(db, collectionName), where('userId', '==', uid))
+      );
+
+      for (const documentSnapshot of snapshot.docs) {
+        batch.delete(documentSnapshot.ref);
+        operationCount += 1;
+        await commitIfNeeded();
+      }
+    }
+
+    batch.delete(doc(db, 'users', uid));
+    operationCount += 1;
+    await commitIfNeeded(true);
   }
 }
 

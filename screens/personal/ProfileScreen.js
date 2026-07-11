@@ -25,7 +25,7 @@ import { pickEditableProfileImage } from '../../utils/profileImage';
 
 export default function ProfileScreen({ navigation, onClose }) {
   const { isDarkMode, theme, toggleTheme, isLoading } = useTheme();
-  const { user, userData, signOut, updateUserProfile } = useAuth();
+  const { user, userData, signOut, deleteAccount, updateUserProfile } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const styles = useMemo(() => theme ? createStyles(theme) : null, [theme]);
 
@@ -239,6 +239,39 @@ export default function ProfileScreen({ navigation, onClose }) {
             }
           }
         ]
+      }
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    MessageService.showPrompt(
+      'Delete Account',
+      'This will permanently delete your account and app data. Type delete to confirm.',
+      async (inputValue) => {
+        if ((inputValue || '').trim().toLowerCase() !== 'delete') {
+          MessageService.showError('Not Deleted', 'Please type delete to confirm account deletion.');
+          return;
+        }
+
+        const result = await deleteAccount();
+
+        if (result.success) {
+          MessageService.showSuccess('Account Deleted', 'Your account has been deleted.', {
+            onDismiss: () => navigation.replace('UserType'),
+          });
+        } else if (result.requiresRecentLogin) {
+          MessageService.showError('Sign In Required', result.error || 'Please sign in again before deleting your account.');
+        } else {
+          MessageService.showError('Delete Failed', result.error || 'Unable to delete account.');
+        }
+      },
+      () => { },
+      {
+        placeholder: 'Type delete',
+        confirmButtonText: 'Delete Account',
+        confirmButtonColor: theme.error || '#FF5252',
+        cancelButtonText: 'Cancel',
+        animationType: 'slide',
       }
     );
   };
@@ -559,6 +592,31 @@ export default function ProfileScreen({ navigation, onClose }) {
         </View>
         <Icon name="chevron-right" size={20} color={theme.error} />
       </TouchableOpacity>
+      <TouchableOpacity style={[styles.menuButton, styles.deleteAccountButton]} onPress={handleDeleteAccount}>
+        <BlurView
+          intensity={theme.isDarkMode ? 30 : 60}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          experimentalBlurMethod="none"
+          style={StyleSheet.absoluteFill}
+        />
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0, 0, 0, 0.1)'
+                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
+            }
+          ]}
+        />
+        <View style={styles.menuButtonLeft}>
+          <View style={[styles.menuIcon, { backgroundColor: theme.iconBackground.red }]}>
+            <Icon name="delete-alert" size={22} color={theme.error} />
+          </View>
+          <Text style={[styles.menuButtonText, styles.deleteAccountText]}>Delete Account</Text>
+        </View>
+        <Icon name="chevron-right" size={20} color={theme.error} />
+      </TouchableOpacity>
     </View>
   );
 
@@ -723,4 +781,6 @@ const createStyles = (theme) => StyleSheet.create({
   menuButtonText: { fontSize: 17, color: 'white', fontWeight: '600', letterSpacing: 0.3 },
   logoutButton: { marginTop: 15 },
   logoutText: { color: 'white', fontWeight: '600' },
+  deleteAccountButton: { marginTop: 6 },
+  deleteAccountText: { color: 'white', fontWeight: '600' },
 });
