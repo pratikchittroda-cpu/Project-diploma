@@ -44,16 +44,22 @@ function verifyIosNativeSetup() {
   const properties = JSON.parse(fs.readFileSync(path.join(root, 'Podfile.properties.json'), 'utf8'));
   const project = fs.readFileSync(path.join(root, 'Expenzo.xcodeproj/project.pbxproj'), 'utf8');
   const entitlements = plist.parse(fs.readFileSync(path.join(root, 'Expenzo/Expenzo.entitlements'), 'utf8'));
-  if (!delegate.includes('import FirebaseCore') || !bridge.includes('#import "RNFBAppCheckModule.h"') ||
-      !delegate.includes('RNFBAppCheckModule.sharedInstance()') ||
-      delegate.indexOf('RNFBAppCheckModule.sharedInstance()') > delegate.indexOf('FirebaseApp.configure()') ||
-      !podfile.includes('$RNFirebaseDisableSPM = true') || !podfile.includes('$RNFirebaseAsStaticFramework = true') ||
-      properties['ios.useFrameworks'] !== 'static' ||
-      !['RNFBApp', 'RNFBAppCheck'].every(name => JSON.parse(properties['ios.forceStaticLinking'] || '[]').includes(name)) ||
-      !project.includes('ios-firebase-build.cjs') ||
-      !project.includes(`PRODUCT_BUNDLE_IDENTIFIER = "${IDS.ios}";`) ||
-      entitlements['com.apple.developer.devicecheck.appattest-environment'] !== 'production') {
-    throw new Error('Tracked iOS Firebase/App Check setup is incomplete. Restore the reviewed native integration before building.');
+
+  const issues = [];
+  if (!delegate.includes('import FirebaseCore')) issues.push('delegate missing import FirebaseCore');
+  if (!bridge.includes('#import "RNFBAppCheckModule.h"')) issues.push('bridge missing RNFBAppCheckModule.h');
+  if (!delegate.includes('RNFBAppCheckModule.sharedInstance()')) issues.push('delegate missing RNFBAppCheckModule.sharedInstance()');
+  if (delegate.indexOf('RNFBAppCheckModule.sharedInstance()') > delegate.indexOf('FirebaseApp.configure()')) issues.push('delegate wrong order');
+  if (!podfile.includes('$RNFirebaseDisableSPM = true')) issues.push('podfile missing $RNFirebaseDisableSPM');
+  if (!podfile.includes('$RNFirebaseAsStaticFramework = true')) issues.push('podfile missing $RNFirebaseAsStaticFramework');
+  if (properties['ios.useFrameworks'] !== 'static') issues.push(`properties.ios.useFrameworks is '${properties['ios.useFrameworks']}' (expected 'static')`);
+  if (!['RNFBApp', 'RNFBAppCheck'].every(name => JSON.parse(properties['ios.forceStaticLinking'] || '[]').includes(name))) issues.push(`properties.forceStaticLinking is '${properties['ios.forceStaticLinking']}'`);
+  if (!project.includes('ios-firebase-build.cjs')) issues.push('project missing ios-firebase-build.cjs');
+  if (!project.includes(`PRODUCT_BUNDLE_IDENTIFIER = "${IDS.ios}";`)) issues.push(`project missing bundleId ${IDS.ios}`);
+  if (entitlements['com.apple.developer.devicecheck.appattest-environment'] !== 'production') issues.push(`entitlements appattest is '${entitlements['com.apple.developer.devicecheck.appattest-environment']}'`);
+
+  if (issues.length) {
+    throw new Error('Tracked iOS Firebase/App Check setup is incomplete: ' + issues.join('; ') + '. Restore the reviewed native integration before building.');
   }
 }
 
