@@ -1,4 +1,31 @@
 import { AI_CONFIG } from '../config/aiConfig';
+import { PERSONAL_EXPENSES, COMPANY_EXPENSES, parseMoney } from '../utils/finance';
+import { requestBackend } from './backendClient';
+
+const EXPENSE_CATEGORIES = new Set([...PERSONAL_EXPENSES, ...COMPANY_EXPENSES]);
+const serviceError = (code, message) => Object.assign(new Error(message), { code });
+const assertNotCancelled = signal => {
+    if (signal?.aborted) throw serviceError('backend/cancelled', 'Request cancelled.');
+};
+const errorCode = error => error?.code || (error?.name === 'AbortError' ? 'backend/cancelled' : 'backend/unavailable');
+
+function receiptItems(result) {
+    const items = Array.isArray(result) ? result : result?.items;
+    const invalid = () => { throw serviceError('ai/invalid-output', 'The assistant returned invalid receipt items. Review the receipt manually.'); };
+    if ((!Array.isArray(result) && (!result || typeof result !== 'object' ||
+        Object.keys(result).some(key => !['items', 'requiresConfirmation'].includes(key)))) ||
+        !Array.isArray(items) || !items.length || items.length > 50 ||
+        (!Array.isArray(result) && result?.requiresConfirmation !== undefined && result.requiresConfirmation !== true)) invalid();
+    return items.map(item => {
+        if (!item || typeof item !== 'object' || Array.isArray(item) ||
+            Object.keys(item).sort().join(',') !== 'name,price,quantity' ||
+            typeof item.name !== 'string' || !item.name.trim() || item.name.length > 120 ||
+            !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 1000 ||
+            typeof item.price !== 'number' || !Number.isFinite(item.price)) invalid();
+        try { if (parseMoney(item.price) !== item.price) invalid(); } catch { invalid(); }
+        return { name: item.name.trim(), quantity: item.quantity, price: item.price };
+    });
+}
 
 const safeGet = (obj, key, defaultValue = undefined) => {
     if (!obj || typeof key !== 'string') return defaultValue;
@@ -17,66 +44,6 @@ const safeSet = (obj, key, value) => {
 };
 
 class AIService {
-    getProxyUrl(path) {
-        const baseUrl = (AI_CONFIG.AI_PROXY_BASE_URL || '').trim();
-        if (!baseUrl) return null;
-
-        const normalizedBase = baseUrl.replace(/\/+$/, '');
-        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        return `${normalizedBase}${normalizedPath}`;
-    }
-
-    async postToProxy(path, payload) {
-        const url = this.getProxyUrl(path);
-        if (!url) {
-            return null;
-        }
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-            throw new Error(`AI proxy error: ${response.status}`);
-        }
-
-        return response.json();
-    }
-
-    async postToNvidiaChat(messages, options = {}) {
-        const apiKey = (AI_CONFIG.NVIDIA_API_KEY || '').trim();
-        if (!apiKey) {
-            throw new Error('Missing NVIDIA API key');
-        }
-
-        const response = await fetch(`${AI_CONFIG.NVIDIA_BASE_URL}/chat/completions`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model: AI_CONFIG.NVIDIA_MODEL,
-                messages,
-                temperature: options.temperature ?? 0.35,
-                top_p: options.topP ?? 0.95,
-                max_tokens: options.maxTokens ?? 1400,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`NVIDIA AI error: ${response.status} ${errorText}`);
-        }
-
-        const data = await response.json();
-        return data?.choices?.[0]?.message?.content?.trim() || '';
-    }
-
     normalizeFinancialAnswer(answer) {
         if (!answer || typeof answer !== 'string') {
             return 'I could not prepare a clear financial answer right now.';
@@ -95,52 +62,37 @@ class AIService {
 
         normalized = lines.join('\n');
 
-        if (normalized.length > 1200) {
-            const candidate = normalized.slice(0, 1200);
-            const lastSentenceBreak = Math.max(
-                candidate.lastIndexOf('. '),
-                candidate.lastIndexOf('! '),
-                candidate.lastIndexOf('? '),
-                candidate.lastIndexOf('\n')
-            );
-
-            if (lastSentenceBreak > 400) {
-                normalized = `${candidate.slice(0, lastSentenceBreak + 1).trim()}...`;
-            } else {
-                normalized = `${candidate.trim()}...`;
-            }
-        }
-
         return normalized;
     }
 
     /**
      * Categorize transaction using AI
      */
-    async categorizeTransaction(description) {
-        if (!description || description.length < 2) {
-            return { category: 'other', confidence: 0 };
-        }
-
+    async categorizeTransaction(description, { consent = false, signal } = {}) {
         try {
-            const result = await this.postToProxy(AI_CONFIG.PROXY_ENDPOINTS.CATEGORIZE, {
-                description,
-                candidateLabels: AI_CONFIG.CATEGORIES,
-                categoryMap: AI_CONFIG.CATEGORY_MAP,
-            });
-
-            if (!result || !result.category) {
-                throw new Error('Invalid AI categorization response');
+            assertNotCancelled(signal);
+            if (typeof description !== 'string' || description.trim().length < 2 || description.length > 500) {
+                throw serviceError('request/invalid', 'Enter a description of 2–500 characters before suggesting a category.');
+            }
+            if (consent !== true) return this.fallbackCategorize(description);
+            const result = await requestBackend('/categorize', { description: description.trim(), consent: true }, { signal });
+            assertNotCancelled(signal);
+            if (!result || Array.isArray(result) || Object.keys(result).sort().join(',') !== 'category,confidence' || !EXPENSE_CATEGORIES.has(result.category) ||
+                typeof result.confidence !== 'number' || !Number.isFinite(result.confidence) ||
+                result.confidence < 0 || result.confidence > 1) {
+                throw serviceError('ai/invalid-output', 'The assistant returned an invalid category suggestion.');
             }
 
             return {
                 category: result.category,
                 confidence: typeof result.confidence === 'number' ? result.confidence : 0,
-                aiSuggested: true
+                aiSuggested: true,
+                source: 'ai',
             };
         } catch (error) {
-            // Fallback to keyword matching
-            return this.fallbackCategorize(description);
+            // Legacy callers can still use a local result, but it is never an AI reply.
+            return { ...this.fallbackCategorize(description), fallback: true,
+                error: errorCode(error), errorMessage: error.message || 'No AI category suggestion was received.' };
         }
     }
 
@@ -148,7 +100,8 @@ class AIService {
      * Fallback categorization using keywords
      */
     fallbackCategorize(description) {
-        const lowerDesc = description.toLowerCase();
+        const lowerDesc = typeof description === 'string' ? description.toLowerCase() : '';
+        if (lowerDesc.trim().length < 2) return { category: 'other', confidence: 0, aiSuggested: false, source: 'local' };
 
         const keywords = {
             food: ['food', 'restaurant', 'cafe', 'coffee', 'lunch', 'dinner', 'breakfast', 'pizza', 'burger'],
@@ -161,171 +114,80 @@ class AIService {
 
         for (const [category, words] of Object.entries(keywords)) {
             if (words.some(word => lowerDesc.includes(word))) {
-                return { category, confidence: 0.7, aiSuggested: false };
+                return { category, confidence: 0.7, aiSuggested: false, source: 'local' };
             }
         }
 
-        return { category: 'other', confidence: 0.5, aiSuggested: false };
+        return { category: 'other', confidence: 0.5, aiSuggested: false, source: 'local' };
     }
 
     /**
-     * Parse receipt text using AI (experimental)
-     * Uses AI to extract line items from receipt text
+     * Structured receipt-text result for review tools. Never saves a transaction.
      */
-    async parseReceiptWithAI(receiptText) {
+    async parseReceiptTextWithAI(receiptText, { consent = false, signal } = {}) {
         try {
-            const result = await this.postToProxy(AI_CONFIG.PROXY_ENDPOINTS.PARSE_RECEIPT, {
-                receiptText
-            });
-
-            if (Array.isArray(result?.items)) {
-                return result.items;
+            assertNotCancelled(signal);
+            if (consent !== true) throw serviceError('ai/consent-required', 'Review and accept AI data sharing before parsing receipt text.');
+            if (typeof receiptText !== 'string' || receiptText.trim().length < 2 || receiptText.length > 6000) {
+                throw serviceError('request/invalid', 'Paste receipt text of 2–6000 characters.');
             }
-
-            if (Array.isArray(result)) {
-                return result;
-            }
-
-            throw new Error('Invalid AI receipt response');
+            const result = await requestBackend('/parse-receipt', { receiptText: receiptText.trim(), consent: true }, { signal });
+            assertNotCancelled(signal);
+            return { success: true, items: receiptItems(result), requiresConfirmation: true, source: 'ai' };
         } catch (error) {
-            return null; // Return null to fall back to regex parsing
+            return { success: false, error: error.message || 'Unable to parse receipt text right now.', code: errorCode(error) };
         }
     }
 
-    buildFinancialContext({ user, userData, transactions = [] }) {
-        const safeTransactions = [...transactions]
-            .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt))
-            .slice(0, 150);
-
-        const totals = safeTransactions.reduce((acc, transaction) => {
-            const amount = Number(transaction.amount) || 0;
-            if (transaction.type === 'income') {
-                acc.totalIncome += amount;
-            } else if (transaction.type === 'expense') {
-                acc.totalExpenses += amount;
-            }
-            return acc;
-        }, { totalIncome: 0, totalExpenses: 0 });
-
-        const categoryTotals = safeTransactions.reduce((acc, transaction) => {
-            if (transaction.type !== 'expense') return acc;
-            const category = transaction.category || 'other';
-            const current = safeGet(acc, category, 0);
-            safeSet(acc, category, current + (Number(transaction.amount) || 0));
-            return acc;
-        }, {});
-
-        const topCategories = Object.entries(categoryTotals)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 8)
-            .map(([category, amount]) => ({ category, amount }));
-
-        return {
-            userId: user?.uid || null,
-            userType: userData?.userType || 'personal',
-            profile: {
-                fullName: userData?.fullName || null,
-                companyName: userData?.companyName || null,
-                monthlyBudget: userData?.monthlyBudget || userData?.companyMonthlyBudget || 0,
-                email: userData?.email || user?.email || null,
-            },
-            totals: {
-                totalIncome: totals.totalIncome,
-                totalExpenses: totals.totalExpenses,
-                netBalance: totals.totalIncome - totals.totalExpenses,
-            },
-            topCategories,
-            recentTransactions: safeTransactions.map((transaction) => ({
-                id: transaction.id,
-                type: transaction.type,
-                amount: Number(transaction.amount) || 0,
-                category: transaction.category || 'other',
-                description: transaction.description || transaction.note || 'Transaction',
-                date: transaction.date || transaction.createdAt || null,
-                department: transaction.department || null,
-            })),
-        };
+    // Keep the legacy array/null contract for callers that have their own local parser.
+    async parseReceiptWithAI(receiptText, options = {}) {
+        const result = await this.parseReceiptTextWithAI(receiptText, options);
+        return result.success ? result.items : null;
     }
 
     async getFinancialChatResponse({
         question,
-        user,
-        userData,
-        transactions = [],
         conversationHistory = [],
+        consent = false,
+        signal,
     }) {
-        if (!question || question.trim().length < 2) {
-            return { success: false, error: 'Please enter a finance-related question.' };
+        if (typeof question !== 'string' || question.trim().length < 2 || question.length > 2000) {
+            return { success: false, error: 'Enter a finance-related question of 2–2000 characters.' };
         }
 
-        const financeContext = this.buildFinancialContext({ user, userData, transactions });
-
         try {
-            const trimmedQuestion = question.trim();
-            const instructions = [
-                'Answer only questions related to personal or company finance.',
-                'Use the provided finance context for the signed-in user only.',
-                'If the question is unrelated to finance, refuse briefly and steer back to financial topics.',
-                'Do not claim access to any data outside the provided user context.',
-                'Keep the answer short, direct, and easy to scan.',
-                'Use at most 4 short bullet points when listing actions.',
-                'Prefer 2 to 5 sentences total.',
-                'Do not include long explanations, disclaimers, or repeated context.'
-            ];
-
-            if (AI_CONFIG.AI_PROXY_BASE_URL) {
-                const result = await this.postToProxy(AI_CONFIG.PROXY_ENDPOINTS.FINANCIAL_CHAT, {
-                    question: trimmedQuestion,
-                    conversationHistory,
-                    financeContext,
-                    scope: 'financial_advice_only',
-                    instructions,
-                });
-
-                if (!result || !result.answer) {
-                    throw new Error('Invalid AI chat response');
-                }
-
-                return {
-                    success: true,
-                    answer: this.normalizeFinancialAnswer(result.answer),
-                };
+            assertNotCancelled(signal);
+            if (consent !== true) throw Object.assign(new Error('Please review and accept AI data sharing first.'), { code: 'ai/consent-required' });
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (!timeZone) throw new Error('Your device timezone is unavailable. Set it before using AI chat.');
+            // Keep only recent bounded excerpts; never forward IDs or UI-only fields.
+            const history = [];
+            let remaining = 4000;
+            for (const message of conversationHistory.slice(-8).reverse()) {
+                if (!remaining) break;
+                if (!['user', 'assistant'].includes(message?.role) || typeof message.content !== 'string') continue;
+                const content = message.content.trim().slice(0, Math.min(2000, remaining));
+                if (!content) continue;
+                history.unshift({ role: message.role, content });
+                remaining -= content.length;
             }
-
-            const messages = [
-                {
-                    role: 'system',
-                    content: [
-                        'You are Expenzo Financial AI.',
-                        ...instructions,
-                        `Finance context for the current signed-in user: ${JSON.stringify(financeContext)}`
-                    ].join(' '),
-                },
-                ...conversationHistory
-                    .filter((message) => message && typeof message.content === 'string')
-                    .slice(-12)
-                    .map((message) => ({
-                        role: message.role === 'assistant' ? 'assistant' : 'user',
-                        content: message.content,
-                    })),
-                {
-                    role: 'user',
-                    content: trimmedQuestion,
-                },
-            ];
-
-            const answer = await this.postToNvidiaChat(messages);
-
-            return {
-                success: true,
-                answer: this.normalizeFinancialAnswer(answer),
-            };
+            const result = await requestBackend('/financial-chat', {
+                question: question.trim(), conversationHistory: history, consent: true, timeZone,
+            }, { signal });
+            assertNotCancelled(signal);
+            if (typeof result?.answer !== 'string' || !result.answer.trim() || result.answer.length > 12000 ||
+                !/^[a-f0-9-]{36}$/.test(result.responseId || '') || result.context?.complete !== true ||
+                !/^\d{4}-\d{2}-\d{2}$/.test(result.context.period?.start || '') ||
+                !/^\d{4}-\d{2}-\d{2}$/.test(result.context.period?.end || '') ||
+                typeof result.context.period?.timeZone !== 'string' || !Number.isInteger(result.context.transactionCount) || result.context.transactionCount < 0) {
+                throw serviceError('ai/invalid-output', 'Invalid or incomplete AI chat response.');
+            }
+            return { success: true, ...result, answer: this.normalizeFinancialAnswer(result.answer) };
         } catch (error) {
             return {
                 success: false,
-                error: AI_CONFIG.AI_PROXY_BASE_URL || AI_CONFIG.NVIDIA_API_KEY
-                    ? 'Unable to reach the AI assistant right now.'
-                    : 'AI chat is not configured yet. Add AI_PROXY_BASE_URL or NVIDIA_API_KEY to your environment.',
+                error: error.message || 'Unable to reach the AI assistant right now.',
+                code: errorCode(error),
             };
         }
     }

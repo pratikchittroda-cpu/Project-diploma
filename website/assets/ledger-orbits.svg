@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="780" viewBox="0 0 1440 780" fill="none">
+  <defs>
+    <radialGradient id="atmosphere"><stop stop-color="#3157ff" stop-opacity=".11"/><stop offset="1" stop-color="#3157ff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="orbit" x1="275" y1="100" x2="1265" y2="650" gradientUnits="userSpaceOnUse"><stop stop-color="#3157ff" stop-opacity=".08"/><stop offset=".38" stop-color="#3157ff" stop-opacity=".6"/><stop offset="1" stop-color="#3157ff" stop-opacity=".1"/></linearGradient>
+    <linearGradient id="disc" x1="720" y1="55" x2="720" y2="700" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#dce3ff"/></linearGradient>
+    <linearGradient id="ribbon" x1="232" y1="597" x2="1217" y2="184" gradientUnits="userSpaceOnUse"><stop stop-color="#3157ff"/><stop offset=".5" stop-color="#6483ff"/><stop offset="1" stop-color="#3157ff"/></linearGradient>
+  </defs>
+  <ellipse cx="720" cy="395" rx="650" ry="380" fill="url(#atmosphere)"/>
+  <circle cx="720" cy="396" r="297" fill="url(#disc)"/>
+  <circle cx="720" cy="396" r="297" stroke="#fff" stroke-width="2"/>
+  <g stroke="url(#orbit)">
+    <ellipse cx="720" cy="396" rx="615" ry="196" transform="rotate(-19 720 396)"/>
+    <ellipse cx="720" cy="396" rx="569" ry="243" transform="rotate(23 720 396)"/>
+    <ellipse cx="720" cy="396" rx="660" ry="319" transform="rotate(-4 720 396)" stroke-dasharray="2 9"/>
+    <ellipse cx="720" cy="396" rx="407" ry="322" transform="rotate(-45 720 396)"/>
+  </g>
+  <path d="M205 482c-29 121 335 220 683 110 265-83 440-225 344-331" stroke="url(#ribbon)" stroke-width="26"/>
+  <path d="M205 479c-29 121 335 220 683 110 265-83 440-225 344-331" stroke="#92a7ff" stroke-width="1.5"/>
+  <g stroke="#3157ff" stroke-opacity=".28"><path d="M60 396h1320M720 35v720" stroke-dasharray="4 12"/><path d="M269 286h70m-35-35v70M1123 519h48m-24-24v48"/></g>
+  <circle cx="1120" cy="197" r="13" fill="#bdedcd" stroke="#10121d" stroke-width="1.5"/>
+  <circle cx="276" cy="561" r="8" fill="#ff9c80"/>
+  <circle cx="431" cy="164" r="5" fill="#3157ff"/>
+  <circle cx="1004" cy="690" r="4" fill="#3157ff"/>
+  <g fill="#3157ff" fill-opacity=".45"><rect x="1214" y="373" width="3" height="10"/><rect x="1221" y="364" width="3" height="19"/><rect x="1228" y="357" width="3" height="26"/><rect x="1235" y="343" width="3" height="40"/></g>
+</svg>

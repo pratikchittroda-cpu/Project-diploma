@@ -1,9 +1,10 @@
-import Expo
+internal import Expo
 import React
 import ReactAppDependencyProvider
+import FirebaseCore
 
-@UIApplicationMain
-public class AppDelegate: ExpoAppDelegate {
+@main
+class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
@@ -13,13 +14,18 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // Register the pending native provider BEFORE Firebase creates its default app.
+    // A JS-only development build may intentionally have no provisioned native file.
+    if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+      RNFBAppCheckModule.sharedInstance()
+      FirebaseApp.configure()
+    }
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
 
     reactNativeDelegate = delegate
     reactNativeFactory = factory
-    bindReactNativeFactory(factory)
 
 #if os(iOS) || os(tvOS)
     window = UIWindow(frame: UIScreen.main.bounds)

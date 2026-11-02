@@ -1,558 +1,150 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
-  StyleSheet,
-  BackHandler,
-  Platform,
-  TextInput,
-} from 'react-native';
-import { Icon } from '../constants/Icons';
-import { useTheme } from '../contexts/ThemeContext';
-import { BlurView } from 'expo-blur';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, BackHandler, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../contexts/ThemeContext';
+import { accountGradientColors } from './account/AccountPrimitives';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-const ThemedMessageBox = ({
-  visible,
-  type = 'info', // 'success', 'error', 'warning', 'info', 'confirm'
-  title,
-  message,
-  buttons = [],
-  onDismiss,
-  autoHide = false,
-  autoHideDelay = 3000,
-  showIcon = true,
-  customIcon,
-  animationType = 'fade', // 'fade', 'slide', 'scale'
-  showInput = false,
-  placeholder = '',
-  secureTextEntry = false,
-  initialValue = '',
-}) => {
-  const { theme } = useTheme();
-  const [isVisible, setIsVisible] = useState(visible);
-  const [internalInputValue, setInternalInputValue] = useState(initialValue);
-
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const slideAnim = useRef(new Animated.Value(-100)).current;
-  const overlayAnim = useRef(new Animated.Value(0)).current;
-
+export default function ThemedMessageBox({ visible, title, message, type = 'info', buttons = [], onDismiss,
+  autoHide = false, autoHideDelay = 3000, showInput = false, initialValue = '', placeholder,
+  secureTextEntry = false, keyboardType = 'default', showIcon = true, customIcon, animationType = 'fade' }) {
+  const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const [input, setInput] = useState(initialValue);
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+  const pressed = useRef(false);
+  const entrance = useRef(new Animated.Value(0)).current;
+  const isDialog = type === 'confirm' || showInput || buttons.length > 0;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
-    if (visible) {
-      setIsVisible(true);
-      setInternalInputValue(initialValue || '');
-      showAnimation();
-
-      // Auto hide functionality
-      if (autoHide && type !== 'confirm') {
-        const timer = setTimeout(() => {
-          handleDismiss();
-        }, autoHideDelay);
-
-        return () => clearTimeout(timer);
-      }
-    } else {
-      hideAnimation();
-    }
-  }, [visible]);
-
+    if (!visible) return;
+    entrance.setValue(0);
+    const animation = Animated.timing(entrance, { toValue: 1, duration: 220, useNativeDriver: true });
+    animation.start();
+    return () => animation.stop();
+  }, [entrance, visible]);
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isVisible) {
-        handleDismiss();
-        return true;
-      }
-      return false;
+    if (!visible || !autoHide || type === 'confirm') return;
+    const timer = setTimeout(() => onDismiss?.(), autoHideDelay);
+    return () => clearTimeout(timer);
+  }, [visible, autoHide, autoHideDelay, type, onDismiss]);
+  useEffect(() => {
+    if (!visible || isDialog) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!pressed.current) onDismiss?.();
+      return true;
     });
+    return () => subscription.remove();
+  }, [visible, isDialog, onDismiss]);
 
-    return () => backHandler.remove();
-  }, [isVisible]);
-
-  const showAnimation = () => {
-    const animations = [
-      Animated.timing(overlayAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ];
-
-    if (animationType === 'scale') {
-      animations.push(
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 100,
-          friction: 8,
-          useNativeDriver: true,
-        })
-      );
-    } else if (animationType === 'slide') {
-      animations.push(
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 100,
-          friction: 8,
-          useNativeDriver: true,
-        })
-      );
-    }
-
-    Animated.parallel(animations).start();
-  };
-
-  const hideAnimation = () => {
-    const animations = [
-      Animated.timing(overlayAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      })
-    ];
-
-    if (animationType === 'scale') {
-      animations.push(
-        Animated.timing(scaleAnim, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: true,
-        })
-      );
-    } else if (animationType === 'slide') {
-      animations.push(
-        Animated.timing(slideAnim, {
-          toValue: Platform.OS === 'ios' ? -100 : -60,
-          duration: 200,
-          useNativeDriver: true,
-        })
-      );
-    }
-
-    Animated.parallel(animations).start(() => {
-      // Use setTimeout to avoid React scheduler conflicts (useInsertionEffect error)
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 0);
-    });
-  };
-
-  const handleDismiss = () => {
-    hideAnimation();
-    setTimeout(() => {
-      onDismiss && onDismiss();
-    }, 200);
-  };
-
-  const getTypeConfig = () => {
-    switch (type) {
-      case 'success':
-        return {
-          icon: 'check-circle',
-          color: '#4CAF50',
-          backgroundColor: 'rgba(76, 175, 80, 0.15)',
-          borderColor: 'rgba(76, 175, 80, 0.3)',
-        };
-      case 'error':
-        return {
-          icon: 'alert-circle',
-          color: '#FF5252',
-          backgroundColor: 'rgba(255, 82, 82, 0.15)',
-          borderColor: 'rgba(255, 82, 82, 0.3)',
-        };
-      case 'warning':
-        return {
-          icon: 'alert',
-          color: '#FF9800',
-          backgroundColor: 'rgba(255, 152, 0, 0.15)',
-          borderColor: 'rgba(255, 152, 0, 0.3)',
-        };
-      case 'confirm':
-        return {
-          icon: 'help-circle',
-          color: '#2196F3',
-          backgroundColor: 'rgba(33, 150, 243, 0.15)',
-          borderColor: 'rgba(33, 150, 243, 0.3)',
-        };
-      default: // info
-        return {
-          icon: 'information',
-          color: '#2196F3',
-          backgroundColor: 'rgba(33, 150, 243, 0.15)',
-          borderColor: 'rgba(33, 150, 243, 0.3)',
-        };
+  const press = async (button) => {
+    if (pressed.current) return;
+    pressed.current = true;
+    setBusy(true);
+    try { await button.onPress?.(showInput ? input : undefined); }
+    finally {
+      if (mounted.current) { pressed.current = false; setBusy(false); }
     }
   };
-
-  const typeConfig = getTypeConfig();
-  const iconName = customIcon || typeConfig.icon;
-
-  const getAnimationStyle = () => {
-    switch (animationType) {
-      case 'scale':
-        return {
-          transform: [{ scale: scaleAnim }],
-          opacity: fadeAnim,
-        };
-      case 'slide':
-        return {
-          transform: [{ translateY: slideAnim }],
-          opacity: fadeAnim,
-        };
-      default: // fade
-        return {
-          opacity: fadeAnim,
-        };
-    }
+  const dismiss = () => { if (!pressed.current) onDismiss?.(); };
+  const typeConfig = {
+    success: { icon: 'check-circle', color: theme.success || '#10B981', background: theme.successLight || '#D1FAE5' },
+    error: { icon: 'alert-circle', color: theme.error || '#EF4444', background: theme.errorLight || '#FEE2E2' },
+    warning: { icon: 'alert', color: theme.warning || '#F59E0B', background: theme.warningLight || '#FEF3C7' },
+    info: { icon: 'information', color: theme.info || '#3B82F6', background: theme.infoLight || '#DBEAFE' },
+    confirm: { icon: 'help-circle-outline', color: theme.primary, background: theme.primaryContainer },
   };
-
-  const renderButtons = () => {
-    if (buttons.length === 0) {
-      return (
-        <TouchableOpacity
-          style={[styles.button, styles.singleButton, { backgroundColor: theme.primary }]}
-          onPress={handleDismiss}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.buttonText, { color: 'white' }]}>OK</Text>
-        </TouchableOpacity>
-      );
-    }
-
-    return (
-      <View style={[styles.buttonContainer, type === 'confirm' && styles.confirmButtonContainer]}>
-        {buttons.map((button, index) => {
-          const isCancel = button.style === 'cancel';
-          const buttonColor = button.color || theme.primary;
-
-          return (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.button,
-                isCancel ? styles.cancelButton : styles.confirmButton,
-                isCancel && { backgroundColor: theme.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' },
-                type === 'confirm' && styles.modalButton,
-                !isCancel && !button.color && { backgroundColor: theme.primary }
-              ]}
-              onPress={() => {
-                button.onPress && button.onPress(showInput ? internalInputValue : undefined);
-                if (button.dismissOnPress !== false) {
-                  handleDismiss();
-                }
-              }}
-              activeOpacity={0.8}
-            >
-              {!isCancel ? (
-                <LinearGradient
-                  colors={[buttonColor, buttonColor + 'cc']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              ) : null}
-              <Text
-                style={[
-                  styles.buttonText,
-                  {
-                    color: isCancel
-                      ? (theme.isDarkMode ? 'rgba(255, 255, 255, 0.7)' : '#000000')
-                      : 'white'
-                  },
-                  type === 'confirm' && styles.modalButtonText
-                ]}
-              >
-                {button.text}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
+  const appearance = typeConfig[type] || typeConfig.info;
+  const gradient = accountGradientColors(theme);
+  const animationStyle = { opacity: entrance,
+    transform: animationType === 'scale'
+      ? [{ scale: entrance.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }]
+      : [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [animationType === 'slide' ? -24 : -8, 0] }) }],
   };
+  if (!visible) return null;
 
-  if (!isVisible) return null;
+  const icon = showIcon && <View style={[styles.icon, isDialog && styles.dialogIcon,
+    { backgroundColor: isDarkMode ? theme.surfaceVariant : appearance.background }]}>
+    <MaterialCommunityIcons name={customIcon || appearance.icon} size={isDialog ? 32 : 24} color={appearance.color} />
+  </View>;
 
-  const messageBoxContent = (
-    <Animated.View
-      pointerEvents="auto"
-      style={[
-        styles.messageBox,
-        { backgroundColor: theme.isDarkMode ? '#1a1a1a' : '#ffffff' },
-        type !== 'confirm' && styles.toastBox,
-        type === 'confirm' && styles.confirmBox,
-        getAnimationStyle(),
-      ]}
-    >
-      <View style={[
-        styles.contentWrapper,
-        type === 'confirm' ? styles.confirmContent : styles.toastContent
-      ]}>
-        {showIcon && type !== 'confirm' && (
-          <View style={[
-            styles.iconContainer,
-            { backgroundColor: typeConfig.backgroundColor }
-          ]}>
-            <Icon
-              name={iconName}
-              size={24}
-              color={typeConfig.color}
-            />
-          </View>
-        )}
-
-        <View style={[
-          styles.textContent,
-          type === 'confirm' && styles.confirmTextContent,
-          type === 'confirm' && { flex: 0, width: '100%' }
-        ]}>
-          {title && (
-            <Text style={[
-              styles.toastTitle,
-              type === 'confirm' && styles.confirmTitle,
-              { color: theme.isDarkMode ? '#ffffff' : '#000000' }
-            ]}>
-              {title}
-            </Text>
-          )}
-          {message && (
-            <Text style={[
-              styles.toastMessage,
-              type === 'confirm' && styles.confirmMessage,
-              { color: theme.isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }
-            ]}>
-              {message}
-            </Text>
-          )}
-
-          {showInput && (
-            <View style={[styles.inputContainer, {
-              borderColor: theme.border,
-              backgroundColor: theme.isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'
-            }]}>
-              <TextInput
-                style={[styles.input, { color: theme.isDarkMode ? 'white' : 'black' }]}
-                placeholder={placeholder}
-                placeholderTextColor={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"}
-                secureTextEntry={secureTextEntry}
-                value={internalInputValue}
-                onChangeText={setInternalInputValue}
-                autoFocus={true}
-                autoCapitalize="none"
-              />
-            </View>
-          )}
-        </View>
-
-        {type === 'confirm' ? (
-          <View style={styles.modalButtonWrapper}>
-            {renderButtons()}
-          </View>
-        ) : (
-          <View style={styles.toastRight}>
-            {buttons.length > 0 ? renderButtons() : (
-              <TouchableOpacity onPress={handleDismiss} style={styles.closeButton}>
-                <Icon name="close" size={20} color={theme.isDarkMode ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)"} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </View>
+  if (!isDialog) return <View pointerEvents="box-none" style={[styles.toastOverlay,
+    { paddingTop: Math.max(insets.top, 12) + 8, paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16) }]}>
+    <Animated.View accessibilityLiveRegion="polite" style={[styles.toast, animationStyle,
+      { backgroundColor: theme.surface || theme.background, borderColor: theme.border, maxHeight: height - insets.top - insets.bottom - 40 }]}>
+      {icon}
+      <ScrollView style={styles.toastText} showsVerticalScrollIndicator={false}>
+        {!!title && <Text accessibilityRole="header" style={[styles.toastTitle, { color: theme.text }]}>{title}</Text>}
+        {!!message && <Text style={[styles.toastMessage, { color: theme.textSecondary }]}>{message}</Text>}
+      </ScrollView>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Dismiss message" onPress={dismiss} style={styles.close}>
+        <MaterialCommunityIcons name="close" size={21} color={theme.textSecondary} />
+      </TouchableOpacity>
     </Animated.View>
-  );
+  </View>;
 
-  if (type !== 'confirm') {
-    return (
-      <View pointerEvents="box-none" style={[styles.overlay, styles.toastOverlay]}>
-        {messageBoxContent}
-      </View>
-    );
-  }
-
-  return (
-    <Modal
-      transparent
-      visible={isVisible}
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={handleDismiss}
-    >
-      <View style={styles.overlay}>
-        {messageBoxContent}
-      </View>
-    </Modal>
-  );
-};
+  return <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={dismiss}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.overlay,
+      { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 24),
+        paddingLeft: Math.max(insets.left, 24), paddingRight: Math.max(insets.right, 24) }]}>
+      <Animated.View accessibilityViewIsModal style={[styles.card, animationStyle,
+        { backgroundColor: theme.surface || theme.background, borderColor: theme.border }]}>
+        <ScrollView style={styles.dialogScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.dialogContent}>
+          {icon}
+          {!!title && <Text accessibilityRole="header" style={[styles.title, { color: theme.text }]}>{title}</Text>}
+          {!!message && <Text style={[styles.message, { color: theme.textSecondary }]}>{message}</Text>}
+          {showInput && <TextInput accessibilityLabel={placeholder || title}
+            style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.inputBackground }]}
+            value={input} onChangeText={setInput} placeholder={placeholder} placeholderTextColor={theme.textSecondary}
+            secureTextEntry={secureTextEntry} autoCapitalize="none" autoCorrect={false} autoFocus keyboardType={keyboardType} editable={!busy} />}
+          {busy && <ActivityIndicator accessibilityLabel="Processing action" color={theme.primary} style={styles.spinner} />}
+          <View style={styles.buttons}>
+            {buttons.length ? buttons.map((button, index) => {
+              const cancel = button.style === 'cancel';
+              const color = button.color || (button.style === 'destructive' ? '#B42318' : gradient[0]);
+              return <TouchableOpacity key={index} accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} disabled={busy}
+                onPress={() => press(button)} activeOpacity={0.8}
+                style={[styles.button, { backgroundColor: cancel ? theme.surfaceVariant : color }]}>
+                {!cancel && <LinearGradient colors={[color, button.color || (button.style === 'destructive' ? '#88170F' : gradient[1])]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
+                <Text style={[styles.buttonText, { color: cancel ? theme.text : '#fff' }]}>{button.text}</Text>
+              </TouchableOpacity>;
+            }) : <TouchableOpacity accessibilityRole="button" onPress={dismiss} activeOpacity={0.8} style={[styles.button, { backgroundColor: theme.primary }]}>
+              <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
+              <Text style={[styles.buttonText, { color: '#fff' }]}>OK</Text>
+            </TouchableOpacity>}
+          </View>
+        </ScrollView>
+      </Animated.View>
+    </KeyboardAvoidingView>
+  </Modal>;
+}
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  toastOverlay: {
-    justifyContent: 'flex-start',
-    backgroundColor: 'transparent',
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-  },
-  messageBox: {
-    width: screenWidth * 0.9,
-    maxWidth: 400,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(128, 128, 128, 0.2)',
-    elevation: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-  },
-  toastBox: {
-    borderRadius: 50,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  confirmBox: {
-    padding: 24,
-    borderRadius: 32,
-  },
-  contentWrapper: {
-    width: '100%',
-  },
-  toastContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  confirmContent: {
-    alignItems: 'center',
-    textAlign: 'center',
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  confirmIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    marginBottom: 16,
-    marginRight: 0,
-  },
-  textContent: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  confirmTextContent: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  toastTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 2,
-  },
-  confirmTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  toastMessage: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  confirmMessage: {
-    fontSize: 17,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 15,
-  },
-  toastRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  closeButton: {
-    padding: 8,
-    marginLeft: 4,
-  },
-  modalButtonWrapper: {
-    width: '100%',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  confirmButtonContainer: {
-    justifyContent: 'center',
-    width: '100%',
-    paddingHorizontal: 10,
-  },
-  button: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-    overflow: 'hidden',
-  },
-  modalButton: {
-    flex: 1,
-    minHeight: 50,
-  },
-  cancelButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  confirmButton: {
-    // Background handled by primary color or gradient
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  modalButtonText: {
-    fontSize: 16,
-  },
-  inputContainer: {
-    width: '100%',
-    height: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 12,
-    marginTop: 20,
-    borderWidth: 1,
-    paddingHorizontal: 15,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    height: '100%',
-  },
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.35)' },
+  card: { borderRadius: 32, borderWidth: 1, width: '100%', maxWidth: 440, maxHeight: '100%',
+    elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 20 },
+  dialogContent: { padding: 24, alignItems: 'center' },
+  dialogScroll: { flexGrow: 0, flexShrink: 1 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
+  message: { fontSize: 17, lineHeight: 25, marginBottom: 18, textAlign: 'center' },
+  icon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  dialogIcon: { width: 64, height: 64, borderRadius: 32, marginRight: 0, marginBottom: 16 },
+  input: { width: '100%', borderWidth: 1, borderRadius: 12, padding: 14, minHeight: 52, marginBottom: 16, fontSize: 16 },
+  spinner: { marginBottom: 12 },
+  buttons: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 6 },
+  button: { flexGrow: 1, flexBasis: 120, padding: 14, borderRadius: 14, minHeight: 50, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  buttonText: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  toastOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', zIndex: 999, elevation: 40 },
+  toast: { flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: 600, borderRadius: 36,
+    borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12, elevation: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.18, shadowRadius: 14 },
+  toastText: { flex: 1 },
+  toastTitle: { fontSize: 16, fontWeight: '700', marginBottom: 3 },
+  toastMessage: { fontSize: 14, lineHeight: 20 },
+  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: 4 },
 });
-
-export default ThemedMessageBox;

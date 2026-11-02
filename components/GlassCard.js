@@ -5,53 +5,52 @@ import { useTheme } from '../contexts/ThemeContext';
 
 /**
  * Reusable glassmorphism card component
- * Provides consistent glass effect across the app with theme support
+ * One themed surface on every platform; optional blur sits behind that surface.
  */
 const GlassCard = ({
     children,
     style,
     intensity,
+    blur,
+    backgroundColor,
     borderRadius = 20,
     borderWidth = 0, // Removed border by default
     padding = 16,
     ...props
 }) => {
-    const { theme } = useTheme();
+    const { theme, isDarkMode } = useTheme();
+    const dark = isDarkMode ?? theme.isDarkMode;
 
-    // Auto-adjust intensity based on theme if not provided
-    // Scale intensity for Android as 100 on Android looks different than 100 on iOS
-    const blurIntensity = Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60);
-    const blurTint = theme.isDarkMode ? 'dark' : 'light';
+    const blurIntensity = Number.isFinite(intensity) ? Math.max(0, Math.min(100, intensity)) : (dark ? 30 : 60);
+    const showBlur = blur ?? (Number.isFinite(intensity) && intensity > 0);
+    const resolvedStyle = StyleSheet.flatten([
+        styles.container,
+        {
+            borderRadius,
+            borderWidth,
+            borderColor: theme.border,
+            padding,
+            backgroundColor: theme.cardBackground || theme.card || theme.surface,
+        },
+        backgroundColor !== undefined && { backgroundColor },
+        style,
+    ]);
+    const { backgroundColor: surfaceColor, ...containerStyle } = resolvedStyle;
 
     return (
         <View
-            style={[
-                styles.container,
-                {
-                    borderRadius,
-                    borderWidth,
-                    padding,
-                },
-                style
-            ]}
+            style={containerStyle}
             {...props}
         >
-            <BlurView
+            {showBlur && blurIntensity > 0 && Platform.OS !== 'android' && <BlurView
                 intensity={blurIntensity}
-                tint={blurTint}
-                experimentalBlurMethod={Platform.OS === 'android' ? 'none' : undefined}
+                tint={dark ? 'dark' : 'light'}
                 style={StyleSheet.absoluteFill}
-            />
-            {/* Dynamic overlay to reduce saturation and add "milky" effect */}
+                pointerEvents="none"
+            />}
             <View
-                style={[
-                    StyleSheet.absoluteFill,
-                    {
-                        backgroundColor: theme.isDarkMode
-                            ? 'rgba(0, 0, 0, 0.1)'
-                            : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
-                    }
-                ]}
+                pointerEvents="none"
+                style={[StyleSheet.absoluteFill, { backgroundColor: surfaceColor }]}
             />
             <View style={styles.content}>
                 {children}

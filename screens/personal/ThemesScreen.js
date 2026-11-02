@@ -1,566 +1,130 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  StatusBar,
-  Dimensions,
-  SafeAreaView,
-  Platform,
-} from 'react-native';
-import MessageService from '../../services/MessageService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import GlassCard from '../../components/GlassCard';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AccountScreen, AccountText, useAccountTask } from '../../components/account/AccountPrimitives';
 
-const { width } = Dimensions.get('window');
+const categoryInfo = {
+  Classic: ['star-outline', 'Timeless and elegant'], Nature: ['leaf', 'Inspired by natural beauty'],
+  Bold: ['flash', 'Vibrant and energetic'], Elegant: ['diamond-stone', 'Sophisticated colors'],
+  Pastel: ['flower', 'Soft and gentle tones'], Cosmic: ['rocket-launch-outline', 'Space and galaxy themes'],
+  Professional: ['briefcase-outline', 'Business-ready colors'], Vibrant: ['palette-outline', 'Bright and colorful'],
+};
+
+const swatchText = (color) => {
+  const hex = color.replace('#', '');
+  const values = [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16));
+  return values[0] * 0.299 + values[1] * 0.587 + values[2] * 0.114 > 165 ? '#1A1A1A' : '#fff';
+};
 
 export default function ThemesScreen({ navigation }) {
   const { theme, isDarkMode, currentThemeId, themeConfigs, toggleTheme, changeTheme } = useTheme();
-
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-
-  // Convert themeConfigs to array and group by category
-  const themeOptions = Object.values(themeConfigs);
-
-  // Group themes by category
-  const themesByCategory = themeOptions.reduce((acc, theme) => {
-    const category = theme.category || 'Other';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(theme);
-    return acc;
+  const { width } = useWindowDimensions();
+  const { busy, run } = useAccountTask();
+  const options = Object.values(themeConfigs);
+  const categories = options.reduce((groups, option) => {
+    const name = option.category || 'Other';
+    if (!groups[name]) groups[name] = [];
+    groups[name].push(option);
+    return groups;
   }, {});
-
-  // Define category order and icons
-  const categoryInfo = {
-    'Classic': { icon: 'star', description: 'Timeless and elegant' },
-    'Nature': { icon: 'leaf', description: 'Inspired by natural beauty' },
-    'Bold': { icon: 'flash', description: 'Vibrant and energetic' },
-    'Elegant': { icon: 'diamond-stone', description: 'Sophisticated luxury' },
-    'Pastel': { icon: 'flower', description: 'Soft and gentle tones' },
-    'Cosmic': { icon: 'rocket', description: 'Space and galaxy themes' },
-    'Professional': { icon: 'briefcase', description: 'Business-ready colors' },
-    'Vibrant': { icon: 'palette', description: 'Bright and colorful' },
+  const setMode = (dark) => {
+    if (dark !== isDarkMode) run(() => toggleTheme());
   };
 
-  // Recent actions tracking
-  const trackScreenVisit = async () => {
-    try {
-      const recentActions = await AsyncStorage.getItem('recentActions');
-      let actions = recentActions ? JSON.parse(recentActions) : [];
-
-      const screenData = {
-        id: 'Themes',
-        title: 'Themes',
-        icon: 'palette',
-        timestamp: Date.now(),
-      };
-
-      actions = actions.filter(action => action.id !== screenData.id);
-      actions.unshift(screenData);
-      actions = actions.slice(0, 4);
-
-      await AsyncStorage.setItem('recentActions', JSON.stringify(actions));
-    } catch (error) {
-      console.error('Error tracking screen visit:', error);
-    }
-  };
-
-  useEffect(() => {
-    trackScreenVisit();
-
-    // Entrance animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 80,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    const unsubscribe = navigation.addListener('focus', () => {
-      trackScreenVisit();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
-
-  const handleThemeSelect = (themeId) => {
-    const selectedThemeConfig = themeOptions.find(t => t.id === themeId);
-
-    MessageService.showConfirm(
-      'Apply Theme',
-      `Apply the ${selectedThemeConfig?.name} theme? This will change the app's color scheme.`,
-      async () => {
-        // Apply the new theme
-        await changeTheme(themeId);
-
-        // Show success message with restart recommendation
-        MessageService.showCustomButtons(
-          'Theme Applied Successfully!',
-          `${selectedThemeConfig?.name} theme has been applied. For the best experience, please restart the app.`,
-          [
-            { text: 'Later', onPress: () => navigation.goBack() },
-            {
-              text: 'Restart Now',
-              onPress: () => {
-                MessageService.showInfo(
-                  'Restart Required',
-                  'Please close and reopen the app to see all theme changes.',
-                  {
-                    onDismiss: () => navigation.goBack()
-                  }
-                );
-              }
-            }
-          ]
-        );
-      }
-    );
-  };
-
-  const renderThemeCard = (themeOption, index) => {
-    const isCurrentTheme = currentThemeId === themeOption.id;
-
-    return (
-      <TouchableOpacity
-        key={themeOption.id}
-        onPress={() => handleThemeSelect(themeOption.id)}
-        style={styles.themeCardContainer}
-      >
-        <Animated.View style={[
-          styles.themeCard,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          },
-          isCurrentTheme && styles.selectedThemeCard
-        ]}>
-          <LinearGradient
-            colors={themeOption.colors}
-            style={styles.themePreview}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.previewContent}>
-              <Icon name="palette" size={20} color="white" />
-              <Text style={styles.previewText}>{themeOption.name}</Text>
-              {isCurrentTheme && (
-                <View style={styles.currentThemeBadge}>
-                  <Icon name="check" size={14} color="white" />
-                </View>
-              )}
-            </View>
-          </LinearGradient>
-
-          <View style={styles.themeInfo}>
-            <View style={styles.themeHeader}>
-              <Text style={styles.themeName}>{themeOption.name}</Text>
-              {isCurrentTheme && (
-                <View style={styles.activeBadge}>
-                  <Text style={styles.activeText}>Active</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.themeDescription}>{themeOption.description}</Text>
-
-            <View style={styles.colorPalette}>
-              {themeOption.colors.map((color, colorIndex) => (
-                <View
-                  key={colorIndex}
-                  style={[styles.colorSwatch, { backgroundColor: color }]}
-                />
-              ))}
-            </View>
-          </View>
-        </Animated.View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderCategorySection = (categoryName, themes) => {
-    const categoryData = categoryInfo[categoryName] || { icon: 'palette', description: 'Beautiful themes' };
-
-    return (
-      <Animated.View
-        key={categoryName}
-        style={[styles.categorySection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
-      >
-        <View style={styles.categoryHeader}>
-          <View style={styles.categoryTitleContainer}>
-            <View style={styles.categoryIcon}>
-              <Icon name={categoryData.icon} size={20} color="white" />
-            </View>
-            <View>
-              <Text style={styles.categoryTitle}>{categoryName}</Text>
-              <Text style={styles.categoryDescription}>{categoryData.description}</Text>
-            </View>
-          </View>
-          <Text style={styles.categoryCount}>{themes.length}</Text>
+  return <AccountScreen title="Themes & Appearance" navigation={navigation}>
+    <GlassCard padding={20} style={[styles.modeCard, { backgroundColor: theme.surface }]}>
+      <View style={styles.modeHeader}>
+        <View style={[styles.iconBadge, { backgroundColor: theme.primaryContainer }]}>
+          <MaterialCommunityIcons name="theme-light-dark" size={26} color={theme.accent || theme.primary} />
         </View>
-
-        <View style={styles.themesGrid}>
-          {themes.map((themeOption, index) => renderThemeCard(themeOption, index))}
+        <View style={styles.flex}>
+          <Text accessibilityRole="header" style={[styles.heading, { color: theme.text }]}>Appearance</Text>
+          <Text style={[styles.secondary, { color: theme.textSecondary }]}>{isDarkMode ? 'Dark theme active' : 'Light theme active'}</Text>
         </View>
-      </Animated.View>
-    );
-  };
-
-  const renderDarkModeToggle = () => (
-    <Animated.View style={[styles.darkModeCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <BlurView
-        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
-        tint={theme.isDarkMode ? 'dark' : 'light'}
-        experimentalBlurMethod="none"
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Dynamic overlay for extra glass effect */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: theme.isDarkMode
-              ? 'rgba(0, 0, 0, 0.1)'
-              : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
-          }
-        ]}
-      />
-      <View style={styles.darkModeContent}>
-        <View style={styles.darkModeLeft}>
-          <View style={styles.darkModeIcon}>
-            <Icon name="theme-light-dark" size={24} color="white" />
-          </View>
-          <View>
-            <Text style={[styles.darkModeTitle, { color: 'white' }]}>Dark Mode</Text>
-            <Text style={[styles.darkModeSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
-              {isDarkMode ? 'Dark theme active' : 'Light theme active'}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={[styles.darkModeToggle, isDarkMode && styles.darkModeToggleActive]}
-          onPress={toggleTheme}
-        >
-          <Animated.View style={[
-            styles.darkModeThumb,
-            { transform: [{ translateX: isDarkMode ? 24 : 0 }] }
-          ]}>
-            <Icon
-              name={isDarkMode ? 'weather-night' : 'weather-sunny'}
-              size={16}
-              color={isDarkMode ? '#667eea' : '#FFA500'}
-            />
-          </Animated.View>
-        </TouchableOpacity>
       </View>
-    </Animated.View>
-  );
+      <View style={[styles.modeToggle, { backgroundColor: theme.surfaceVariant }]}>
+        {[['Light', 'weather-sunny', false], ['Dark', 'weather-night', true]].map(([label, icon, dark]) => {
+          const selected = dark === isDarkMode;
+          return <TouchableOpacity key={label} accessibilityRole="button" accessibilityLabel={`Use ${label.toLowerCase()} mode`}
+            accessibilityState={{ selected, disabled: busy }} disabled={busy} onPress={() => setMode(dark)} activeOpacity={0.8}
+            style={[styles.modeButton, selected && { backgroundColor: theme.primaryContainer, borderColor: theme.accent || theme.primary }]}>
+            <MaterialCommunityIcons name={icon} size={20} color={selected ? (theme.accent || theme.primary) : theme.textSecondary} />
+            <Text style={[styles.modeLabel, { color: selected ? theme.text : theme.textSecondary }]}>{label}</Text>
+            {selected && <MaterialCommunityIcons name="check" size={16} color={theme.accent || theme.primary} />}
+          </TouchableOpacity>;
+        })}
+      </View>
+    </GlassCard>
+    <AccountText onGradient>Appearance is a preference for this device. Choose from {options.length} color themes; changes apply immediately.</AccountText>
 
-const styles = useMemo(() => createStyles(theme), [theme]);
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
-
-      {/* Background Gradient */}
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        style={styles.background}
-      />
-
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={24} color="white" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Themes & Appearance</Text>
-          <View style={styles.headerSpacer} />
-        </Animated.View>
-
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.sectionTitle}>Appearance</Text>
-            {renderDarkModeToggle()}
-          </Animated.View>
-
-          <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.sectionTitle}>Color Themes</Text>
-            <Text style={styles.sectionSubtitle}>
-              Choose from {themeOptions.length} beautiful themes across {Object.keys(themesByCategory).length} categories
-            </Text>
-
-            {Object.entries(themesByCategory).map(([categoryName, themes]) =>
-              renderCategorySection(categoryName, themes)
-            )}
-          </Animated.View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
-  );
+    {Object.entries(categories).map(([category, themes]) => {
+      const [icon, description] = categoryInfo[category] || ['palette-outline', 'More color themes'];
+      return <View key={category} style={styles.category}>
+        <View style={styles.categoryHeader}>
+          <View style={[styles.categoryIcon, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+            <MaterialCommunityIcons name={icon} size={21} color="#fff" />
+          </View>
+          <View style={styles.flex}>
+            <Text accessibilityRole="header" style={[styles.heading, { color: '#fff' }]}>{category}</Text>
+            <Text style={[styles.secondary, { color: 'rgba(255,255,255,0.85)' }]}>{description}</Text>
+          </View>
+          <Text style={[styles.count, { color: '#fff', backgroundColor: 'rgba(255,255,255,0.18)' }]}>{themes.length}</Text>
+        </View>
+        <View style={styles.grid}>
+          {themes.map((option) => {
+            const selected = option.id === currentThemeId;
+            const color = swatchText(option.colors[0]);
+            return <TouchableOpacity key={option.id} disabled={busy} activeOpacity={0.85}
+              accessibilityRole="button" accessibilityLabel={`${option.name} color theme`}
+              accessibilityState={{ selected, disabled: busy }} onPress={() => run(() => changeTheme(option.id))}
+              style={[styles.themeCard, { width: width < 360 ? '100%' : '48%', backgroundColor: theme.surface,
+                borderColor: selected ? (theme.accent || theme.primary) : theme.border, borderWidth: selected ? 2 : 1 }]}>
+              <LinearGradient colors={option.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.preview}>
+                <MaterialCommunityIcons name="palette" size={24} color={color} />
+                <Text style={[styles.previewLabel, { color }]}>{option.name}</Text>
+                {selected && <View style={styles.selectedBadge}><MaterialCommunityIcons name="check" size={16} color="#fff" /></View>}
+              </LinearGradient>
+              <View style={styles.themeInfo}>
+                <Text style={[styles.themeName, { color: theme.text }]}>{option.name}</Text>
+                {selected && <Text style={[styles.activeText, { color: theme.textSecondary }]}>Active</Text>}
+                <Text style={[styles.description, { color: theme.textSecondary }]}>{option.description}</Text>
+                <View style={styles.swatches}>{option.colors.map((swatch, index) => <View key={index}
+                  style={[styles.swatch, { backgroundColor: swatch, borderColor: theme.border }]} />)}</View>
+              </View>
+            </TouchableOpacity>;
+          })}
+        </View>
+      </View>;
+    })}
+  </AccountScreen>;
 }
 
-const createStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  background: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
-    paddingBottom: 15,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 20,
-  },
-  darkModeCard: {
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 0,
-    overflow: 'hidden',
-  },
-  darkModeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  darkModeLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  darkModeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  darkModeTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  darkModeSubtitle: {
-    fontSize: 14,
-  },
-  darkModeToggle: {
-    width: 56,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    padding: 4,
-    justifyContent: 'center',
-  },
-  darkModeToggleActive: {
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-  darkModeThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categorySection: {
-    marginBottom: 25,
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-    paddingHorizontal: 4,
-  },
-  categoryTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  categoryTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 2,
-  },
-  categoryDescription: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  categoryCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'white',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    minWidth: 24,
-    textAlign: 'center',
-  },
-  themesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'space-between',
-  },
-  themeCardContainer: {
-    width: (width - 64) / 2, // Two columns with padding and gap
-  },
-  themeCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 0,
-  },
-  selectedThemeCard: {
-    borderColor: 'rgba(76, 175, 80, 0.8)',
-    borderWidth: 2,
-  },
-  themePreview: {
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewContent: {
-    alignItems: 'center',
-    position: 'relative',
-  },
-  previewText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  currentThemeBadge: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  themeInfo: {
-    padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  themeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  themeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'white',
-  },
-  activeBadge: {
-    backgroundColor: 'rgba(76, 175, 80, 0.8)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  activeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  themeDescription: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 8,
-    lineHeight: 14,
-  },
-  colorPalette: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  colorSwatch: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 0,
-  },
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  modeCard: { borderRadius: 20, marginBottom: 18 },
+  modeHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 },
+  iconBadge: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  heading: { fontSize: 18, fontWeight: '700' },
+  secondary: { fontSize: 13, lineHeight: 19, marginTop: 3 },
+  modeToggle: { flexDirection: 'row', borderRadius: 16, padding: 4, gap: 4 },
+  modeButton: { flex: 1, minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: 'transparent', flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', padding: 8 },
+  modeLabel: { fontSize: 15, fontWeight: '600' },
+  category: { marginBottom: 26 },
+  categoryHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  categoryIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  count: { fontSize: 13, fontWeight: '600', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, overflow: 'hidden' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  themeCard: { borderRadius: 16, overflow: 'hidden' },
+  preview: { minHeight: 86, alignItems: 'center', justifyContent: 'center', padding: 12 },
+  previewLabel: { fontSize: 12, fontWeight: '600', textAlign: 'center', marginTop: 4 },
+  selectedBadge: { position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: '#167D49', alignItems: 'center', justifyContent: 'center' },
+  themeInfo: { padding: 12, minHeight: 116 },
+  themeName: { fontSize: 14, fontWeight: '600' },
+  activeText: { fontSize: 11, fontWeight: '600', marginTop: 3 },
+  description: { fontSize: 12, lineHeight: 17, marginTop: 5, marginBottom: 10 },
+  swatches: { flexDirection: 'row', gap: 7 },
+  swatch: { width: 18, height: 18, borderRadius: 9, borderWidth: StyleSheet.hairlineWidth },
 });

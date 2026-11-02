@@ -1,373 +1,98 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  Dimensions,
-  StatusBar,
-  ActivityIndicator,
-  SafeAreaView,
-} from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import React, { useEffect, useRef } from 'react';
+import { Animated, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../../contexts/ThemeContext';
+import BrandLogo from '../../components/BrandLogo';
+import { accountGradientColors } from '../../components/account/AccountPrimitives';
+import SplashScreen from './SplashScreen';
 
-// Dimensions removed as not used
+const accountTypes = [
+  { id: 'personal', title: 'Personal', subtitle: 'Individual Finance', icon: 'account-circle', route: 'Login',
+    features: ['Personal budgeting', 'Expense tracking', 'Spending insights'] },
+  { id: 'company', title: 'Business', subtitle: 'Company Finance', icon: 'office-building', route: 'CompanyLogin',
+    features: ['Company expense tracking', 'Employee records', 'Financial reports'] },
+];
 
 export default function UserTypeScreen({ navigation }) {
   const { theme, isLoading } = useTheme();
-  const [selectedType, setSelectedType] = useState(null);
-
-  // Simplified animation values for better performance
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const personalCardAnim = useRef(new Animated.Value(0.95)).current;
-  const companyCardAnim = useRef(new Animated.Value(0.95)).current;
-
-  // Don't render until theme is loaded
-  if (isLoading || !theme) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme?.loadingBackground || '#f8f9fa', paddingTop: StatusBar.currentHeight || 0 }}>
-        <ActivityIndicator size="large" color={theme?.loadingIndicator || '#667eea'} />
-      </View>
-    );
-  }
-
+  const entrance = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    // Clean entrance animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 60,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-      Animated.stagger(150, [
-        Animated.spring(personalCardAnim, {
-          toValue: 1,
-          tension: 80,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        Animated.spring(companyCardAnim, {
-          toValue: 1,
-          tension: 80,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-  }, []);
+    if (isLoading) return;
+    const animation = Animated.timing(entrance, { toValue: 1, duration: 600, useNativeDriver: true });
+    animation.start();
+    return () => animation.stop();
+  }, [entrance, isLoading]);
+  if (isLoading || !theme) return <SplashScreen />;
+  const gradient = accountGradientColors(theme);
 
-  const handleCardPress = (type) => {
-    setSelectedType(type);
-
-    const cardAnim = type === 'personal' ? personalCardAnim : companyCardAnim;
-
-    // Subtle press feedback
-    Animated.sequence([
-      Animated.timing(cardAnim, {
-        toValue: 0.98,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(cardAnim, {
-        toValue: 1.02,
-        tension: 300,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Navigate after animation
-      setTimeout(() => {
-        navigation.navigate(type === 'personal' ? 'Login' : 'CompanyLogin');
-      }, 200);
-    });
-  };
-
-const styles = useMemo(() => createStyles(theme), [theme]);
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent={true}
-      />
-
-      {/* Modern Background */}
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        style={styles.backgroundGradient}
-      />
-
-      {/* Content Container */}
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
-        ]}
-      >
-        {/* Modern Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Icon name="finance" size={48} color="white" />
+  return <View style={[styles.page, { backgroundColor: theme.primary }]}>
+    <StatusBar barStyle="light-content" />
+    <LinearGradient colors={gradient} style={StyleSheet.absoluteFill}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+    <SafeAreaView style={styles.page}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <Animated.View style={{ opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }}>
+          <View style={styles.header}>
+            <View style={styles.logo}><BrandLogo size={44} /></View>
+            <Text accessibilityRole="header" style={styles.appTitle}>Expenzo</Text>
+            <Text style={styles.welcome}>Welcome! Let's get started</Text>
+            <Text style={styles.subtitle}>Choose your account type to continue</Text>
           </View>
-          <Text style={styles.appTitle}>Expenzo</Text>
-          <Text style={styles.welcomeText}>Welcome! Let's get started</Text>
-          <Text style={styles.subtitle}>
-            Choose your account type to continue
-          </Text>
-        </View>
-
-        {/* Card Options */}
-        <View style={styles.cardsContainer}>
-          {/* Personal Card */}
-          <Animated.View
-            style={[
-              styles.cardWrapper,
-              { transform: [{ scale: personalCardAnim }] }
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.card, styles.personalCard]}
-              onPress={() => handleCardPress('personal')}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={[theme.primary, theme.primaryLight]}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardContent}>
-                  <View style={styles.cardIcon}>
-                    <Icon name="account-circle" size={40} color="white" />
-                  </View>
-                  <Text style={styles.cardTitle}>Personal</Text>
-                  <Text style={styles.cardSubtitle}>Individual Finance</Text>
-                  <View style={styles.cardFeatures}>
-                    <View style={styles.featureRow}>
-                      <Icon name="check-circle" size={16} color="rgba(255,255,255,0.9)" />
-                      <Text style={styles.featureText}>Personal budgeting</Text>
-                    </View>
-                    <View style={styles.featureRow}>
-                      <Icon name="check-circle" size={16} color="rgba(255,255,255,0.9)" />
-                      <Text style={styles.featureText}>Expense tracking</Text>
-                    </View>
-                    <View style={styles.featureRow}>
-                      <Icon name="check-circle" size={16} color="rgba(255,255,255,0.9)" />
-                      <Text style={styles.featureText}>Financial goals</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardArrow}>
-                    <Icon name="arrow-right" size={20} color="white" />
-                  </View>
+          <View style={styles.cards}>
+            {accountTypes.map((account) => <TouchableOpacity key={account.id} activeOpacity={0.85}
+              accessibilityRole="button" accessibilityLabel={account.id === 'company' ? 'Company account' : 'Personal account'}
+              accessibilityHint={`Sign in or create a ${account.id} account`}
+              onPress={() => navigation.navigate(account.route)} style={styles.card}>
+              <LinearGradient colors={account.id === 'personal' ? gradient : [...gradient].reverse()}
+                style={styles.cardContent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                <View style={styles.cardIcon}><MaterialCommunityIcons name={account.icon} size={36} color="#fff" /></View>
+                <Text style={styles.cardTitle}>{account.title}</Text>
+                <Text style={styles.cardSubtitle}>{account.subtitle}</Text>
+                <View style={styles.features}>
+                  {account.features.map((feature) => <View key={feature} style={styles.feature}>
+                    <MaterialCommunityIcons name="check-circle" size={16} color="rgba(255,255,255,0.9)" />
+                    <Text style={styles.featureText}>{feature}</Text>
+                  </View>)}
                 </View>
+                <View style={styles.arrow}><MaterialCommunityIcons name="arrow-right" size={22} color="#fff" /></View>
               </LinearGradient>
+            </TouchableOpacity>)}
+          </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Choose the type you registered with, or create a new account.</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Privacy')} style={styles.privacyLink}>
+              <MaterialCommunityIcons name="shield-check-outline" size={18} color="#fff" />
+              <Text style={styles.privacyText}>Privacy & data</Text>
             </TouchableOpacity>
-          </Animated.View>
-
-          {/* Company Card */}
-          <Animated.View
-            style={[
-              styles.cardWrapper,
-              { transform: [{ scale: companyCardAnim }] }
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.card, styles.companyCard]}
-              onPress={() => handleCardPress('company')}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={[theme.primaryLight, theme.primary]}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardContent}>
-                  <View style={styles.cardIcon}>
-                    <Icon name="office-building" size={40} color="white" />
-                  </View>
-                  <Text style={styles.cardTitle}>Business</Text>
-                  <Text style={styles.cardSubtitle}>Company Finance</Text>
-                  <View style={styles.cardFeatures}>
-                    <View style={styles.featureRow}>
-                      <Icon name="check-circle" size={16} color="rgba(255,255,255,0.9)" />
-                      <Text style={styles.featureText}>Business analytics</Text>
-                    </View>
-                    <View style={styles.featureRow}>
-                      <Icon name="check-circle" size={16} color="rgba(255,255,255,0.9)" />
-                      <Text style={styles.featureText}>Team management</Text>
-                    </View>
-                    <View style={styles.featureRow}>
-                      <Icon name="check-circle" size={16} color="rgba(255,255,255,0.9)" />
-                      <Text style={styles.featureText}>Company reports</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardArrow}>
-                    <Icon name="arrow-right" size={20} color="white" />
-                  </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Don't worry, you can always change this later in settings
-          </Text>
-        </View>
-      </Animated.View>
+          </View>
+        </Animated.View>
+      </ScrollView>
     </SafeAreaView>
-  );
+  </View>;
 }
 
-const createStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.primary,
-  },
-  backgroundGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  content: {
-    flex: 1,
-    paddingTop: Math.max(StatusBar.currentHeight || 0, 40) + 20,
-    paddingHorizontal: 24,
-    paddingBottom: 30,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 10,
-  },
-  logoContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 0,
-  },
-  appTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 6,
-    letterSpacing: 1,
-  },
-  welcomeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 20,
-  },
-  cardsContainer: {
-    flex: 0,
-    paddingVertical: 20,
-  },
-  cardWrapper: {
-    borderRadius: 20,
-    marginBottom: 16,
-  },
-  card: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  cardGradient: {
-    borderRadius: 20,
-  },
-  cardContent: {
-    padding: 20,
-    minHeight: 160,
-    position: 'relative',
-  },
-  cardIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: Math.min(24, width * 0.06),
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: Math.min(14, width * 0.035),
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  cardFeatures: {
-    gap: 8,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  featureText: {
-    fontSize: Math.min(14, width * 0.035),
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '500',
-    flex: 1,
-  },
-  cardArrow: {
-    position: 'absolute',
-    top: 24,
-    right: 24,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 40,
-    paddingHorizontal: 30,
-    paddingBottom: 20,
-    minHeight: 60,
-  },
-  footerText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    lineHeight: 20,
-    flexWrap: 'wrap',
-    maxWidth: width - 60,
-  },
+const styles = StyleSheet.create({
+  page: { flex: 1 },
+  content: { flexGrow: 1, width: '100%', maxWidth: 600, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
+  header: { alignItems: 'center', marginBottom: 28 },
+  logo: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#f3f5ff', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  appTitle: { fontSize: 30, fontWeight: '800', letterSpacing: 1, color: '#fff', marginBottom: 8 },
+  welcome: { fontSize: 17, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 6 },
+  subtitle: { fontSize: 14, lineHeight: 21, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
+  cards: { gap: 16 },
+  card: { borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  cardContent: { padding: 22, minHeight: 240 },
+  cardIcon: { width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  cardTitle: { fontSize: 24, fontWeight: '700', color: '#fff', marginBottom: 3 },
+  cardSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginBottom: 18 },
+  features: { gap: 8 },
+  feature: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  featureText: { color: 'rgba(255,255,255,0.95)', fontSize: 14, flex: 1 },
+  arrow: { position: 'absolute', top: 24, right: 22, width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  footer: { alignItems: 'center', marginTop: 26, paddingHorizontal: 12 },
+  footerText: { color: 'rgba(255,255,255,0.85)', textAlign: 'center', fontSize: 14, lineHeight: 21 },
+  privacyLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, marginTop: 8, paddingHorizontal: 12 },
+  privacyText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

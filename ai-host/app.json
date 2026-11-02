@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Expenzo AI API",
+    "slug": "Expenzo",
+    "owner": "pratik2467",
+    "version": "1.0.0",
+    "platforms": ["web"],
+    "web": {
+      "bundler": "metro",
+      "output": "server"
+    },
+    "plugins": ["expo-router"],
+    "extra": {
+      "eas": {
+        "projectId": "9841edbd-f161-4d8b-95b3-867f45d42ccf"
+      }
+    }
+  }
+}

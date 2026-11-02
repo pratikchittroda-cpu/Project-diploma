@@ -1,254 +1,124 @@
 import React from 'react';
-import { ActivityIndicator, Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Animated, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
+import SplashScreen from '../screens/personal/SplashScreen';
+import { accountGradientColors } from '../components/account/AccountPrimitives';
 
 export const tabScreenOptions = {
   headerShown: false,
-  animationEnabled: true,
+  animation: 'fade',
   lazy: true,
-  unmountOnBlur: true,
   freezeOnBlur: true,
+  tabBarHideOnKeyboard: true,
 };
 
-export const TabLoadingState = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color="#667eea" />
-  </View>
-);
+export const TabLoadingState = () => <SplashScreen />;
 
-const TabButton = React.memo(({ focused, iconName, onPress, size = 28 }) => {
-  const { theme } = useTheme();
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
-  const rippleAnim = React.useRef(new Animated.Value(0)).current;
-  const backgroundAnim = React.useRef(new Animated.Value(focused ? 1 : 0)).current;
-  const tabBarStyles = React.useMemo(() => createTabBarStyles(theme), [theme]);
-
+const TabButton = React.memo(({ focused, adding, iconName, color, theme, label, ...props }) => {
+  const focus = React.useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const scale = React.useRef(new Animated.Value(1)).current;
   React.useEffect(() => {
-    Animated.timing(backgroundAnim, {
-      toValue: focused ? 1 : 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [backgroundAnim, focused]);
-
-  const handlePress = React.useCallback(() => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.9,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 280,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    rippleAnim.setValue(0);
-    Animated.timing(rippleAnim, {
-      toValue: 1,
-      duration: 380,
-      useNativeDriver: true,
-    }).start(() => {
-      rippleAnim.setValue(0);
+    const animation = Animated.spring(focus, {
+      toValue: focused ? 1 : 0, tension: 100, friction: 10, useNativeDriver: true,
     });
+    animation.start();
+    return () => animation.stop();
+  }, [focus, focused]);
+  const feedback = (pressed) => Animated.spring(scale, {
+    toValue: pressed ? 0.92 : 1, tension: 260, friction: 9, useNativeDriver: true,
+  }).start();
 
-    onPress();
-  }, [onPress, rippleAnim, scaleAnim]);
-
-  return (
-    <TouchableOpacity onPress={handlePress} style={tabBarStyles.tabButton} activeOpacity={0.7}>
-      <Animated.View
-        style={[
-          tabBarStyles.rippleEffect,
-          {
-            opacity: rippleAnim.interpolate({
-              inputRange: [0, 0.5, 1],
-              outputRange: [0, 0.25, 0],
-            }),
-            transform: [{
-              scale: rippleAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.5, 1.7],
-              }),
-            }],
-          },
-        ]}
-      />
-
-      <Animated.View
-        style={[
-          tabBarStyles.focusedBackground,
-          {
-            opacity: backgroundAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.1],
-            }),
-            transform: [{
-              scale: backgroundAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.85, 1],
-              }),
-            }],
-          },
-        ]}
-      />
-
-      <Animated.View style={[tabBarStyles.iconContainer, { transform: [{ scale: scaleAnim }] }]}>
-        <Icon
-          name={iconName}
-          size={focused ? size + 3 : size}
-          color={focused ? theme.primary : theme.textSecondary}
-        />
-        {focused && (
-          <Animated.View
-            style={[
-              tabBarStyles.focusedDot,
-              {
-                opacity: backgroundAnim,
-                transform: [{
-                  scale: backgroundAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 1],
-                  }),
-                }],
-              },
-            ]}
-          />
-        )}
-      </Animated.View>
-    </TouchableOpacity>
-  );
+  return <Pressable {...props} accessible
+    onPressIn={() => feedback(true)} onPressOut={() => feedback(false)}
+    style={({ pressed }) => [styles.tab, { opacity: pressed ? 0.85 : 1 }]}>
+    <Animated.View pointerEvents="none" style={[styles.focusBackground, {
+      backgroundColor: theme.primaryContainer || theme.surfaceVariant || theme.surface, opacity: focus,
+    }]} />
+    <Animated.View pointerEvents="none" style={[styles.tabContent, { transform: [{ scale }] }]}>
+      {adding ? <View style={styles.addCircle}>
+        <LinearGradient colors={accountGradientColors(theme)}
+          style={styles.addGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <Animated.View style={{ transform: [{ rotate: focus.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }] }}>
+            <MaterialCommunityIcons accessible={false} name="plus" size={24} color="#fff" />
+          </Animated.View>
+        </LinearGradient>
+      </View> : <View style={styles.iconWrap}>
+        <MaterialCommunityIcons accessible={false} name={iconName} size={22} color={color} />
+      </View>}
+      <Text accessible={false} numberOfLines={1} maxFontSizeMultiplier={1.2}
+        style={[styles.label, { color, fontWeight: focused ? '700' : '500' }]}>{label}</Text>
+    </Animated.View>
+  </Pressable>;
 });
 
-const AddButton = React.memo(({ isFocused, onPress }) => {
-  const { theme } = useTheme();
-  const rotateAnim = React.useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
-  const pressScaleAnim = React.useRef(new Animated.Value(1)).current;
-  const tabBarStyles = React.useMemo(() => createTabBarStyles(theme), [theme]);
+const OptimizedTabBar = ({ state, descriptors = {}, navigation, addRouteName, initialRouteName, icons }) => {
+  const { theme, isLoading, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+  const previousTab = React.useRef(initialRouteName);
+  const [keyboardVisible, setKeyboardVisible] = React.useState(() => Keyboard.isVisible?.() || false);
 
   React.useEffect(() => {
-    Animated.parallel([
-      Animated.timing(rotateAnim, {
-        toValue: isFocused ? 1 : 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: isFocused ? 1.08 : 1,
-        tension: 120,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [isFocused, rotateAnim, scaleAnim]);
-
-  const handlePress = React.useCallback(() => {
-    Animated.sequence([
-      Animated.spring(pressScaleAnim, {
-        toValue: 0.95,
-        tension: 280,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-      Animated.spring(pressScaleAnim, {
-        toValue: 1,
-        tension: 280,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    onPress();
-  }, [onPress, pressScaleAnim]);
-
-  const rotation = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
-  });
-
-  return (
-    <TouchableOpacity onPress={handlePress} style={tabBarStyles.addButton} activeOpacity={0.8}>
-      <Animated.View
-        style={[
-          tabBarStyles.addButtonInner,
-          {
-            backgroundColor: isFocused ? theme.error : theme.primary,
-            transform: [{ scale: scaleAnim }, { scale: pressScaleAnim }],
-          },
-        ]}
-      >
-        <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-          <Icon name="plus" size={32} color="white" />
-        </Animated.View>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-});
-
-const OptimizedTabBar = ({ state, navigation, addRouteName, initialRouteName, icons }) => {
-  const { theme, isLoading } = useTheme();
-  const [previousTab, setPreviousTab] = React.useState(initialRouteName);
-  const tabBarStyles = React.useMemo(() => createTabBarStyles(theme), [theme]);
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   React.useEffect(() => {
-    const currentRoute = state.routes[state.index]?.name;
-    if (currentRoute && currentRoute !== addRouteName) {
-      setPreviousTab(currentRoute);
-    }
-  }, [addRouteName, state.index, state.routes]);
+    const name = state.routes[state.index]?.name;
+    if (name && name !== addRouteName) previousTab.current = name;
+  }, [state.routes, state.index, addRouteName]);
 
-  if (isLoading || !theme) {
-    return null;
-  }
-
+  if (isLoading || !theme) return null;
+  const activeRoute = state.routes[state.index];
+  const hideOnKeyboard = descriptors[activeRoute?.key]?.options.tabBarHideOnKeyboard ?? tabScreenOptions.tabBarHideOnKeyboard;
+  if (keyboardVisible && hideOnKeyboard) return null;
+  const bottomClearance = Math.max(insets.bottom, 12) + 8;
   return (
-    <View style={tabBarStyles.container}>
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          tabBarStyles.background,
-          {
-            backgroundColor: theme.isDarkMode ? '#1a1a1a' : '#ffffff',
-            borderColor: theme.isDarkMode ? '#333333' : '#e0e0e0',
-          },
-        ]}
-      />
-
-      <View style={tabBarStyles.tabContainer}>
+    <View pointerEvents="box-none" style={[styles.floatingBar, {
+      height: 64 + bottomClearance,
+      paddingLeft: Math.max(insets.left, 16),
+      paddingRight: Math.max(insets.right, 16),
+    }]}>
+      <View style={[styles.bar, {
+        backgroundColor: theme.tabBar || theme.surface,
+        borderColor: theme.border,
+        shadowColor: theme.shadow || theme.text,
+        shadowOpacity: isDarkMode ? 0.18 : 0.08,
+      }]}>
         {state.routes.map((route, index) => {
-          const isFocused = state.index === index;
-          const iconName = icons[route.name]?.(isFocused) || 'home-outline';
-
+          const focused = state.index === index;
+          const options = descriptors[route.key]?.options || {};
+          const adding = route.name === addRouteName;
+          const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : (options.title || route.name);
+          const displayLabel = adding ? (focused ? 'Close' : 'Add') : label;
+          const actionLabel = adding ? (focused ? 'Close add transaction' : 'Add transaction') : label;
+          const color = focused || adding ? (theme.accent || theme.text) : (theme.textSecondary || theme.text);
           const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            } else if (isFocused && route.name === addRouteName) {
-              navigation.navigate(previousTab);
+            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (event.defaultPrevented) return;
+            if (!focused) {
+              if (adding && activeRoute?.name !== addRouteName) previousTab.current = activeRoute?.name || initialRouteName;
+              navigation.navigate(route.name, route.params);
+            } else if (adding) {
+              const previous = state.routes.find((tab) => tab.name === previousTab.current && tab.name !== addRouteName)
+                || state.routes.find((tab) => tab.name === initialRouteName && tab.name !== addRouteName)
+                || state.routes.find((tab) => tab.name !== addRouteName);
+              if (previous) navigation.navigate(previous.name, previous.params);
             }
           };
-
-          if (route.name === addRouteName) {
-            return <AddButton key={route.key} isFocused={isFocused} onPress={onPress} />;
-          }
-
           return (
-            <TabButton
-              key={route.key}
-              focused={isFocused}
-              iconName={iconName}
+            <TabButton key={route.key}
+              adding={adding} focused={focused} theme={theme} color={color} label={displayLabel}
+              iconName={icons[route.name]?.(focused) || 'home-outline'}
+              accessibilityRole={adding ? 'button' : 'tab'}
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={options.tabBarAccessibilityLabel || actionLabel}
+              testID={options.tabBarButtonTestID}
               onPress={onPress}
-              size={28}
+              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
             />
           );
         })}
@@ -259,100 +129,19 @@ const OptimizedTabBar = ({ state, navigation, addRouteName, initialRouteName, ic
 
 export default React.memo(OptimizedTabBar);
 
-const createTabBarStyles = (theme) => StyleSheet.create({
-  container: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 25,
-    height: 70,
-    borderRadius: 40,
-    backgroundColor: 'transparent',
-    elevation: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    overflow: 'visible',
-  },
-  background: {
-    borderRadius: 40,
-    overflow: 'hidden',
-    borderWidth: 1,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderRadius: 40,
-    overflow: 'visible',
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    position: 'relative',
-  },
-  rippleEffect: {
-    position: 'absolute',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: theme?.primaryContainer || '#667eea20',
-  },
-  focusedBackground: {
-    position: 'absolute',
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: theme?.primaryContainer || '#667eea20',
-  },
-  focusedDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: theme?.primary || '#667eea',
-    marginTop: 4,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -35,
-    zIndex: 10,
-  },
-  addButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    shadowColor: theme?.primary || '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    borderWidth: 6,
-    borderColor: theme?.isDarkMode ? '#1a1a1a' : '#ffffff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-});
-
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+  floatingBar: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    width: '100%', alignItems: 'center',
   },
+  bar: { width: '100%', maxWidth: 420, height: 64, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 6, paddingVertical: 5, borderRadius: 32, borderWidth: 1, elevation: 4,
+    shadowOffset: { width: 0, height: 3 }, shadowRadius: 10 },
+  tab: { flex: 1, minHeight: 52, minWidth: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 24 },
+  tabContent: { width: '100%', alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { alignItems: 'center', justifyContent: 'center', width: 34, height: 34 },
+  label: { fontSize: 11, lineHeight: 14, marginTop: 2, textAlign: 'center' },
+  focusBackground: { ...StyleSheet.absoluteFillObject, left: 2, right: 2, borderRadius: 24 },
+  addCircle: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden' },
+  addGradient: { flex: 1, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
 });

@@ -1,446 +1,88 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  StatusBar,
-  ActivityIndicator,
-  Platform,
-  SafeAreaView,
-} from 'react-native';
-import MessageService from '../../services/MessageService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import GlassCard from '../../components/GlassCard';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AccountButton, AccountScreen, accountGradientColors } from '../../components/account/AccountPrimitives';
 
 export default function BackupRestoreScreen({ navigation }) {
   const { theme } = useTheme();
-  const [backupInfo, setBackupInfo] = useState({
-    lastBackup: '2024-01-15 14:30',
-    backupSize: '2.4 MB',
-    autoBackup: true,
-    cloudProvider: 'Google Drive',
-  });
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
+  const inactiveAction = (icon, title, description) => <TouchableOpacity key={title} disabled
+    accessibilityRole="button" accessibilityLabel={`${title}. Unavailable. ${description}`}
+    accessibilityState={{ disabled: true }} style={styles.inactiveAction}>
+    <GlassCard padding={18} style={{ backgroundColor: theme.surface }}>
+      <View style={styles.actionRow}>
+        <View style={[styles.actionIcon, { backgroundColor: theme.primaryContainer }]}>
+          <MaterialCommunityIcons name={icon} size={23} color={theme.accent || theme.primary} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={[styles.actionTitle, { color: theme.text }]}>{title}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{description}</Text>
+          <Text style={[styles.inactiveLabel, { color: theme.textSecondary }]}>Unavailable</Text>
+        </View>
+        <MaterialCommunityIcons name="lock-outline" size={19} color={theme.textSecondary} />
+      </View>
+    </GlassCard>
+  </TouchableOpacity>;
 
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-
-  // Recent actions tracking
-  const trackScreenVisit = async () => {
-    try {
-      const recentActions = await AsyncStorage.getItem('recentActions');
-      let actions = recentActions ? JSON.parse(recentActions) : [];
-
-      const screenData = {
-        id: 'BackupRestore',
-        title: 'Backup & Restore',
-        icon: 'backup-restore',
-        timestamp: Date.now(),
-      };
-
-      actions = actions.filter(action => action.id !== screenData.id);
-      actions.unshift(screenData);
-      actions = actions.slice(0, 4);
-
-      await AsyncStorage.setItem('recentActions', JSON.stringify(actions));
-    } catch (error) {
-      console.error('Error tracking screen visit:', error);
-    }
-  };
-
-  useEffect(() => {
-    trackScreenVisit();
-
-    // Entrance animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 80,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    const unsubscribe = navigation.addListener('focus', () => {
-      trackScreenVisit();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
-
-  const handleBackupNow = () => {
-    MessageService.showConfirm(
-      'Create Backup',
-      'This will backup all your financial data to the cloud. Continue?',
-      () => {
-        setIsBackingUp(true);
-        // Simulate backup process
-        setTimeout(() => {
-          setIsBackingUp(false);
-          setBackupInfo(prev => ({
-            ...prev,
-            lastBackup: new Date().toLocaleString(),
-            backupSize: '2.6 MB',
-          }));
-          MessageService.showSuccess('Success', 'Backup completed successfully!');
-        }, 3000);
-      }
-    );
-  };
-
-  const handleRestoreBackup = () => {
-    MessageService.showConfirm(
-      'Restore from Backup',
-      'This will replace all current data with your backup. This action cannot be undone. Continue?',
-      () => {
-        setIsRestoring(true);
-        // Simulate restore process
-        setTimeout(() => {
-          setIsRestoring(false);
-          MessageService.showSuccess('Success', 'Data restored successfully! Please restart the app.');
-        }, 4000);
-      },
-      () => { },
-      {
-        buttons: [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Restore', style: 'destructive' }
-        ]
-      }
-    );
-  };
-
-  const handleChangeCloudProvider = () => {
-    MessageService.showCustomButtons(
-      'Cloud Storage Provider',
-      'Choose your preferred cloud storage service:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Google Drive', onPress: () => setBackupInfo(prev => ({ ...prev, cloudProvider: 'Google Drive' })) },
-        { text: 'iCloud', onPress: () => setBackupInfo(prev => ({ ...prev, cloudProvider: 'iCloud' })) },
-        { text: 'Dropbox', onPress: () => setBackupInfo(prev => ({ ...prev, cloudProvider: 'Dropbox' })) },
-      ]
-    );
-  };
-
-  const renderBackupStatus = () => (
-    <Animated.View style={[styles.statusCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <BlurView
-        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
-        tint={theme.isDarkMode ? 'dark' : 'light'}
-        experimentalBlurMethod="none"
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Dynamic overlay for extra glass effect */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: theme.isDarkMode
-              ? 'rgba(0, 0, 0, 0.1)'
-              : 'rgba(255, 255, 255, 0.1)'
-          }
-        ]}
-      />
+  return <AccountScreen title="Backup & Restore" navigation={navigation}>
+    <GlassCard padding={22} style={[styles.statusCard, { backgroundColor: theme.surface }]}>
       <View style={styles.statusHeader}>
-        <Icon name="cloud-check" size={32} color="white" />
-        <Text style={[styles.statusTitle, { color: 'white' }]}>Backup Status</Text>
-      </View>
-
-      <View style={styles.statusInfo}>
-        <View style={styles.statusRow}>
-          <Text style={[styles.statusLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Last Backup:</Text>
-          <Text style={[styles.statusValue, { color: 'white' }]}>{backupInfo.lastBackup}</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <Text style={[styles.statusLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Backup Size:</Text>
-          <Text style={[styles.statusValue, { color: 'white' }]}>{backupInfo.backupSize}</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <Text style={[styles.statusLabel, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Cloud Provider:</Text>
-          <Text style={[styles.statusValue, { color: 'white' }]}>{backupInfo.cloudProvider}</Text>
+        <LinearGradient colors={accountGradientColors(theme)} style={styles.statusIcon}>
+          <MaterialCommunityIcons name="cloud-off-outline" size={30} color="#fff" />
+        </LinearGradient>
+        <View style={styles.flex}>
+          <Text accessibilityRole="header" style={[styles.heading, { color: theme.text }]}>Backup Status</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Service not configured</Text>
         </View>
       </View>
-    </Animated.View>
-  );
+      <Text style={[styles.notice, { color: theme.textSecondary }]}>This build does not offer an export, backup or restore feature. No backup service or cloud-storage connection is implemented.</Text>
+      <View style={[styles.statusInfo, { borderTopColor: theme.border }]}>
+        {[["Last backup", 'Not available'], ['Backup size', 'Not available'], ['Cloud provider', 'Not connected']].map(([label, value]) => <View key={label} style={styles.statusRow}>
+          <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>{label}</Text>
+          <Text style={[styles.statusValue, { color: theme.text }]}>{value}</Text>
+        </View>)}
+      </View>
+    </GlassCard>
 
-  const renderActionButton = (title, subtitle, icon, onPress, isLoading = false) => (
-    <TouchableOpacity onPress={onPress} disabled={isLoading}>
-      <Animated.View style={[
-        styles.actionButton,
-        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-        isLoading && styles.disabledButton
-      ]}>
-        <BlurView
-          intensity={Platform.OS === 'android' ? 100 : (theme.isDarkMode ? 30 : 60)}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          experimentalBlurMethod="none"
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Dynamic overlay for extra glass effect */}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: theme.isDarkMode
-                ? 'rgba(0, 0, 0, 0.1)'
-                : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
-            }
-          ]}
-        />
-        <View style={styles.actionLeft}>
-          <View style={styles.actionIcon}>
-            {isLoading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Icon name={icon} size={22} color="white" />
-            )}
-          </View>
-          <View style={styles.actionContent}>
-            <Text style={[styles.actionTitle, { color: 'white' }]}>{title}</Text>
-            <Text style={[styles.actionSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
-          </View>
-        </View>
-        <Icon name="chevron-right" size={20} color={theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)'} />
-      </Animated.View>
-    </TouchableOpacity>
-  );
-
-  const renderSection = (title, children) => (
-    <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={[styles.sectionTitle, { color: 'white' }]}>{title}</Text>
-      {children}
-    </Animated.View>
-  );
-
-const styles = useMemo(() => createStyles(theme), [theme]);
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
-
-      {/* Background Gradient */}
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        style={styles.background}
-      />
-
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={24} color="white" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Backup & Restore</Text>
-          <View style={styles.headerSpacer} />
-        </Animated.View>
-
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {renderBackupStatus()}
-
-          {renderSection('Backup Actions', (
-            <>
-              {renderActionButton(
-                'Backup Now',
-                'Create a backup of all your data',
-                'backup-restore',
-                handleBackupNow,
-                isBackingUp
-              )}
-              {renderActionButton(
-                'Restore from Backup',
-                'Restore data from your latest backup',
-                'restore',
-                handleRestoreBackup,
-                isRestoring
-              )}
-            </>
-          ))}
-
-          {renderSection('Settings', (
-            <>
-              {renderActionButton(
-                'Change Cloud Provider',
-                `Currently using ${backupInfo.cloudProvider}`,
-                'cloud-sync',
-                handleChangeCloudProvider
-              )}
-              {renderActionButton(
-                'Backup Schedule',
-                'Configure automatic backup frequency',
-                'calendar-clock',
-                () => MessageService.showInfo('Coming Soon', 'Backup scheduling will be available soon!')
-              )}
-            </>
-          ))}
-
-          {(isBackingUp || isRestoring) && (
-            <Animated.View style={[styles.progressContainer, { opacity: fadeAnim }]}>
-              <ActivityIndicator size="large" color="white" />
-              <Text style={styles.progressText}>
-                {isBackingUp ? 'Creating backup...' : 'Restoring data...'}
-              </Text>
-            </Animated.View>
-          )}
-        </ScrollView>
-      </SafeAreaView>
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={[styles.heading, styles.sectionTitle, { color: '#fff' }]}>Backup Actions</Text>
+      {inactiveAction('backup-restore', 'Backup Now', 'Creating or exporting a backup is not implemented.')}
+      {inactiveAction('restore', 'Restore from Backup', 'Importing files or replacing account data is not implemented.')}
     </View>
-  );
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={[styles.heading, styles.sectionTitle, { color: '#fff' }]}>Settings</Text>
+      {inactiveAction('cloud-sync-outline', 'Cloud Provider', 'No Google Drive, iCloud or Dropbox backup connection is configured.')}
+      {inactiveAction('calendar-clock', 'Backup Schedule', 'Automatic backup scheduling is not implemented.')}
+    </View>
+    <GlassCard padding={20} style={[styles.statusCard, { backgroundColor: theme.surface }]}>
+      <View style={styles.actionRow}>
+        <MaterialCommunityIcons name="information-outline" size={24} color={theme.accent || theme.primary} />
+        <Text style={[styles.notice, styles.flex, { color: theme.textSecondary }]}>Your account records are stored in Firestore. That does not provide an in-app export or user-managed restore.</Text>
+      </View>
+    </GlassCard>
+    <AccountButton title="Privacy & data" onPress={() => navigation.navigate('Privacy')} secondary />
+  </AccountScreen>;
 }
 
-const createStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  background: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
-    paddingBottom: 15,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  statusCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 25,
-    borderWidth: 0,
-    overflow: 'hidden',
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  statusTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 12,
-  },
-  statusInfo: {
-    gap: 8,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusLabel: {
-    fontSize: 16,
-  },
-  statusValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 0,
-    overflow: 'hidden',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  actionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  actionContent: {
-    flex: 1,
-  },
-  actionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  actionSubtitle: {
-    fontSize: 14,
-  },
-  progressContainer: {
-    borderRadius: 16,
-    padding: 30,
-    marginTop: 20,
-    borderWidth: 0,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  progressText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-    textAlign: 'center',
-    marginTop: 15,
-  },
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  statusCard: { borderRadius: 20, marginBottom: 22 },
+  statusHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 },
+  statusIcon: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
+  heading: { fontSize: 18, fontWeight: '700' },
+  notice: { fontSize: 15, lineHeight: 23 },
+  subtitle: { fontSize: 13, lineHeight: 20, marginTop: 5 },
+  statusInfo: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18, paddingTop: 18, gap: 10 },
+  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 },
+  statusLabel: { fontSize: 14 },
+  statusValue: { fontSize: 14, fontWeight: '600' },
+  section: { marginBottom: 16 },
+  sectionTitle: { marginBottom: 14 },
+  inactiveAction: { marginBottom: 12, borderRadius: 18, overflow: 'hidden' },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  actionIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  actionTitle: { fontSize: 16, fontWeight: '600' },
+  inactiveLabel: { fontSize: 12, fontWeight: '600', marginTop: 8 },
 });

@@ -1,233 +1,128 @@
-import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  getDoc
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, addDoc, getDocsFromServer, doc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, getDocFromServer, documentId } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
+import { MAX_MONEY, validateTransaction, ledgerDate, toMinor, fromMinor, summarize, parseDateOnly, normalizeCategory } from '../utils/finance';
+import { invalidateFinance, requireFinanceOwner } from '../utils/financeEvents';
+
+const failure = error => ({ success: false, error: error.message || 'Unable to load transactions' });
+const owner = userId => requireFinanceOwner(auth, userId);
+const readRows = snapshot => snapshot.docs.map(item => {
+  const row = { ...item.data(), id: item.id };
+  if (!['income', 'expense'].includes(row.type) || row.amount > MAX_MONEY || toMinor(row.amount) <= 0) throw new Error('A stored transaction needs correction before totals can be shown');
+  ledgerDate(row.date || row.createdAt);
+  return { ...row, amount: fromMinor(toMinor(row.amount)), category: normalizeCategory(row.category) };
+});
 
 class TransactionService {
-  // Add a new transaction
-  async addTransaction(userId, transactionData) {
+  async addTransaction(userId, data) {
     try {
-      const docRef = await addDoc(collection(db, 'transactions'), {
-        userId,
-        ...transactionData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-
-      return { success: true, transactionId: docRef.id };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+      owner(userId);
+      const clean = validateTransaction(data);
+      if (clean.companyId && clean.companyId !== userId) throw new Error('Company ownership cannot change');
+      const timestamp = new Date().toISOString();
+      const ref = await addDoc(collection(db, 'transactions'), { ...clean, userId, createdAt: timestamp, updatedAt: timestamp });
+      invalidateFinance(userId, 'transactions');
+      return { success: true, transactionId: ref.id };
+    } catch (error) { return failure(error); }
   }
 
-  // Get user transactions with pagination
+  // Complete, server-confirmed owner query: never a limited history page.
+  async getAllTransactions(userId) {
+    try {
+      const active = owner(userId);
+      const snapshot = await getDocsFromServer(query(collection(db, 'transactions'), where('userId', '==', userId)));
+      active();
+      const transactions = readRows(snapshot).sort((a, b) => ledgerDate(b.date || b.createdAt).localeCompare(ledgerDate(a.date || a.createdAt)) || b.id.localeCompare(a.id));
+      return { success: true, transactions, complete: true };
+    } catch (error) { return failure(error); }
+  }
+
+  // Bounded server pagination uses document ID as a stable tie-breaker. History
+  // filters/search are applied to loaded pages in the UI and labelled as such.
   async getUserTransactions(userId, pageSize = 20, lastDoc = null) {
     try {
-      // Order by createdAt descending to show latest transactions first
-      let q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc'),
-        limit(pageSize)
-      );
-
-      if (lastDoc) {
-        q = query(q, startAfter(lastDoc));
-      }
-
-      const querySnapshot = await getDocs(q);
-      const transactions = [];
-      let lastDocument = null;
-
-      querySnapshot.forEach((doc) => {
-        transactions.push({
-          id: doc.id,
-          ...doc.data()
-        });
-        lastDocument = doc;
-      });
-
-      return {
-        success: true,
-        transactions,
-        lastDoc: lastDocument,
-        hasMore: transactions.length === pageSize
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+      const active = owner(userId);
+      if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new Error('Invalid page size');
+      if (lastDoc && (typeof lastDoc.data !== 'function' || lastDoc.data()?.userId !== userId)) throw new Error('Invalid history cursor');
+      const constraints = [where('userId', '==', userId), orderBy('createdAt', 'desc'), orderBy(documentId(), 'desc')];
+      if (lastDoc) constraints.push(startAfter(lastDoc));
+      // One look-ahead doc gives an exact hasMore without returning an unbounded page.
+      const snapshot = await getDocsFromServer(query(collection(db, 'transactions'), ...constraints, limit(pageSize + 1)));
+      active();
+      const docs = snapshot.docs.slice(0, pageSize);
+      return { success: true, transactions: readRows({ docs }), lastDoc: docs.at(-1) || lastDoc, hasMore: snapshot.docs.length > pageSize };
+    } catch (error) { return failure(error); }
   }
 
-  // Get transactions by category
   async getTransactionsByCategory(userId, category) {
     try {
-      // Temporary fix: Remove orderBy to avoid index requirement
-      // TODO: Add back orderBy('createdAt', 'desc') after creating Firestore index
-      const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', userId),
-        where('category', '==', category)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const transactions = [];
-
-      querySnapshot.forEach((doc) => {
-        transactions.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      return { success: true, transactions };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+      const active = owner(userId);
+      // Legacy category aliases/casing participate in the same ledger. Query
+      // the owner once rather than silently dropping those rows.
+      const result = await this.getAllTransactions(userId);
+      active();
+      if (!result.success) return result;
+      return { ...result, transactions: result.transactions.filter(row => row.category === normalizeCategory(category)) };
+    } catch (error) { return failure(error); }
   }
 
-  // Get transactions by date range
+  // Half-open local date range, including legacy ISO timestamps consistently.
   async getTransactionsByDateRange(userId, startDate, endDate) {
     try {
-      const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', userId),
-        where('date', '>=', startDate),
-        where('date', '<=', endDate),
-        orderBy('date', 'desc')
-      );
-
-      const querySnapshot = await getDocs(q);
-      const transactions = [];
-
-      querySnapshot.forEach((doc) => {
-        transactions.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      return { success: true, transactions };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+      const active = owner(userId);
+      parseDateOnly(startDate); parseDateOnly(endDate);
+      if (endDate <= startDate) throw new Error('Invalid date range');
+      const result = await this.getAllTransactions(userId);
+      active();
+      if (!result.success) return result;
+      return { ...result, transactions: result.transactions.filter(t => { const date = ledgerDate(t.date || t.createdAt); return date >= startDate && date < endDate; }) };
+    } catch (error) { return failure(error); }
   }
-
-  // Update transaction
-  async updateTransaction(transactionId, updateData) {
-    try {
-      await updateDoc(doc(db, 'transactions', transactionId), {
-        ...updateData,
-        updatedAt: new Date().toISOString()
-      });
-
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Delete transaction
-  async deleteTransaction(transactionId) {
-    try {
-      if (!transactionId) {
-        return { success: false, error: 'Transaction ID is missing' };
-      }
-
-      const docRef = doc(db, 'transactions', transactionId);
-      await deleteDoc(docRef);
-
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Get transaction statistics
   async getTransactionStats(userId, startDate, endDate) {
     try {
-      const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', userId),
-        where('date', '>=', startDate),
-        where('date', '<=', endDate)
-      );
-
-      const querySnapshot = await getDocs(q);
-      let totalIncome = 0;
-      let totalExpenses = 0;
-      const categoryBreakdown = {};
-
-      querySnapshot.forEach((doc) => {
-        const transaction = doc.data();
-        const amount = parseFloat(transaction.amount);
-
-        if (transaction.type === 'income') {
-          totalIncome += amount;
-        } else {
-          totalExpenses += amount;
-        }
-
-        // Category breakdown
-        if (!categoryBreakdown[transaction.category]) {
-          categoryBreakdown[transaction.category] = {
-            name: transaction.category,
-            amount: 0,
-            count: 0,
-            type: transaction.type
-          };
-        }
-        categoryBreakdown[transaction.category].amount += amount;
-        categoryBreakdown[transaction.category].count += 1;
-      });
-
-      const netAmount = totalIncome - totalExpenses;
-
-      return {
-        success: true,
-        stats: {
-          totalIncome,
-          totalExpenses,
-          netAmount,
-          categoryBreakdown: Object.values(categoryBreakdown)
-        }
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+      const active = owner(userId);
+      const result = await this.getTransactionsByDateRange(userId, startDate, endDate);
+      active();
+      if (!result.success) return result;
+      return { success: true, stats: summarize(result.transactions), complete: true };
+    } catch (error) { return failure(error); }
   }
-
-  // Get single transaction
   async getTransaction(transactionId) {
     try {
-      const docRef = doc(db, 'transactions', transactionId);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        return {
-          success: true,
-          transaction: {
-            id: docSnap.id,
-            ...docSnap.data()
-          }
-        };
-      } else {
-        return { success: false, error: 'Transaction not found' };
+      const active = owner();
+      const snapshot = await getDocFromServer(doc(db, 'transactions', transactionId));
+      active();
+      if (!snapshot.exists()) throw new Error('Transaction not found');
+      owner(snapshot.data().userId);
+      return { success: true, transaction: readRows({ docs: [snapshot] })[0] };
+    } catch (error) { return failure(error); }
+  }
+  async updateTransaction(transactionId, updateData) {
+    try {
+      const active = owner();
+      const current = await this.getTransaction(transactionId);
+      if (!current.success) return current;
+      active();
+      const data = current.transaction;
+      for (const field of ['userId', 'type', 'userType', 'companyId', 'createdAt', 'autoGenerated', 'memberId', 'salaryMonth']) {
+        if (field in updateData && updateData[field] !== data[field]) throw new Error(`Transaction ${field} cannot change`);
       }
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+      const fields = validateTransaction({ ...data, ...updateData, date: 'date' in updateData ? updateData.date : (data.date || data.createdAt) });
+      await updateDoc(doc(db, 'transactions', transactionId), { ...fields, updatedAt: new Date().toISOString() });
+      invalidateFinance(data.userId, 'transactions');
+      return { success: true };
+    } catch (error) { return failure(error); }
+  }
+  async deleteTransaction(transactionId) {
+    try {
+      const active = owner();
+      const current = await this.getTransaction(transactionId);
+      if (!current.success) return current;
+      active();
+      owner(current.transaction.userId);
+      await deleteDoc(doc(db, 'transactions', transactionId));
+      invalidateFinance(current.transaction.userId, 'transactions');
+      return { success: true };
+    } catch (error) { return failure(error); }
   }
 }
-
 export default new TransactionService();

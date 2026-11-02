@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { sumMoney } from '../../utils/finance';
 
 export default function BudgetInsights({ categories, theme }) {
   if (!categories || categories.length === 0) {
@@ -11,7 +12,7 @@ export default function BudgetInsights({ categories, theme }) {
   const topSpendingCategory = categories.reduce((max, cat) =>
     cat.spent > max.spent ? cat : max, categories[0]);
 
-  const totalSpent = categories.reduce((sum, cat) => sum + cat.spent, 0);
+  const totalSpent = sumMoney(categories, cat => cat.spent);
   const averageSpent = totalSpent / categories.length;
 
   const categoriesOverBudget = categories.filter(cat => cat.percentage > 100).length;

@@ -29,6 +29,8 @@ export default function CompanyTabNavigator() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Tab.Navigator
+        initialRouteName="CompanyHome"
+        backBehavior="history"
         tabBar={(props) => (
           <OptimizedTabBar
             {...props}
@@ -39,7 +41,7 @@ export default function CompanyTabNavigator() {
         )}
         screenOptions={tabScreenOptions}
       >
-        <Tab.Screen name="CompanyHome" component={CompanyDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
+        <Tab.Screen name="CompanyHome" component={CompanyDashboardScreen} options={{ tabBarLabel: 'Home', tabBarAccessibilityLabel: 'Dashboard' }} />
         <Tab.Screen name="CompanyReports" component={CompanyReportsScreen} options={{ tabBarLabel: 'Reports' }} />
         <Tab.Screen name="AddCompanyTransaction" component={AddCompanyTransactionScreen} options={{ tabBarLabel: 'Add' }} />
         <Tab.Screen name="TeamManagement" component={TeamManagementScreen} options={{ tabBarLabel: 'Team' }} />

@@ -1,216 +1,130 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import authService from '../services/authService';
+import { clearAccountLocalData } from '../utils/accountLocalData';
 
 const AuthContext = createContext();
+const emptySession = { user: null, userData: null, profileStatus: 'signedOut', profileError: null };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState({ ...emptySession, profileStatus: 'loading' });
+  const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const revision = useRef(0);
+  const mounted = useRef(true);
+  const mutating = useRef(false);
+  const blockedUid = useRef(null);
+  const activeUid = useRef(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
+  const loadSession = useCallback(async (firebaseUser) => {
+    const ticket = ++revision.current;
+    const previousUid = activeUid.current;
+    activeUid.current = firebaseUser?.uid || null;
+    if (previousUid && previousUid !== activeUid.current) await clearAccountLocalData(previousUid);
+    if (!mounted.current || ticket !== revision.current) return;
+    if (!firebaseUser) {
+      blockedUid.current = null;
+      setSession(emptySession);
+      setInitializing(false);
+      return;
+    }
+    if (blockedUid.current === firebaseUser.uid) {
+      setSession({ user: firebaseUser, userData: null, profileStatus: 'blocked', profileError: 'This login was rejected for the selected account type. Sign out and use the matching sign-in screen.' });
+      setInitializing(false);
+      return;
+    }
+    setSession({ user: firebaseUser, userData: null, profileStatus: 'loading', profileError: null });
+    const result = await authService.getUserData(firebaseUser.uid);
+    if (!mounted.current || ticket !== revision.current || auth.currentUser?.uid !== firebaseUser.uid) return;
+    const profileStatus = result.success ? 'ready' : result.missing ? 'missing' : result.incomplete ? 'incomplete' : 'error';
+    setSession({ user: firebaseUser, userData: result.success || result.incomplete ? result.userData : null,
+      profileStatus, profileError: result.error || null });
+    setInitializing(false);
+  }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          setUser(firebaseUser);
-
-          // Get user data from Firestore
-          const result = await authService.getUserData(firebaseUser.uid);
-          if (result.success) {
-            setUserData(result.userData);
-          }
-        } else {
-          setUser(null);
-          setUserData(null);
-        }
-      } catch (error) {
-        console.error('Auth state change error:', error);
-      } finally {
-        setLoading(false);
-        setInitializing(false);
-      }
+    mounted.current = true;
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (mutating.current) return; // Signup/Auth events can arrive before the Firestore write.
+      if (firebaseUser?.uid && firebaseUser.uid === activeUid.current && sessionRef.current.profileStatus === 'ready') return;
+      void loadSession(firebaseUser);
     });
+    return () => { mounted.current = false; revision.current += 1; unsubscribe(); };
+  }, [loadSession]);
 
-    return unsubscribe;
-  }, []);
-
-  const signUp = useCallback(async (email, password, additionalData) => {
-    setLoading(true);
+  const runAuthAction = useCallback(async (action, { preserveFailure = false } = {}) => {
+    if (mutating.current) return { success: false, error: 'Another account operation is in progress.' };
+    mutating.current = true;
+    revision.current += 1; // Invalidate every earlier profile read/update.
+    if (mounted.current) setLoading(true);
+    let result;
     try {
-      const result = await authService.signUp(email, password, additionalData);
-      if (result.success) {
-        // User state will be updated by onAuthStateChanged
-        return { success: true };
+      result = await action();
+      if (result.rejectedAccount) blockedUid.current = auth.currentUser?.uid || null;
+      if (result.success && result.deletedUid && (!auth.currentUser || auth.currentUser.uid === result.deletedUid)) {
+        blockedUid.current = result.deletedUid;
+        activeUid.current = null;
+        if (mounted.current) setSession(emptySession);
+      } else if (result.success && result.user && result.userData && auth.currentUser?.uid === result.user.uid) {
+        blockedUid.current = null;
+        activeUid.current = result.user.uid;
+        if (mounted.current) setSession({ user: result.user, userData: result.userData, profileStatus: 'ready', profileError: null });
+      } else if (!result.success && preserveFailure && auth.currentUser?.uid === sessionRef.current.user?.uid) {
+        // Keep the recovery screen mounted so it can show the write error and let
+        // the user edit/retry without losing the incomplete-profile state.
+      } else {
+        await loadSession(auth.currentUser);
       }
       return result;
     } catch (error) {
-      return { success: false, error: error.message };
+      await loadSession(auth.currentUser);
+      return { success: false, error: error.message || 'The account operation failed.' };
     } finally {
-      setLoading(false);
+      mutating.current = false;
+      if (mounted.current) { setLoading(false); setInitializing(false); }
     }
-  }, []);
+  }, [loadSession]);
 
-  const signIn = useCallback(async (email, password) => {
-    setLoading(true);
-    try {
-      const result = await authService.signIn(email, password);
-      if (result.success) {
-        // Optimistically update state
-        setUser(result.user);
-        setUserData(result.userData);
-        return { success: true, userData: result.userData };
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const signUp = useCallback((email, password, data) => runAuthAction(() => authService.signUp(email, password, data)), [runAuthAction]);
+  const signIn = useCallback((email, password, type) => runAuthAction(() => authService.signIn(email, password, type)), [runAuthAction]);
+  const signInWithGoogle = useCallback((type) => runAuthAction(() => authService.signInWithGoogle(type)), [runAuthAction]);
+  const signOut = useCallback(() => runAuthAction(() => authService.signOut()), [runAuthAction]);
+  const deleteAccount = useCallback(() => runAuthAction(() => authService.deleteAccount()), [runAuthAction]);
+  const completeProfile = useCallback((data) => runAuthAction(() => authService.completeProfile(data), { preserveFailure: true }), [runAuthAction]);
 
-  const signInWithGoogle = useCallback(async (idToken, userType) => {
-    setLoading(true);
-    try {
-      const result = await authService.signInWithGoogle(idToken, userType);
-      if (result.success) {
-        // Optimistically update state
-        setUser(result.user);
-        setUserData(result.userData);
-        return { success: true, userData: result.userData };
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const signOut = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await authService.signOut();
-      if (result.success) {
-        setUser(null);
-        setUserData(null);
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteAccount = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await authService.deleteAccount();
-      if (result.success) {
-        setUser(null);
-        setUserData(null);
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateUserProfile = useCallback(async (updateData) => {
-    if (!user) return { success: false, error: 'No user logged in' };
-
-    try {
-      const result = await authService.updateUserData(user.uid, updateData);
-
-      if (result.success) {
-        // Update local userData
-        setUserData(prev => ({ ...prev, ...updateData }));
-      }
-
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, [user]);
-
-  const resetPassword = useCallback(async (email) => {
-    try {
-      return await authService.resetPassword(email);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, []);
-
-  const updatePassword = useCallback(async (currentPassword, newPassword) => {
-    try {
-      return await authService.updateUserPassword(currentPassword, newPassword);
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, []);
+  const updateUserProfile = useCallback(async (data) => {
+    const uid = session.user?.uid;
+    if (!uid || mutating.current) return { success: false, error: 'Please wait for your account to finish loading.' };
+    const ticket = ++revision.current;
+    const result = await authService.updateUserData(uid, data);
+    if (!mounted.current || ticket !== revision.current || auth.currentUser?.uid !== uid) return { success: false, stale: true, error: 'Your session changed. Reopen your profile.' };
+    if (result.success) setSession((previous) => previous.user?.uid === uid
+      ? { ...previous, userData: { ...previous.userData, ...result.changes } } : previous);
+    return result;
+  }, [session.user?.uid]);
 
   const refreshUserData = useCallback(async () => {
-    if (!user) return;
+    if (!mutating.current) await loadSession(auth.currentUser);
+  }, [loadSession]);
+  const resetPassword = useCallback((email) => authService.resetPassword(email), []);
+  const updatePassword = useCallback((current, next) => authService.updateUserPassword(current, next), []);
+  const reauthenticate = useCallback((password) => authService.reauthenticate(password), []);
 
-    try {
-      const result = await authService.getUserData(user.uid);
-      if (result.success) {
-        setUserData(result.userData);
-      }
-    } catch (error) {
-      console.error('Refresh user data error:', error);
-    }
-  }, [user]);
+  const value = useMemo(() => ({ ...session, loading, initializing, signUp, signIn, signInWithGoogle,
+    signOut, deleteAccount, completeProfile, updateUserProfile, resetPassword, updatePassword,
+    reauthenticate, refreshUserData, isAuthenticated: session.profileStatus === 'ready' && !!session.user,
+    isPersonalUser: session.userData?.userType === 'personal', isCompanyUser: session.userData?.userType === 'company',
+  }), [session, loading, initializing, signUp, signIn, signInWithGoogle, signOut, deleteAccount,
+    completeProfile, updateUserProfile, resetPassword, updatePassword, reauthenticate, refreshUserData]);
 
-  const value = useMemo(() => ({
-    user,
-    userData,
-    loading,
-    initializing,
-    signUp,
-    signIn,
-    signInWithGoogle,
-    signOut,
-    deleteAccount,
-    updateUserProfile,
-    resetPassword,
-    updatePassword,
-    refreshUserData,
-    isAuthenticated: !!user,
-    isPersonalUser: userData?.userType === 'personal',
-    isCompanyUser: userData?.userType === 'company',
-  }), [
-    user,
-    userData,
-    loading,
-    initializing,
-    signUp,
-    signIn,
-    signInWithGoogle,
-    signOut,
-    deleteAccount,
-    updateUserProfile,
-    resetPassword,
-    updatePassword,
-    refreshUserData,
-  ]);
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -1,0 +1,9 @@
+import { handleAIRequest } from '../../server/handler.cjs';
+
+export function POST(request) {
+  return handleAIRequest(request, '/parse-receipt');
+}
+
+export function OPTIONS(request) {
+  return handleAIRequest(request, '/parse-receipt');
+}

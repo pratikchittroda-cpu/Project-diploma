@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { parseMoney } from '../../utils/finance';
 
 export default function AddBudgetModal({
   visible,
@@ -27,9 +28,13 @@ export default function AddBudgetModal({
   const [selectedCategory, setSelectedCategory] = useState('food');
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const slideAnim = React.useRef(new Animated.Value(300)).current;
+  const savingRef = React.useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (visible) {
+      setError('');
       // Pre-populate if editing
       if (editingBudget) {
         setAmount(editingBudget.amount.toString());
@@ -50,10 +55,8 @@ export default function AddBudgetModal({
         useNativeDriver: true,
       }).start();
       // Reset form after animation
-      setTimeout(() => {
-        setAmount('');
-        setSelectedCategory('food');
-      }, 250);
+      setAmount('');
+      setSelectedCategory('food');
     }
   }, [visible, editingBudget]);
 
@@ -68,19 +71,17 @@ export default function AddBudgetModal({
     { id: 'other', name: 'Other', icon: 'help-circle', color: '#9E9E9E' },
   ];
 
-  const selectedCategoryData = categories.find(c => c.id === selectedCategory);
+  const selectedCategoryData = categories.find(c => c.id === selectedCategory) || categories[0];
 
-  const handleSave = () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      return;
-    }
-
-    onSave({
-      category: selectedCategory,
-      categoryName: selectedCategoryData.name,
-      amount: parseFloat(amount),
-      period,
-    });
+  const handleSave = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true); setError('');
+    try {
+      const result = await onSave({ category: selectedCategory, categoryName: selectedCategoryData.name, amount: parseMoney(amount), period });
+      if (result?.success === false) throw new Error(result.error || 'Unable to save budget');
+    } catch (caught) { setError(caught.message); }
+    finally { savingRef.current = false; setSaving(false); }
   };
 
   const styles = createStyles(theme);
@@ -118,7 +119,7 @@ export default function AddBudgetModal({
               <Text style={styles.title}>
                 {editingBudget ? 'Edit Budget' : 'Add Budget'}
               </Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close budget form" disabled={saving} onPress={onClose} style={styles.closeButton}>
                 <Icon name="close" size={24} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -189,7 +190,8 @@ export default function AddBudgetModal({
               </View>
             </View>
 
-            {/* Footer */}
+              {/* Footer */}
+              {!!error && <Text accessibilityRole="alert" style={{ color: 'white', paddingHorizontal: 20 }}>{error}</Text>}
             <View style={styles.footer}>
               <TouchableOpacity
                 style={styles.cancelButton}
@@ -201,13 +203,13 @@ export default function AddBudgetModal({
               <TouchableOpacity
                 style={[
                   styles.saveButton,
-                  (!amount || parseFloat(amount) <= 0) && styles.saveButtonDisabled
+                  saving && styles.saveButtonDisabled
                 ]}
                 onPress={handleSave}
-                disabled={!amount || parseFloat(amount) <= 0}
+                disabled={saving}
               >
                 <Text style={styles.saveButtonText}>
-                  {editingBudget ? 'Update' : 'Save'}
+                  {saving ? 'Saving…' : editingBudget ? 'Update' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>

@@ -1,13 +1,16 @@
-// Cache buster: 2024-02-06T15:15:00
 module.exports = function (api) {
-  api.cache(true);
+  // Public configuration is part of the bundle. Never allow a provider secret here.
+  const { PUBLIC_ENV_NAMES } = require('./scripts/public-env.cjs');
+  api.cache.using(() => [process.env.EAS_BUILD, process.env.CI, process.env.EXPO_NO_DOTENV, ...PUBLIC_ENV_NAMES.map(name => process.env[name] || '')].join('|'));
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      'react-native-reanimated/plugin',
-      ['module:react-native-dotenv', {
+      ['./scripts/babel-public-env.cjs', {
         moduleName: '@env',
-        path: '.env',
+        // Only local development reads .env. EAS/CI use provisioned environment values.
+        path: process.env.EAS_BUILD || process.env.CI || process.env.EXPO_NO_DOTENV ? '.env.disabled' : '.env',
+        allowlist: PUBLIC_ENV_NAMES,
+        allowUndefined: true,
       }]
     ],
   };

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f3f5ff">
+  <title>Expenzo — Privacy &amp; data</title>
+  <link rel="icon" href="./assets/expenzo-logo.png?v=850d443b0ea5" type="image/png">
+  <link rel="preload" href="./assets/fonts/syne-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="./styles.css?v=75af10c8cfa8">
+  <script defer src="./public-config.js"></script>
+  <script defer src="./legal.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#policy-content">Skip to privacy information</a>
+<header class="legal-header"><a class="legal-brand" href="./index.html" aria-label="Expenzo home"><img src="./assets/expenzo-logo.png?v=850d443b0ea5" alt="" width="32" height="32"><span>expenzo</span></a><nav aria-label="Page navigation"><a href="./index.html">Back to the experience ↗</a><a href="./account-deletion.html">Account deletion</a></nav></header>
+<main class="legal-page" id="policy-content">
+<span class="legal-eyebrow">Expenzo / Privacy &amp; data</span>
+<h1>Your data.<br>In plain sight.</h1>
+<p class="legal-description">Expenzo privacy &amp; data — what the pre-release app and optional AI features process, where records live and the controls available to you.</p>
+<p class="configuration-warning" data-config-warning hidden>Configuration incomplete. Check the publisher contact before using this release.</p>
+<div class="legal-aside"><p>Publisher: <strong data-config="publisherName">Expenzo</strong><br>Effective date: <span data-config="policyEffectiveDate">2026-10-25</span><br>Privacy contact: <span data-config="supportEmail">pratikchittroda@gmail.com</span></p></div>
+<div class="legal-callout"><strong>Before you share information:</strong> Expenzo is a pre-release native app for manual personal and company records. There is no bank connection or browser finance app on this website. Optional AI features require a separate consent step, and the access-request form does not create an account or deliver an APK automatically.</div>
+<nav class="legal-contents" aria-label="On this page"><a href="#processing">What we process</a><a href="#access-requests">APK access requests</a><a href="#retention">Retention</a><a href="#deletion">Deletion</a><a href="#security">Access &amp; security</a></nav>
+<h2 id="processing">What the implemented app processes</h2>
+<p>Google Firebase Authentication manages email/password sign-in credentials and identity. Firebase Firestore stores your account profile and the transactions, categories, dates, budgets, team and employee information you enter to provide finance tracking. Google account sign-in is not enabled in the configured core build; a future build with verified OAuth configuration would share that sign-in identity with Firebase. Company records are controlled by the company account owner, not shared automatically with company employees. Profile-photo uploads are disabled in this free-tier release; no profile image is uploaded to Firebase Storage or saved as a device file link.</p>
+<h2>Optional AI sharing</h2>
+<p>AI-enabled builds use an authenticated API on Expo EAS Hosting. Sharing is optional and requires your explicit consent and a request. Chat sends your question, bounded recent conversation and verified month-to-date finance and budget aggregates to NVIDIA. Raw ledger descriptions, account identifiers and employee details are not part of chat provider context. Category suggestions send the description you submit; receipt parsing sends only the receipt text you submit. Remove private details you do not wish to share. Local budget and spending insights are calculated on your device without provider transfer. Older core-only builds do not send AI requests.</p>
+<h2 id="access-requests">Website APK access requests</h2>
+<p>The Request early access form asks only for your email address. Submitting it requests a personal email follow-up from the publisher about the Expenzo APK. Your submitted address and fixed request information go over HTTPS to FormSubmit, which forwards the request to the publisher’s Gmail inbox. Like other hosted services, FormSubmit also receives standard network request metadata. No password, finance record, name or account signup is required. This request does not create an Expenzo account or automatically send you an APK, and no delivery time is guaranteed.</p>
+<p>The form sends nothing to FormSubmit until you submit it. Expenzo does not store the address in browser storage or its Firebase database for this form. FormSubmit currently documents a 30-day submission archive in its <a href="https://formsubmit.co/documentation">documentation</a>; its processing and infrastructure retention are governed by its <a href="https://formsubmit.co/privacy.pdf">privacy policy</a>. Request emails remain in the publisher’s inbox until the publisher deletes them. Contact the publisher to request removal. The address is used for access follow-up, not a marketing mailing list.</p>
+<h2 id="retention">Storage, retention and controls</h2>
+<p>Firebase Auth, Firestore finance records and account profile data are retained until you delete records or the publisher processes your verified account-deletion request. Sending a request does not immediately erase records. Expenzo does not persist AI questions, answers, receipt text or consent in its API. Chat stays in app memory until Clear chat, closing the conversation or changing accounts; opening Privacy does not clear an ongoing conversation. Form consent resets when you clear the tools, leave the form, save or change accounts. Firestore stores daily account request counters and an aggregate service counter for usage protection, retained until the publisher removes them. AI reports are not enabled. Infrastructure and provider service logs and retention are subject to Firebase, Google, Expo and NVIDIA policies; Expenzo does not control every log or backup.</p>
+<h2 id="deletion">Account deletion and requests</h2>
+<p>In-app server deletion is unavailable in this free-tier release. Request deletion at <a href="./account-deletion.html">the external deletion page</a> or by contacting the publisher. Support will verify ownership and manually delete the account data from Firebase. Offline data or screenshots already saved on a device cannot be removed remotely.</p>
+<p>External request handling: <span data-config="deletionRequestTimescale">Records remain until deleted or support processes a verified account-deletion request. Requests are manual, with no guaranteed response or completion deadline in this small-group release.</span></p>
+<h2 id="security">Security and access</h2>
+<p>The implementation uses HTTPS and Firebase sign-in tokens. Firestore rules restrict core finance records to their account owner and company records to company accounts. The AI API verifies Firebase identity, reads owner-only finance data, requires sharing consent and applies daily request caps. Provider credentials stay server-side rather than in the APK. Automated account deletion and profile-photo Storage uploads remain unavailable. The app and API do not intentionally log passwords, tokens or financial content. The publisher must explain applicable access, correction, deletion and complaint rights and any required jurisdiction-specific terms.</p>
+<p>Expenzo uses Google Firebase for accounts and finance data, Expo EAS Hosting for the optional AI API, and NVIDIA for consented AI inference. Deletion requests sent by email are processed through the publisher’s Gmail inbox. These providers have their own processing, infrastructure and retention policies. See <a href="https://firebase.google.com/support/privacy">Firebase privacy information</a>, <a href="https://policies.google.com/privacy">Google’s privacy policy</a>, <a href="https://expo.dev/privacy">Expo’s privacy policy</a> and <a href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">NVIDIA’s privacy policy</a>. Support email may contain your email address and request details. Do not include financial records or credentials.</p>
+<p>You can edit profile details, delete individual financial entries in the app, and contact the publisher to request access, correction or account deletion. The app does not contain ads, sell financial records or provide bank transfers. These public pages describe this limited release; they are not a Google Play approval or a guarantee of legal compliance in every jurisdiction.</p>
+<p><a data-contact class="text-link" href="mailto:pratikchittroda@gmail.com?subject=Expenzo%20privacy%20request">Contact the publisher ↗</a></p>
+</main>
+<footer class="legal-footer"><span>© 2026 Expenzo · Money. Minus the mess.</span><nav aria-label="Legal and support"><a href="./index.html">Product experience</a><a href="./account-deletion.html">Account deletion</a><a href="mailto:pratikchittroda@gmail.com">Contact Expenzo</a></nav></footer>
+</body></html>

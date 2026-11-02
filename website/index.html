@@ -3,334 +3,288 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="Expenzo is a personal and company finance app for budgets, transactions, reports, AI insights, team spending, and profile-based finance workflows."
-    />
-    <title>Expenzo | Personal and Company Finance</title>
-    <link rel="icon" href="../assets/favicon.png" />
-    <link rel="stylesheet" href="./styles.css" />
+    <meta name="theme-color" content="#f3f5ff" />
+    <meta name="description" content="Manual personal and company finance tracking with budgets, reports and optional AI assistance. Expenzo is a pre-release native app; Android APK access is by request." />
+    <title>Expenzo — Money. Minus the mess.</title>
+    <meta property="og:title" content="Expenzo — Money. Minus the mess." />
+    <meta property="og:description" content="Manual personal and company finance tracking with budgets, reports and optional AI assistance. Android APK access is by request." />
+    <meta property="og:image" content="https://project1-7a465.web.app/assets/expenzo-social-preview.png?v=20261022" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="https://project1-7a465.web.app/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Expenzo — Money. Minus the mess." />
+    <meta name="twitter:description" content="Manual personal and company finance tracking with budgets, reports and optional AI assistance. Android APK access is by request." />
+    <meta name="twitter:image" content="https://project1-7a465.web.app/assets/expenzo-social-preview.png?v=20261022" />
+    <link rel="icon" href="./assets/expenzo-logo.png?v=850d443b0ea5" type="image/png" />
+    <link rel="preload" href="./assets/fonts/syne-latin-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./assets/fonts/manrope-latin-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="./styles.css?v=75af10c8cfa8" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" /></symbol>
+        <symbol id="icon-diagonal" viewBox="0 0 24 24"><path d="M5 19 19 5M5 5h14v14" /></symbol>
+        <symbol id="icon-down" viewBox="0 0 24 24"><path d="M12 4v15m-6-6 6 6 6-6" /></symbol>
+        <symbol id="icon-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3V10Z" /><path d="M9 20v-7h6v7" /></symbol>
+        <symbol id="icon-ledger" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h3" /></symbol>
+        <symbol id="icon-budget" viewBox="0 0 24 24"><path d="M12 3v9h9A9 9 0 0 0 12 3Z" /><path d="M8 4a9 9 0 1 0 12 12" /></symbol>
+        <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 3v17h17M8 16v-5m5 5V6m5 10V9" /></symbol>
+        <symbol id="icon-bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></symbol>
+        <symbol id="icon-food" viewBox="0 0 24 24"><path d="M4 5h16l-2 14H6L4 5ZM8 5 10 2m6 3-2-3M8 10v4m4-4v4m4-4v4" /></symbol>
+        <symbol id="icon-metro" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="15" rx="4" /><path d="M5 10h14M8 21l2-3m6 3-2-3M9 14h.01M15 14h.01" /></symbol>
+        <symbol id="icon-building" viewBox="0 0 24 24"><path d="M4 21V4h11v17M15 9h5v12M1 21h22M8 8h3m-3 4h3m-3 4h3m6-3h1m-1 4h1" /></symbol>
+        <symbol id="icon-income" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M3 10h18M8 6V3h8v3M10 15h4" /></symbol>
+        <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></symbol>
+        <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16" /></symbol>
+        <symbol id="icon-signal" viewBox="0 0 24 24"><path d="M4 19v-3m5 3v-7m5 7V8m5 11V4" /></symbol>
+        <symbol id="icon-wifi" viewBox="0 0 24 24"><path d="M3 9a14 14 0 0 1 18 0M6 13a9 9 0 0 1 12 0m-9 4a4 4 0 0 1 6 0m-3 3h.01" /></symbol>
+        <symbol id="icon-battery" viewBox="0 0 28 24"><rect x="2" y="6" width="21" height="12" rx="3" /><path d="M26 10v4" /><path d="M5 9h15v6H5Z" fill="currentColor" stroke="none" /></symbol>
+      </defs>
+    </svg>
+
     <header class="site-header" data-header>
-      <a class="brand" href="#top" aria-label="Expenzo home">
-        <img src="../assets/logo.png" alt="" />
-        <span>Expenzo</span>
-      </a>
-
-      <nav class="nav-links" aria-label="Primary navigation">
-        <a href="#product">Product</a>
-        <a href="#modes">Modes</a>
-        <a href="#insights">Insights</a>
-        <a href="#security">Security</a>
-      </nav>
-
-      <a class="nav-action" href="#download">Explore App</a>
+      <div class="header-inner access-header-inner">
+        <a class="brand" href="#top" aria-label="EXPENZO home"><img src="./assets/expenzo-logo.png?v=850d443b0ea5" alt="" width="38" height="38" /><span>EXPENZO</span></a>
+        <nav class="nav-links" aria-label="Primary navigation"><a href="#product">The idea</a><a href="#mode-lab">Your world</a><a href="#feature-tour">The experience</a><a href="#availability">The details</a></nav>
+         <a class="nav-action access-header" href="#get-access" data-access-header data-handoff-state="hero" aria-hidden="true" tabindex="-1" inert><span>Request early access</span> <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a>
+        <details class="mobile-menu access-mobile-menu">
+          <summary><span class="access-menu-label">Menu</span> <span class="menu-lines" aria-hidden="true"></span></summary>
+           <nav aria-label="Mobile navigation"><a class="access-menu-link" href="#get-access">Request early access <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a><a href="#product">The idea <span>01</span></a><a href="#mode-lab">Your world <span>02</span></a><a href="#feature-tour">The experience <span>03</span></a><a href="#availability">The details <span>04</span></a><a href="./privacy.html">Privacy &amp; data</a><a href="./account-deletion.html">Account deletion</a></nav>
+        </details>
+      </div>
+      <div class="page-progress" aria-hidden="true"><span data-scroll-progress></span></div>
     </header>
 
-    <main id="top">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-scene" aria-hidden="true">
-          <div class="scene-grid"></div>
-          <div class="scene-ledger ledger-left">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div class="scene-ledger ledger-right">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </div>
+    <main id="main-content">
+      <section class="hero" id="top" data-hero aria-labelledby="hero-title">
+        <div class="hero-intro section-width" data-reveal>
+           <div class="hero-intro-copy"><p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> Pre-release / manual finance tracking</p><p>Personal spending. Company records.<br />Budgets, reports and optional AI assistance.</p></div>
+           <div class="hero-actions access-hero-actions"><a class="button primary access-hero-link" href="#get-access" data-access-hero>Request early access <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a><span class="preview-note">Android APK not yet available · personal email follow-up</span></div>
+         </div>
+         <div class="hero-release-note section-width" role="note"><div class="hero-release-label"><span class="status-dot" aria-hidden="true"></span><span>PRE-RELEASE</span></div><p><strong>Android APK not yet available.</strong> Request a personal follow-up when access opens. This request does not create an account, start a download or guarantee delivery timing.</p><a class="text-link" href="#availability">See the release details <svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg></a></div>
+        <div class="hero-title-wrap section-width" data-reveal><h1 id="hero-title"><span class="hero-title-money">Money.</span><span class="hero-title-second">Minus the mess<span class="hero-stop">.</span></span></h1><span class="hero-title-coordinate" aria-hidden="true">A NEW POINT OF VIEW / EXP—01</span></div>
 
-        <div class="hero-content">
-          <p class="eyebrow">Finance clarity for real life and real teams</p>
-          <h1 id="hero-title">Expenzo</h1>
-          <p class="hero-copy">
-            Track personal money, manage company spending, build budgets, review reports, and ask AI for finance guidance from one focused app.
-          </p>
-          <div class="hero-actions">
-            <a class="button primary" href="#product">See Product</a>
-            <a class="button secondary" href="#modes">Compare Modes</a>
-          </div>
-          <div class="hero-metrics" aria-label="Product highlights">
-            <div>
-              <strong>2</strong>
-              <span>account modes</span>
-            </div>
-            <div>
-              <strong>AI</strong>
-              <span>finance chat</span>
-            </div>
-            <div>
-              <strong>INR</strong>
-              <span>native tracking</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="hero-product" aria-label="Expenzo app preview">
-          <div class="phone-shell">
-            <div class="phone-screen">
-              <div class="app-topbar">
-                <div>
-                  <span>Good Morning</span>
-                  <strong>Welcome back</strong>
+        <figure class="hero-product" aria-labelledby="hero-preview-caption">
+          <div class="hero-stage">
+            <img class="orbital-art" src="./assets/ledger-orbits.svg" alt="" width="1440" height="780" />
+            <div class="stage-stamp" aria-hidden="true"><span>YOUR DAILY ORBIT</span><span class="stamp-cross">+</span><span>Less noise.<br />More knowing.</span></div>
+            <div class="orbit-ledger orbit-ledger-income" aria-hidden="true"><div><span>01 / INCOME</span><svg class="icon"><use href="#icon-diagonal" /></svg></div><strong><small>₹</small> 38,000</strong><span class="ledger-barcode"></span><span>RECORDED. NOT CONNECTED.</span></div>
+            <div class="orbit-ledger orbit-ledger-expenses" aria-hidden="true"><div><span>02 / EXPENSES</span><svg class="icon"><use href="#icon-down" /></svg></div><strong><small>₹</small> 12,750</strong><div class="orbit-mini-track"><i></i><i></i><i></i><i></i></div><span>EVERY ENTRY IN PERSPECTIVE.</span></div>
+            <div class="phone-shell hero-phone" data-hero-phone aria-hidden="true">
+              <span class="phone-key key-volume-up"></span><span class="phone-key key-volume-down"></span><span class="phone-key key-power"></span><span class="phone-antenna antenna-top"></span><span class="phone-antenna antenna-bottom"></span><span class="phone-speaker"></span>
+              <div class="camera-punch"><i class="camera-lens"></i></div>
+              <div class="phone-screen"><img class="app-screenshot" src="./assets/expenzo-dashboard.png?v=681dce069aff" alt="" width="1206" height="2622" /><div class="app-ui">
+                <div class="status-bar"><span>9:41</span><div><svg class="icon"><use href="#icon-signal" /></svg><svg class="icon"><use href="#icon-wifi" /></svg><svg class="icon battery-icon"><use href="#icon-battery" /></svg></div></div>
+                <div class="app-body">
+                  <div class="app-heading"><div><span class="app-kicker">Personal / October 2026</span><h3>Hello, Aanya.</h3></div><span class="app-avatar">A</span></div>
+                  <div class="balance-panel"><div class="balance-label"><span>October recorded difference</span><svg class="icon"><use href="#icon-diagonal" /></svg></div><strong class="money-amount"><span>₹</span> 25,250<span class="money-decimal">.00</span></strong><span class="balance-period">1–6 October · your recorded activity</span><div class="balance-breakdown"><div><span>Income</span><strong>+ 38,000</strong></div><div><span>Expenses</span><strong>− 12,750</strong></div></div></div>
+                  <div class="app-chart"><div class="app-section-heading"><strong>Where it went</strong><span>₹ / October</span></div><div class="mini-bars"><div style="--bar-height: 100%"><i></i><span>Housing</span></div><div style="--bar-height: 31.25%"><i></i><span>Shopping</span></div><div style="--bar-height: 15.625%"><i></i><span>Food</span></div><div style="--bar-height: 12.5%"><i></i><span>Transport</span></div></div></div>
+                  <div class="app-section-heading"><strong>Recent activity</strong><span class="app-small-label">Sample</span></div>
+                  <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-bag" /></svg></span><div><strong>Shopping</strong><span>6 Oct · Shopping</span></div><strong class="transaction-amount">− 2,500</strong></div>
+                  <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-metro" /></svg></span><div><strong>Metro pass</strong><span>4 Oct · Transport</span></div><strong class="transaction-amount">− 1,000</strong></div>
                 </div>
-                <img src="../assets/logo.png" alt="Expenzo logo" />
-              </div>
-
-              <div class="balance-card">
-                <span>Total Balance</span>
-                <strong>INR 84,250</strong>
-                <div class="balance-row">
-                  <span>Income INR 38,000</span>
-                  <span>Expense INR 12,750</span>
-                </div>
-              </div>
-
-              <div class="mini-chart" aria-hidden="true">
-                <span style="height: 38%"></span>
-                <span style="height: 72%"></span>
-                <span style="height: 48%"></span>
-                <span style="height: 88%"></span>
-                <span style="height: 62%"></span>
-                <span style="height: 76%"></span>
-              </div>
-
-              <div class="transaction-card">
-                <div class="transaction-icon food"></div>
-                <div>
-                  <strong>Groceries</strong>
-                  <span>Food budget</span>
-                </div>
-                <em>- INR 1,250</em>
-              </div>
-              <div class="transaction-card">
-                <div class="transaction-icon salary"></div>
-                <div>
-                  <strong>Salary</strong>
-                  <span>Monthly income</span>
-                </div>
-                <em class="positive">+ INR 38,000</em>
-              </div>
+                <div class="app-bottom-nav"><span class="is-current"><svg class="icon"><use href="#icon-home" /></svg>Home</span><span><svg class="icon"><use href="#icon-ledger" /></svg>Activity</span><span><svg class="icon"><use href="#icon-budget" /></svg>Budgets</span><span><svg class="icon"><use href="#icon-chart" /></svg>Reports</span></div><div class="home-indicator"></div>
+              </div></div>
             </div>
+            <div class="stage-budget" aria-hidden="true"><span class="stage-budget-icon"><svg class="icon"><use href="#icon-budget" /></svg></span><div><span>A little breathing room</span><strong>Food budget <b>₹750 left</b></strong></div><span class="stage-budget-arrow">↗</span></div>
+            <span class="stage-axis" aria-hidden="true">IN FOCUS / 25,250</span>
           </div>
+         <figcaption id="hero-preview-caption"><span class="caption-dot" aria-hidden="true"></span> Illustrative product preview. <span>Sample records in Indian rupees; current native capture is from the iOS simulator.</span></figcaption>
+        </figure>
+        <div class="hero-bottom section-width"><span>GOOD WITH NUMBERS.<br />BETTER WITH PERSPECTIVE.</span><a href="#product">There’s a simpler way <svg class="icon" aria-hidden="true"><use href="#icon-down" /></svg></a><span>PERSONAL / COMPANY</span></div>
+      </section>
+
+      <section class="manifesto" id="product" aria-labelledby="manifesto-title">
+        <div class="manifesto-inner section-width">
+          <p class="eyebrow" data-reveal>01 / Goodbye, guesswork</p>
+          <div class="manifesto-heading" data-reveal><h2 id="manifesto-title">Less mental maths.<br /><span>More living.</span></h2><svg class="manifesto-arrow icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></div>
+          <div class="manifesto-bottom" data-reveal><p>Money shouldn’t take up all your headspace. Give each entry a place. Give each budget a purpose. See the bigger picture.</p><span>RECORD.<br />PLAN.<br />UNDERSTAND.</span><a class="text-link" href="#mode-lab">Find your world <svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg></a></div>
         </div>
       </section>
 
-      <section class="section product-section" id="product" aria-labelledby="product-title">
-        <div class="section-heading">
-          <p class="eyebrow">The product</p>
-          <h2 id="product-title">A finance workspace that adapts to the account.</h2>
-          <p>
-            Expenzo separates personal and company workflows while keeping the same fast rhythm: add, review, budget, report, and act.
-          </p>
-        </div>
-
-        <div class="feature-grid">
-          <article class="feature-card">
-            <span class="feature-icon">01</span>
-            <h3>Transaction Control</h3>
-            <p>Add income and expenses, browse recent activity, filter by type, and keep a clean running picture of money movement.</p>
+      <section class="mode-section section-width" id="mode-lab" data-mode-lab aria-labelledby="modes-title">
+        <div class="section-rail" data-reveal><p class="eyebrow">02 / Your world, in order</p><span>ONE IDEA. TWO PERSPECTIVES.</span></div>
+        <div class="mode-intro" data-reveal><h2 id="modes-title">Life has sides.<br />So does Expenzo.</h2><div><p>Your everyday and your enterprise deserve their own space.</p><div class="mode-switch" role="group" aria-label="Choose a record space"><button type="button" data-mode-button="personal" aria-controls="mode-personal" aria-pressed="true">Personal <svg class="icon" aria-hidden="true"><use href="#icon-home" /></svg></button><button type="button" data-mode-button="company" aria-controls="mode-company" aria-pressed="false">Company <svg class="icon" aria-hidden="true"><use href="#icon-building" /></svg></button></div></div></div>
+        <div class="mode-panels">
+          <article class="mode-panel personal-panel" id="mode-personal" data-mode-panel="personal" aria-labelledby="personal-title">
+            <div class="mode-copy"><span class="mode-overline"><span>PERSONAL</span><span>01</span></span><h3 id="personal-title">Your life.<br />Your ledger.</h3><p>The rent. The groceries. The plans for later. A place for your income, expenses and category budgets.</p><ul class="mode-features"><li>Give each transaction a category and a date.</li><li>Set monthly limits. See what’s left.</li><li>Review your recorded activity by period.</li></ul><a class="text-link" href="#feature-tour">Explore the personal view <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a></div>
+            <div class="mode-finance personal-ledger" role="group" aria-label="Illustrative personal ledger: income 38,000 rupees, expenses 12,750, recorded difference 25,250. Food budget 2,000, spent 1,250, remaining 750.">
+              <div class="ledger-topline"><span><i class="ledger-light" aria-hidden="true"></i> Personal overview</span><span>OCT ’26 / SAMPLE</span></div>
+              <div class="ledger-net"><span>Some room to breathe.</span><strong><small>₹</small> 25,250<span>.00</span></strong><span>Recorded difference · 1–6 October</span></div>
+              <div class="ledger-flow"><div><span>Recorded income</span><strong>+ 38,000</strong></div><svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg><div><span>Recorded expenses</span><strong>− 12,750</strong></div></div>
+              <div class="ledger-categories"><div class="ledger-categories-title"><span>Expenses, in proportion</span><span>₹12,750</span></div><div class="expense-track" aria-hidden="true"><i class="housing-segment"></i><i class="shopping-segment"></i><i class="food-segment"></i><i class="transport-segment"></i></div><div class="expense-track-labels"><span>Housing 8,000</span><span>Shopping 2,500</span><span>Food 1,250</span><span>Transport 1,000</span></div></div>
+              <div class="food-budget"><div><span>FOOD / MONTHLY BUDGET</span><strong>₹750 <small>left</small></strong></div><div><span>₹1,250 of ₹2,000 spent</span><div class="personal-budget-track" aria-hidden="true"><i></i></div><span>62.5% of your limit</span></div></div>
+            </div>
           </article>
-          <article class="feature-card">
-            <span class="feature-icon coral">02</span>
-            <h3>Budget Planning</h3>
-            <p>Build category budgets, monitor spend, and spot pressure early before a category gets away from you.</p>
-          </article>
-          <article class="feature-card">
-            <span class="feature-icon amber">03</span>
-            <h3>Reports and Stats</h3>
-            <p>Review income, expenses, net balance, categories, and company performance with summary views built for scanning.</p>
-          </article>
-          <article class="feature-card">
-            <span class="feature-icon green">04</span>
-            <h3>AI Finance Assistant</h3>
-            <p>Ask questions about spending, savings, budgets, and financial patterns using your account data as context.</p>
+          <article class="mode-panel company-panel" id="mode-company" data-mode-panel="company" aria-labelledby="company-title">
+            <div class="mode-copy"><span class="mode-overline"><span>COMPANY</span><span>02</span></span><h3 id="company-title">Big picture.<br />Small details.</h3><p>A focused space for the company owner. Keep revenue, expenses, budgets and team records in perspective.</p><ul class="mode-features"><li>Review company revenue and expense reports.</li><li>Maintain member and department records.</li><li>Log salary expenses as records, not payments.</li></ul><p class="owner-note"><svg class="icon" aria-hidden="true"><use href="#icon-check" /></svg> Owner-only records. No automatic employee sharing.</p></div>
+            <div class="mode-finance company-ledger" role="group" aria-label="Illustrative company ledger: revenue 50,000 rupees, expenses 20,400, recorded difference 29,600. Software expense 2,400 in Operations and salary expense 18,000.">
+              <div class="ledger-topline"><span><i class="ledger-light" aria-hidden="true"></i> Company overview</span><span>OCT ’26 / SAMPLE</span></div>
+              <div class="company-revenue"><span>Recorded revenue</span><strong><small>₹</small> 50,000</strong><svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></div>
+              <div class="company-totals"><div><span>Expenses / ₹</span><strong>20,400</strong></div><div><span>Recorded difference / ₹</span><strong>29,600</strong></div></div>
+              <div class="company-records"><div class="ledger-categories-title"><span>The details behind the total</span><span>2 ENTRIES</span></div><div class="record-row"><span class="record-icon"><svg class="icon" aria-hidden="true"><use href="#icon-building" /></svg></span><div><strong>Software</strong><span>2 Oct · Operations</span></div><strong>− 2,400</strong></div><div class="record-row"><span class="record-icon"><svg class="icon" aria-hidden="true"><use href="#icon-income" /></svg></span><div><strong>Salary entry</strong><span>1 Oct · Design</span></div><strong>− 18,000</strong></div></div>
+              <div class="owner-strip"><svg class="icon" aria-hidden="true"><use href="#icon-check" /></svg><span>Account-owner access · manual records · ₹</span></div>
+            </div>
           </article>
         </div>
+        <p class="mode-status" data-mode-status role="status" aria-live="polite">Two illustrative record spaces. Sample data, with separate personal and company ledgers.</p>
       </section>
 
       <section class="scroll-showcase" id="feature-tour" data-scroll-showcase aria-labelledby="tour-title">
         <div class="showcase-sticky">
+          <span class="story-watermark" aria-hidden="true">IN<br />VIEW.</span>
           <div class="showcase-copy">
-            <p class="eyebrow">Scroll tour</p>
-            <h2 id="tour-title">Watch Expenzo move through the workflow.</h2>
-            <div class="feature-steps" aria-label="Expenzo feature walkthrough">
-              <article class="feature-step is-active" data-step>
-                <span>01</span>
-                <h3>Dashboard</h3>
-                <p>Start with a clear balance view, month income, expenses, and recent activity.</p>
-              </article>
-              <article class="feature-step" data-step>
-                <span>02</span>
-                <h3>Transactions</h3>
-                <p>Log income or expenses, search history, and understand what changed today.</p>
-              </article>
-              <article class="feature-step" data-step>
-                <span>03</span>
-                <h3>Budgets</h3>
-                <p>Track category limits and spot when spending is moving faster than planned.</p>
-              </article>
-              <article class="feature-step" data-step>
-                <span>04</span>
-                <h3>AI Insights</h3>
-                <p>Ask the assistant what to cut, where money is going, and how to stay on plan.</p>
-              </article>
+            <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> 03 / A change of perspective</p>
+            <h2 id="tour-title">Make sense.<br /><span>Make room.</span></h2>
+            <div class="feature-steps" role="group" aria-label="Expenzo feature walkthrough">
+               <article class="feature-step is-active" id="story-step-0" data-step><span class="step-number">01</span><div><h3>Dashboard</h3><p>Take it all in. Income, expenses and your recorded difference, together in one view.</p></div><svg class="icon step-arrow" aria-hidden="true"><use href="#icon-diagonal" /></svg></article>
+              <article class="feature-step" id="story-step-1" data-step><span class="step-number">02</span><div><h3>Transactions</h3><p>Give every entry its place. Record an amount, a category, a date and a little context.</p></div><svg class="icon step-arrow" aria-hidden="true"><use href="#icon-diagonal" /></svg></article>
+              <article class="feature-step" id="story-step-2" data-step><span class="step-number">03</span><div><h3>Budgets</h3><p>A limit, not a guessing game. See what you’ve spent and how much room remains.</p></div><svg class="icon step-arrow" aria-hidden="true"><use href="#icon-diagonal" /></svg></article>
+              <article class="feature-step" id="story-step-3" data-step><span class="step-number">04</span><div><h3>Reports</h3><p>Step back. Read your period summaries and category totals from the records you enter.</p></div><svg class="icon step-arrow" aria-hidden="true"><use href="#icon-diagonal" /></svg></article>
             </div>
+            <div class="story-controls"><div class="story-step-links" role="group" aria-label="Jump to a walkthrough step"><button type="button" data-step-link="0" aria-controls="story-step-0" aria-label="Jump to Dashboard">01</button><button type="button" data-step-link="1" aria-controls="story-step-1" aria-label="Jump to Transactions">02</button><button type="button" data-step-link="2" aria-controls="story-step-2" aria-label="Jump to Budgets">03</button><button type="button" data-step-link="3" aria-controls="story-step-3" aria-label="Jump to Reports">04</button></div><span class="story-scroll-hint">A little scroll. A new view. <svg class="icon" aria-hidden="true"><use href="#icon-down" /></svg></span><span class="story-counter" data-story-counter>01 / 04</span><div class="story-progress-track" aria-hidden="true"><span class="story-progress" data-story-progress></span></div></div>
           </div>
 
-          <div class="showcase-device" aria-hidden="true">
-            <div class="showcase-phone">
-              <div class="showcase-screen">
-                <div class="screen-stack">
-                  <div class="tour-screen dashboard-screen">
-                    <div class="tour-top">
-                      <span>Dashboard</span>
-                      <strong>INR 84,250</strong>
+          <figure class="showcase-device" aria-labelledby="tour-preview-caption">
+            <div class="showcase-halo" aria-hidden="true"><span class="halo-inner"></span><span class="halo-coordinate">EX / FOUR WAYS TO SEE</span></div>
+            <div class="showcase-phone" data-phone aria-hidden="true">
+              <span class="phone-key key-volume-up"></span><span class="phone-key key-volume-down"></span><span class="phone-key key-power"></span><span class="phone-antenna antenna-top"></span><span class="phone-antenna antenna-bottom"></span><span class="phone-speaker"></span><div class="camera-punch"><i class="camera-lens"></i></div>
+              <div class="showcase-screen"><div class="screen-stack">
+                <div class="tour-screen dashboard-screen is-active" data-tour-screen><img class="app-screenshot" src="./assets/expenzo-dashboard.png?v=681dce069aff" alt="" width="1206" height="2622" />
+                  <div class="app-ui">
+                    <div class="status-bar"><span>9:41</span><div><svg class="icon"><use href="#icon-signal" /></svg><svg class="icon"><use href="#icon-wifi" /></svg><svg class="icon battery-icon"><use href="#icon-battery" /></svg></div></div>
+                    <div class="app-body">
+                      <div class="app-heading"><div><span class="app-kicker">Personal / October 2026</span><h3>Your overview.</h3></div><span class="app-avatar">A</span></div>
+                       <div class="balance-panel"><div class="balance-label"><span>October recorded difference</span><svg class="icon"><use href="#icon-diagonal" /></svg></div><strong class="money-amount"><span>₹</span> 25,250<span class="money-decimal">.00</span></strong><span class="balance-period">1–6 October · recorded transactions</span><div class="balance-breakdown"><div><span>Income</span><strong>+ 38,000</strong></div><div><span>Expenses</span><strong>− 12,750</strong></div></div></div>
+                       <div class="app-chart"><div class="app-section-heading"><strong>Where it went</strong><span>₹ / October</span></div><div class="mini-bars"><div style="--bar-height: 100%"><i></i><span>Housing</span></div><div style="--bar-height: 31.25%"><i></i><span>Shopping</span></div><div style="--bar-height: 15.625%"><i></i><span>Food</span></div><div style="--bar-height: 12.5%"><i></i><span>Transport</span></div></div></div>
+                      <div class="app-section-heading"><strong>Recent activity</strong><span class="app-small-label">Sample</span></div>
+                      <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-bag" /></svg></span><div><strong>Shopping</strong><span>6 Oct · Shopping</span></div><strong class="transaction-amount">− 2,500</strong></div>
+                      <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-metro" /></svg></span><div><strong>Metro pass</strong><span>4 Oct · Transport</span></div><strong class="transaction-amount">− 1,000</strong></div>
                     </div>
-                    <div class="tour-balance"></div>
-                    <div class="tour-bars">
-                      <i style="height: 46%"></i>
-                      <i style="height: 72%"></i>
-                      <i style="height: 58%"></i>
-                      <i style="height: 88%"></i>
-                    </div>
-                  </div>
-                  <div class="tour-screen transactions-screen">
-                    <div class="tour-top">
-                      <span>Transactions</span>
-                      <strong>Today</strong>
-                    </div>
-                    <div class="tour-list">
-                      <i></i>
-                      <i></i>
-                      <i></i>
-                      <i></i>
-                    </div>
-                  </div>
-                  <div class="tour-screen budget-screen">
-                    <div class="tour-top">
-                      <span>Budget</span>
-                      <strong>68% used</strong>
-                    </div>
-                    <div class="tour-ring"></div>
-                    <div class="tour-budget-lines">
-                      <i></i>
-                      <i></i>
-                      <i></i>
-                    </div>
-                  </div>
-                  <div class="tour-screen ai-screen">
-                    <div class="tour-top">
-                      <span>AI Chat</span>
-                      <strong>Advice</strong>
-                    </div>
-                    <div class="tour-message user-message">What should I cut?</div>
-                    <div class="tour-message bot-message">Food is trending high. Try a weekly cap first.</div>
+                    <div class="app-bottom-nav"><span class="is-current"><svg class="icon"><use href="#icon-home" /></svg>Home</span><span><svg class="icon"><use href="#icon-ledger" /></svg>Activity</span><span><svg class="icon"><use href="#icon-budget" /></svg>Budgets</span><span><svg class="icon"><use href="#icon-chart" /></svg>Reports</span></div><div class="home-indicator"></div>
                   </div>
                 </div>
-              </div>
+
+                <div class="tour-screen transactions-screen" data-tour-screen><img class="app-screenshot" src="./assets/expenzo-transactions.png?v=9c073de3dd63" alt="" width="1206" height="2622" />
+                  <div class="app-ui">
+                    <div class="status-bar"><span>9:41</span><div><svg class="icon"><use href="#icon-signal" /></svg><svg class="icon"><use href="#icon-wifi" /></svg><svg class="icon battery-icon"><use href="#icon-battery" /></svg></div></div>
+                    <div class="app-body">
+                      <div class="app-heading"><div><span class="app-kicker">Personal / 1–6 October 2026</span><h3>Every entry.</h3></div><span class="app-heading-icon"><svg class="icon"><use href="#icon-ledger" /></svg></span></div>
+                      <div class="app-filter"><span class="selected">All entries</span><span>Income</span><span>Expenses</span></div>
+                       <div class="transaction-summary"><div><span>Income / ₹</span><strong>38,000</strong></div><div><span>Expenses / ₹</span><strong>12,750</strong></div></div>
+                      <div class="app-section-heading"><strong>October activity</strong><span>5 entries</span></div>
+                      <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-bag" /></svg></span><div><strong>Shopping</strong><span>6 Oct · Shopping</span></div><strong class="transaction-amount">− 2,500</strong></div>
+                      <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-metro" /></svg></span><div><strong>Metro pass</strong><span>4 Oct · Transport</span></div><strong class="transaction-amount">− 1,000</strong></div>
+                      <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-food" /></svg></span><div><strong>Groceries</strong><span>3 Oct · Food</span></div><strong class="transaction-amount">− 1,250</strong></div>
+                      <div class="app-transaction"><span class="transaction-symbol"><svg class="icon"><use href="#icon-building" /></svg></span><div><strong>Rent</strong><span>2 Oct · Housing</span></div><strong class="transaction-amount">− 8,000</strong></div>
+                      <div class="app-transaction"><span class="transaction-symbol income-symbol"><svg class="icon"><use href="#icon-income" /></svg></span><div><strong>Salary</strong><span>1 Oct · Income</span></div><strong class="transaction-amount positive">+ 38,000</strong></div>
+                       <span class="app-data-note">Manual records. A clearer picture.<br />Sample amounts in Indian rupees.</span>
+                    </div>
+                    <div class="app-bottom-nav"><span><svg class="icon"><use href="#icon-home" /></svg>Home</span><span class="is-current"><svg class="icon"><use href="#icon-ledger" /></svg>Activity</span><span><svg class="icon"><use href="#icon-budget" /></svg>Budgets</span><span><svg class="icon"><use href="#icon-chart" /></svg>Reports</span></div><div class="home-indicator"></div>
+                  </div>
+                </div>
+
+                <div class="tour-screen budget-screen" data-tour-screen><img class="app-screenshot" src="./assets/expenzo-budget.png?v=8d97dbd5281c" alt="" width="1206" height="2622" />
+                  <div class="app-ui">
+                    <div class="status-bar"><span>9:41</span><div><svg class="icon"><use href="#icon-signal" /></svg><svg class="icon"><use href="#icon-wifi" /></svg><svg class="icon battery-icon"><use href="#icon-battery" /></svg></div></div>
+                    <div class="app-body">
+                      <div class="app-heading"><div><span class="app-kicker">Personal / October 2026</span><h3>A little room.</h3></div><span class="app-heading-icon"><svg class="icon"><use href="#icon-budget" /></svg></span></div>
+                       <div class="budget-overview"><span>Remaining across 3 category budgets</span><strong><small>₹</small> 1,250</strong><span>Monthly limits · spending as of 6 October</span><svg class="icon"><use href="#icon-diagonal" /></svg></div>
+                      <div class="app-section-heading"><strong>Your saved budgets</strong><span>October</span></div>
+                       <div class="app-budget"><div><strong>Food</strong><span>₹1,250 / ₹2,000</span></div><div class="budget-meter"><i style="width: 62.5%"></i></div><p><b>₹750</b> remaining</p></div>
+                       <div class="app-budget"><div><strong>Shopping</strong><span>₹2,500 / ₹3,000</span></div><div class="budget-meter"><i style="width: 83.333%"></i></div><p><b>₹500</b> remaining</p></div>
+                      <div class="app-budget budget-at-limit"><div><strong>Housing</strong><span>8,000 / 8,000</span></div><div class="budget-meter"><i style="width: 100%"></i></div><p>Monthly limit reached</p></div>
+                       <span class="app-data-note">Transport: ₹1,000 spent.<br />No saved budget for this category.</span>
+                    </div>
+                    <div class="app-bottom-nav"><span><svg class="icon"><use href="#icon-home" /></svg>Home</span><span><svg class="icon"><use href="#icon-ledger" /></svg>Activity</span><span class="is-current"><svg class="icon"><use href="#icon-budget" /></svg>Budgets</span><span><svg class="icon"><use href="#icon-chart" /></svg>Reports</span></div><div class="home-indicator"></div>
+                  </div>
+                </div>
+
+                <div class="tour-screen reports-screen" data-tour-screen><img class="app-screenshot" src="./assets/expenzo-statistics.png?v=73ede96747e6" alt="" width="1206" height="2622" />
+                  <div class="app-ui">
+                    <div class="status-bar"><span>9:41</span><div><svg class="icon"><use href="#icon-signal" /></svg><svg class="icon"><use href="#icon-wifi" /></svg><svg class="icon battery-icon"><use href="#icon-battery" /></svg></div></div>
+                    <div class="app-body">
+                      <div class="app-heading"><div><span class="app-kicker">Personal / 1–6 October 2026</span><h3>The full picture.</h3></div><span class="app-heading-icon"><svg class="icon"><use href="#icon-chart" /></svg></span></div>
+                       <div class="app-report-ring"><div><span>Total expenses</span><strong><small>₹</small> 12,750</strong><span>October to date</span></div></div>
+                       <div class="app-section-heading"><strong>Expense categories</strong><span>₹</span></div>
+                      <div class="app-category"><span><i class="category-dot dot-rent"></i>Housing</span><strong>8,000</strong></div>
+                      <div class="app-category"><span><i class="category-dot dot-shopping"></i>Shopping</span><strong>2,500</strong></div>
+                      <div class="app-category"><span><i class="category-dot dot-food"></i>Food</span><strong>1,250</strong></div>
+                      <div class="app-category"><span><i class="category-dot dot-transport"></i>Transport</span><strong>1,000</strong></div>
+                       <div class="report-summary"><div><span>Income / ₹</span><strong>38,000</strong></div><div><span>Recorded difference / ₹</span><strong>25,250</strong></div></div>
+                    </div>
+                    <div class="app-bottom-nav"><span><svg class="icon"><use href="#icon-home" /></svg>Home</span><span><svg class="icon"><use href="#icon-ledger" /></svg>Activity</span><span><svg class="icon"><use href="#icon-budget" /></svg>Budgets</span><span class="is-current"><svg class="icon"><use href="#icon-chart" /></svg>Reports</span></div><div class="home-indicator"></div>
+                  </div>
+                </div>
+              </div></div>
             </div>
-          </div>
+             <figcaption id="tour-preview-caption"><span class="caption-dot" aria-hidden="true"></span> Illustrative Expenzo interface preview.<br />The four screens use the same sample personal ledger.</figcaption>
+          </figure>
+        </div>
+      </section>
+      <section class="data-section" id="insights" aria-labelledby="insights-title">
+        <div class="data-inner section-width">
+          <div class="section-rail" data-reveal><p class="eyebrow">04 / The detail is the difference</p><span>SAMPLE PERSONAL LEDGER / 1–6 OCTOBER 2026</span></div>
+          <div class="data-heading" data-reveal><h2 id="insights-title">Every rupee.<br />A reason.</h2><p>A total tells you how much.<br />The breakdown tells you where.<br /><span>No forecast. Just your recorded activity.</span></p></div>
+          <figure class="data-composition" data-reveal aria-labelledby="data-caption">
+             <div class="data-total"><div><span>RECORDED EXPENSES</span><strong><small>₹</small> 12,750<span>.00</span></strong></div><svg class="icon data-total-arrow" aria-hidden="true"><use href="#icon-down" /></svg></div>
+            <div class="data-bands" aria-hidden="true"><div class="housing-segment"><span>01</span></div><div class="shopping-segment"><span>02</span></div><div class="food-segment"><span>03</span></div><div class="transport-segment"><span>04</span></div></div>
+             <figcaption id="data-caption"><dl class="data-legend"><div><dt><span>01</span> Housing</dt><dd><small>₹</small> 8,000</dd></div><div><dt><span>02</span> Shopping</dt><dd><small>₹</small> 2,500</dd></div><div><dt><span>03</span> Food</dt><dd><small>₹</small> 1,250</dd></div><div><dt><span>04</span> Transport</dt><dd><small>₹</small> 1,000</dd></div></dl><div class="data-equation"><span>THE RECORDED DIFFERENCE</span><p><b>38,000</b> income <span>−</span> <b>12,750</b> expenses <span>=</span> <b>25,250</b> recorded difference</p><span>ALL AMOUNTS IN INDIAN RUPEES</span></div></figcaption>
+          </figure>
         </div>
       </section>
 
-      <section class="section mode-section" id="modes" aria-labelledby="modes-title">
-        <div class="section-heading compact">
-          <p class="eyebrow">Two focused modes</p>
-          <h2 id="modes-title">Personal money and company finance stay distinct.</h2>
+      <section class="access-section section-width" id="get-access" aria-labelledby="access-title">
+        <div class="access-copy">
+          <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> 05 / Get a little closer</p>
+           <h2 id="access-title">A clearer view.<br /><span>Request early access.</span></h2>
+           <p class="access-description">Expenzo is a pre-release native app for manual personal spending and company records. Leave an email for a personal follow-up when the Android APK becomes available.</p>
+           <p class="access-expectation">No APK is available for download today. This request does not create an account, start a download or guarantee delivery timing.</p>
+          <div class="access-follow-up"><svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg><span>One email address.<br />A personal follow-up from the publisher.</span></div>
         </div>
-
-        <div class="mode-grid">
-          <article class="mode-panel personal-panel">
-            <div class="mode-header">
-              <span>Personal</span>
-              <strong>For everyday finance</strong>
-            </div>
-            <ul>
-              <li>Personal dashboard with balance, income, and expenses.</li>
-              <li>Category budgets for food, transport, bills, shopping, and more.</li>
-              <li>Stats, transaction history, profile, settings, themes, and backup tools.</li>
-            </ul>
-          </article>
-
-          <article class="mode-panel company-panel">
-            <div class="mode-header">
-              <span>Company</span>
-              <strong>For business operations</strong>
-            </div>
-            <ul>
-              <li>Company dashboard with revenue, expenses, and cash flow.</li>
-              <li>Team management, department-aware transactions, and company reports.</li>
-              <li>Company profile, billing, subscription, settings, and business budgets.</li>
-            </ul>
-          </article>
-        </div>
+        <form id="access-request" action="https://formsubmit.co/pratikchittroda@gmail.com" method="POST" data-state="idle" aria-labelledby="access-form-title" aria-describedby="access-request-note">
+           <div class="access-form-heading"><span class="access-form-kicker">EXPENZO / EARLY ACCESS</span><h3 id="access-form-title">Request early access</h3><p id="access-request-note">Only your email is needed; the publisher will contact you if access becomes available.</p></div>
+          <div class="access-field"><label for="access-email">Email address</label><input id="access-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" required aria-describedby="access-email-hint access-privacy" /><p class="access-hint" id="access-email-hint">Only your email is needed for an APK access request.</p></div>
+          <div class="access-honey" aria-hidden="true"><label for="access-company">Leave this field empty</label><input id="access-company" name="_honey" type="text" tabindex="-1" autocomplete="off" /></div>
+          <input type="hidden" name="_subject" value="Expenzo APK access request" />
+          <input type="hidden" name="_template" value="table" />
+          <p class="access-privacy" id="access-privacy">FormSubmit processes your email solely for APK access follow-up. <a href="./privacy.html">Privacy &amp; data</a></p>
+           <button class="button primary access-button" id="get-access-button" type="submit" disabled><span data-access-button-label>Request early access</span></button>
+          <p class="access-status" id="access-status" role="status" aria-live="polite" aria-atomic="true">Nothing has been sent yet.</p>
+          <p class="access-manual">Prefer to ask directly? <a href="mailto:pratikchittroda@gmail.com?subject=Expenzo%20APK%20access%20request">Email the publisher <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a></p>
+          <noscript><p class="access-noscript">The on-page request needs JavaScript. To request access manually, <a href="mailto:pratikchittroda@gmail.com?subject=Expenzo%20APK%20access%20request">email pratikchittroda@gmail.com</a>. The link opens your email app; you must send the message yourself. Nothing is sent automatically.</p></noscript>
+        </form>
       </section>
 
-      <section class="section insight-section" id="insights" aria-labelledby="insights-title">
-        <div class="insight-copy">
-          <p class="eyebrow">Built-in intelligence</p>
-          <h2 id="insights-title">Ask better finance questions without leaving the app.</h2>
-          <p>
-            Expenzo includes an AI chat surface for finance-only guidance. It can help summarize spending, identify expensive categories, and suggest practical next steps.
-          </p>
-          <div class="question-list">
-            <span>How can I reduce spending this month?</span>
-            <span>What category is costing me the most?</span>
-            <span>Am I staying within budget?</span>
+      <section class="availability-section section-width" id="availability" aria-labelledby="availability-title">
+         <div class="availability-intro" data-reveal><p class="eyebrow">06 / A clear idea. A clear scope.</p><h2 id="availability-title">The small print.<br /><span>In plain sight.</span></h2><div class="availability-status"><span class="status-dot" aria-hidden="true"></span> PRE-RELEASE / ANDROID APK NOT YET AVAILABLE</div><p>This is Expenzo’s product website, with illustrative interfaces and sample data. The native app is for manual personal and company finance records, budgets and reports, with optional AI assistance. Request early access for a personal email follow-up; there is no published APK or working browser finance app here.</p><a class="text-link access-details-link" href="#get-access">Request early access <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a></div>
+        <div class="availability-details" data-reveal>
+          <dl class="release-ledger"><div><dt><span class="release-status status-enabled" aria-hidden="true"></span> The configured core</dt><dd>In the native app: email/password sign-in through Firebase Authentication and finance records in Cloud Firestore with account-owner rules. Google sign-in is not enabled.</dd></div><div><dt><span class="release-status status-enabled" aria-hidden="true"></span> Hosted AI &amp; local insights</dt><dd>AI chat, category suggestions and receipt-text processing use hosted AI. Budget insights run locally on your device.</dd></div><div><dt><span class="release-status status-disabled" aria-hidden="true"></span> Intentionally disabled</dt><dd>Receipt-file and profile-photo uploads, self-service account deletion, payment processing and subscription checkout remain disabled.</dd></div></dl>
+          <div class="faq" aria-labelledby="faq-title"><h3 class="faq-heading" id="faq-title">A few good questions.</h3>
+             <details><summary>How can I request early access?<span class="faq-plus" aria-hidden="true"></span></summary><div><p><a href="#get-access">Request early access with your email address.</a> The publisher will personally email you if the APK becomes available. There is no automatic download or guaranteed delivery time. This website is a product preview, not a working browser finance app, and requesting access does not create an account.</p></div></details>
+            <details><summary>Does it connect to my bank?<span class="faq-plus" aria-hidden="true"></span></summary><div><p>No bank links or money transfers. The core is about records you enter manually. A company salary entry is an expense record, not a payroll payment.</p></div></details>
+            <details><summary>Who can see company records?<span class="faq-plus" aria-hidden="true"></span></summary><div><p>The company account owner. Firestore rules restrict records to the account owner; company records are not automatically shared with employees. <a href="./privacy.html">Read about privacy and data.</a></p></div></details>
+            <details><summary>How does account deletion work?<span class="faq-plus" aria-hidden="true"></span></summary><div><p>Contact <a href="mailto:pratikchittroda@gmail.com">pratikchittroda@gmail.com</a>. Support verifies ownership and processes deletion manually. There is no guaranteed response or completion deadline. <a href="./account-deletion.html">Prepare a deletion request.</a></p></div></details>
           </div>
         </div>
-        <div class="assistant-preview" aria-label="AI assistant preview">
-          <div class="assistant-line user">What should I cut first?</div>
-          <div class="assistant-line bot">
-            Your highest variable spend is food. Start with a weekly cap, then review transport next.
-          </div>
-          <div class="assistant-pulse"></div>
-        </div>
-      </section>
-
-      <section class="section security-section" id="security" aria-labelledby="security-title">
-        <div class="section-heading compact">
-          <p class="eyebrow">Account-ready</p>
-          <h2 id="security-title">Designed around user identity, settings, and continuity.</h2>
-        </div>
-        <div class="security-grid">
-          <div>
-            <strong>Firebase Authentication</strong>
-            <span>Email, password, and Google sign-in flows are part of the app.</span>
-          </div>
-          <div>
-            <strong>Profile Customization</strong>
-            <span>Personal and company profiles include editable details and profile images.</span>
-          </div>
-          <div>
-            <strong>Theme Control</strong>
-            <span>Users can switch between visual themes and dark mode preferences.</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="download-section" id="download" aria-labelledby="download-title">
-        <div>
-          <p class="eyebrow">Product information</p>
-          <h2 id="download-title">Expenzo brings personal budgets and company finance into one clean app experience.</h2>
-        </div>
-        <a class="button primary" href="#top">Back to Top</a>
       </section>
     </main>
-
     <footer class="site-footer">
-      <div class="brand footer-brand">
-        <img src="../assets/logo.png" alt="" />
-        <span>Expenzo</span>
+      <div class="footer-inner section-width">
+         <div class="footer-top" data-reveal><div><p class="eyebrow">A little clarity goes a long way</p><h2>Good with money.<br /><span>Great with perspective.</span></h2></div><a class="button footer-action access-footer-link" href="#get-access">Request early access <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a></div>
+        <div class="footer-wordmark" role="img" aria-label="Expenzo"><span aria-hidden="true">E</span><span aria-hidden="true">X</span><span aria-hidden="true">P</span><span aria-hidden="true">E</span><span aria-hidden="true">N</span><span aria-hidden="true">Z</span><span aria-hidden="true">O</span></div>
+        <div class="footer-bottom"><div class="footer-publisher"><img src="./assets/expenzo-logo.png?v=850d443b0ea5" alt="" width="30" height="30" /><span>© 2026 Expenzo<br />Personal money. Company records.</span></div><nav aria-label="Legal and support"><a href="./privacy.html">Privacy &amp; data</a><a href="./account-deletion.html">Account deletion</a><a href="mailto:pratikchittroda@gmail.com">Contact Expenzo <svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a></nav><a class="footer-back" href="#top" aria-label="Back to top"><svg class="icon" aria-hidden="true"><use href="#icon-diagonal" /></svg></a></div>
+        <p class="footer-preview">An informational website. Illustrative UI and sample Indian-rupee data throughout.</p>
       </div>
-      <p>Personal finance. Company clarity. AI-assisted decisions.</p>
     </footer>
-
-    <script src="./script.js"></script>
+    <script src="./experience.js?v=0a407e53434f"></script>
+    <script src="./script.js?v=78710d0bccf7"></script>
+    <script src="./public-config.js?v=ad7bae89cc7c"></script>
+    <script src="./access.js?v=94b4e3d5a189"></script>
+    <script src="./access-header.js?v=d89c8ac95b2f"></script>
   </body>
 </html>

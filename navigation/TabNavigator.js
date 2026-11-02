@@ -29,6 +29,8 @@ export default function TabNavigator() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Tab.Navigator
+        initialRouteName="Home"
+        backBehavior="history"
         tabBar={(props) => (
           <OptimizedTabBar
             {...props}
@@ -40,7 +42,7 @@ export default function TabNavigator() {
         screenOptions={tabScreenOptions}
       >
         <Tab.Screen name="Home" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
-        <Tab.Screen name="Transactions" component={TransactionsScreen} options={{ tabBarLabel: 'Transactions' }} />
+        <Tab.Screen name="Transactions" component={TransactionsScreen} options={{ tabBarLabel: 'History', tabBarAccessibilityLabel: 'Transactions' }} />
         <Tab.Screen name="AddTransaction" component={AddTransactionScreen} options={{ tabBarLabel: 'Add' }} />
         <Tab.Screen name="Budget" component={BudgetScreen} options={{ tabBarLabel: 'Budget' }} />
         <Tab.Screen name="Stats" component={StatsScreen} options={{ tabBarLabel: 'Stats' }} />

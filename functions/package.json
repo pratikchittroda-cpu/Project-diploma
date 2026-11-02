@@ -3,15 +3,28 @@
   "private": true,
   "main": "index.js",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "scripts": {
-    "serve": "firebase emulators:start --only functions",
-    "deploy": "firebase deploy --only functions"
+    "test": "node --test test/*.test.cjs",
+    "test:rules": "firebase emulators:exec --config ../firebase.json --project demo-expenzo --only firestore,storage 'node --test ../tests/backend-rules.test.cjs'",
+    "serve": "firebase emulators:start --project demo-expenzo --only functions,firestore,auth,storage"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.21.2",
-    "firebase-functions": "^6.4.0"
+    "express": "^5.2.1",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.14.0",
+    "firebase-tools": "^15.32.1"
+  },
+  "overrides": {
+    "@fastify/busboy": "^3.2.1",
+    "gaxios@6": { "uuid": "^11.1.1" },
+    "@firebase/firestore": { "@grpc/grpc-js": "1.14.5" },
+    "@google-cloud/pubsub@5.3.1": { "@opentelemetry/core": "2.8.0" },
+    "get-uri@6.0.5": { "basic-ftp": "6.2.2" }
   }
 }

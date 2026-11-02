@@ -1,3 +1,5 @@
+import { confirmationButtons } from '../hooks/useThemedMessageBox';
+
 class MessageService {
   constructor() {
     this.messageBoxRef = null;
@@ -58,18 +60,8 @@ class MessageService {
       type: 'confirm',
       title,
       message,
-      buttons: [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: onCancel,
-        },
-        {
-          text: 'Confirm',
-          onPress: onConfirm,
-        },
-      ],
       ...options,
+      buttons: confirmationButtons(onConfirm, onCancel, options),
     });
   }
 
@@ -79,19 +71,8 @@ class MessageService {
       title,
       message,
       showInput: true,
-      buttons: [
-        {
-          text: options.cancelButtonText || 'Cancel',
-          style: 'cancel',
-          onPress: onCancel,
-        },
-        {
-          text: options.confirmButtonText || 'OK',
-          color: options.confirmButtonColor,
-          onPress: onConfirm,
-        },
-      ],
       ...options,
+      buttons: confirmationButtons(onConfirm, onCancel, { confirmButtonText: 'OK', ...options }),
     });
   }
 

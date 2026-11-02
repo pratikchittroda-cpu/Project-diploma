@@ -1,228 +1,104 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import transactionService from '../services/transactionService';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { auth } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useAuth } from '../contexts/AuthContext';
+import transactionService from '../services/transactionService';
+import { useFinanceData } from './financeData';
+import { periodRange, summarize, daysBetween } from '../utils/finance';
+import { subscribeFinance } from '../utils/financeEvents';
 
-export const useTransactions = (pageSize = 20) => {
-  const { user } = useAuth();
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [error, setError] = useState(null);
-  const lastDocRef = useRef(null);
-  const isLoadingRef = useRef(false);
-
-  const loadTransactions = useCallback(async (refresh = false) => {
-    if (!user) {
-      setTransactions([]);
-      setHasMore(true);
-      lastDocRef.current = null;
-      setLoading(false);
-      setRefreshing(false);
-      return;
+export const useTransactions = () => {
+  const data = useFinanceData('transactions');
+  const { uid, refresh } = data;
+  const mutate = useCallback(async (method, ...args) => {
+    if (!uid || auth?.currentUser?.uid !== uid) return { success: false, error: 'Please sign in again' };
+    const session = auth.currentUser;
+    const result = await transactionService[method](...args);
+    if (auth.currentUser !== session) return { ...result, stale: true, error: 'Account changed' };
+    // A saved write remains successful if its refresh fails; consumers can show
+    // refreshError without encouraging the user to duplicate the write.
+    if (result.success) {
+      const reloaded = await refresh();
+      if (auth.currentUser !== session) return { ...result, stale: true, error: 'Account changed' };
+      if (!reloaded.success) return { ...result, refreshError: reloaded.error };
     }
-
-    if (isLoadingRef.current && !refresh) return;
-    isLoadingRef.current = true;
-
-    if (refresh) {
-      setRefreshing(true);
-      lastDocRef.current = null;
-      setHasMore(true);
-    } else {
-      setLoading(true);
-    }
-
-    try {
-      // Use ref to get the current lastDoc value
-      const currentLastDoc = refresh ? null : lastDocRef.current;
-
-      const result = await transactionService.getUserTransactions(
-        user.uid,
-        pageSize,
-        currentLastDoc
-      );
-
-      if (result.success) {
-        if (refresh) {
-          setTransactions(result.transactions);
-        } else {
-          setTransactions(prevTransactions => {
-            const existingIds = new Set(prevTransactions.map(transaction => transaction.id));
-            const nextTransactions = result.transactions.filter(transaction => !existingIds.has(transaction.id));
-            return [...prevTransactions, ...nextTransactions];
-          });
-        }
-        lastDocRef.current = result.lastDoc;
-        setHasMore(result.hasMore);
-        setError(null);
-      } else {
-        setError(result.error);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      isLoadingRef.current = false;
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [user?.uid, pageSize]);
-
-  const addTransaction = useCallback(async (transactionData) => {
-    if (!user) return { success: false, error: 'No user logged in' };
-
-    try {
-      const result = await transactionService.addTransaction(user.uid, transactionData);
-      if (result.success) {
-        // Refresh transactions to include the new one
-        await loadTransactions(true);
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, [user?.uid, loadTransactions]);
-
-  const updateTransaction = useCallback(async (transactionId, updateData) => {
-    try {
-      const result = await transactionService.updateTransaction(transactionId, updateData);
-      if (result.success) {
-        // Update local state
-        setTransactions(prev =>
-          prev.map(transaction =>
-            transaction.id === transactionId
-              ? { ...transaction, ...updateData }
-              : transaction
-          )
-        );
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, []);
-
-  const deleteTransaction = useCallback(async (transactionId) => {
-    try {
-      const result = await transactionService.deleteTransaction(transactionId);
-      if (result.success) {
-        // Remove from local state
-        setTransactions(prev =>
-          prev.filter(transaction => transaction.id !== transactionId)
-        );
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, []);
-
-  const loadMore = useCallback(() => {
-    if (!loading && hasMore) {
-      loadTransactions(false);
-    }
-  }, [loading, hasMore, loadTransactions]);
-
-  const refresh = useCallback(() => {
-    loadTransactions(true);
-  }, [loadTransactions]);
-
+    return result;
+  }, [uid, refresh]);
+  const addTransaction = useCallback(fields => mutate('addTransaction', uid, fields), [mutate, uid]);
+  const updateTransaction = useCallback((id, fields) => mutate('updateTransaction', id, fields), [mutate]);
+  const deleteTransaction = useCallback(id => mutate('deleteTransaction', id), [mutate]);
   const getTransactionStats = useCallback(async () => {
-    if (!user) return { success: false, error: 'No user logged in' };
-
-    try {
-      // Get current month date range
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-      const startDate = startOfMonth.toISOString().split('T')[0];
-      const endDate = endOfMonth.toISOString().split('T')[0];
-
-      const result = await transactionService.getTransactionStats(user.uid, startDate, endDate);
-
-      if (result.success) {
-        return {
-          success: true,
-          data: {
-            totalBalance: result.stats.netAmount,
-            monthlyIncome: result.stats.totalIncome,
-            monthlyExpenses: result.stats.totalExpenses,
-            budgetUsed: 0, // This would come from budget service
-            budgetLimit: 0, // This would come from budget service
-          }
-        };
-      }
-
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      loadTransactions(true);
-    } else {
-      setTransactions([]);
-      setHasMore(true);
-      lastDocRef.current = null;
-    }
-  }, [user?.uid, loadTransactions]);
-
-  return {
-    transactions,
-    loading,
-    refreshing,
-    hasMore,
-    error,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
-    loadMore,
-    refresh,
-    getTransactionStats
-  };
+    if (!data.complete || data.error) return { success: false, error: data.error || 'Ledger is still loading' };
+    const stats = summarize(data.rows, periodRange('Monthly'));
+    return { success: true, data: { totalBalance: stats.netAmount, monthlyIncome: stats.totalIncome, monthlyExpenses: stats.totalExpenses } };
+  }, [data.complete, data.error, data.rows]);
+  return { transactions: data.rows, loading: data.loading, refreshing: data.refreshing, error: data.error,
+    complete: data.complete, refresh, addTransaction, updateTransaction, deleteTransaction, getTransactionStats,
+    hasMore: false, loadMore: async () => ({ success: true, complete: data.complete }) };
 };
 
-export const useTransactionStats = (startDate, endDate) => {
+// History is a separate bounded query; never use these pages for ledger totals.
+export function useTransactionHistory(pageSize = 20) {
   const { user } = useAuth();
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const loadStats = useCallback(async () => {
-    if (!user || !startDate || !endDate) return;
-
-    setLoading(true);
-    try {
-      const result = await transactionService.getTransactionStats(
-        user.uid,
-        startDate,
-        endDate
-      );
-
-      if (result.success) {
-        setStats(result.stats);
-        setError(null);
-      } else {
-        setError(result.error);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, startDate, endDate]);
-
+  const uid = user?.uid;
+  const generation = useRef(0);
+  const currentUid = useRef(uid);
+  currentUid.current = uid;
+  const cursor = useRef(null);
+  const pending = useRef(null);
+  const [state, setState] = useState({ user, uid, rows: [], loading: true, error: null, hasMore: true });
+  const load = useCallback((reset = false) => {
+    if (!uid || auth?.currentUser !== user) return Promise.resolve({ success: false, error: 'Please sign in again' });
+    if (pending.current && !reset) return pending.current;
+    const revision = ++generation.current;
+    const active = () => generation.current === revision && currentUid.current === uid && auth.currentUser === user;
+    if (reset) cursor.current = null;
+    const lastDoc = cursor.current;
+    setState(previous => ({ ...previous, user, uid, loading: true, error: null, ...(reset ? { rows: [], hasMore: true } : {}) }));
+    const promise = Promise.resolve().then(() => transactionService.getUserTransactions(uid, pageSize, lastDoc)).then(result => {
+      if (!active()) return { success: false, stale: true };
+      if (!result.success) throw new Error(result.error);
+      cursor.current = result.lastDoc;
+      setState(previous => {
+        const ids = new Set(reset ? [] : previous.rows.map(t => t.id));
+        return { user, uid, rows: [...(reset ? [] : previous.rows), ...result.transactions.filter(t => { if (ids.has(t.id)) return false; ids.add(t.id); return true; })], loading: false, error: null, hasMore: result.hasMore };
+      });
+      return result;
+    }).catch(error => {
+      if (!active()) return { success: false, stale: true, error: 'Account changed' };
+      setState(previous => ({ ...previous, loading: false, error: error.message }));
+      return { success: false, error: error.message };
+    }).finally(() => { if (active()) pending.current = null; });
+    pending.current = promise;
+    return promise;
+  }, [uid, user, pageSize]);
   useEffect(() => {
-    loadStats();
-  }, [loadStats]);
+    cursor.current = null;
+    pending.current = null;
+    setState({ user, uid, rows: [], loading: !!uid, error: null, hasMore: true });
+    if (uid) load(true);
+    const unsubscribe = auth ? onAuthStateChanged(auth, session => {
+      if (session === user) return;
+      generation.current++; pending.current = null; cursor.current = null;
+      setState({ user: null, uid: null, rows: [], loading: false, error: null, hasMore: true });
+    }) : () => {};
+    return () => { unsubscribe(); generation.current++; pending.current = null; };
+  }, [uid, user, load]);
+  useEffect(() => subscribeFinance((changedUid, resource) => {
+    if (changedUid === uid && resource === 'transactions') return load(true);
+  }), [uid, load]);
+  const refresh = useCallback(() => load(true), [load]);
+  const loadMore = useCallback(() => state.hasMore ? load(false) : Promise.resolve({ success: true }), [load, state.hasMore]);
+  return { ...(state.user === user && auth?.currentUser === user ? state : { rows: [], loading: !!uid, error: null, hasMore: true }), refresh, loadMore };
+}
 
-  return {
-    stats,
-    loading,
-    error,
-    refresh: loadStats
-  };
+export const useTransactionStats = (startDate, endDate) => {
+  const ledger = useTransactions();
+  let stats = null;
+  let error = ledger.error;
+  if (ledger.complete && !error && startDate && endDate) {
+    try { stats = summarize(ledger.transactions, { start: startDate, end: endDate, days: Math.max(1, daysBetween(startDate, endDate)) }); }
+    catch (caught) { error = caught.message; }
+  }
+  return { stats, loading: ledger.loading, error, refresh: ledger.refresh };
 };

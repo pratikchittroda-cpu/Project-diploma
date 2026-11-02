@@ -5,6 +5,9 @@
   },
   "build": {
     "development": {
+      "node": "22.23.3",
+      "environment": "development",
+      "env": {"APP_VARIANT": "development", "EXPO_NO_DOTENV": "1"},
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -12,6 +15,9 @@
       }
     },
     "preview": {
+      "node": "22.23.3",
+      "environment": "preview",
+      "env": {"APP_VARIANT": "preview", "EXPO_NO_DOTENV": "1"},
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -21,7 +27,11 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "node": "22.23.3",
+      "environment": "production",
+      "env": {"APP_VARIANT": "production", "EXPO_NO_DOTENV": "1"},
+      "autoIncrement": true,
+      "android": {"buildType": "app-bundle"}
     }
   },
   "submit": {

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f3f5ff">
+  <title>Expenzo — Request account deletion</title>
+  <link rel="icon" href="./assets/expenzo-logo.png?v=850d443b0ea5" type="image/png">
+  <link rel="preload" href="./assets/fonts/syne-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="./styles.css?v=75af10c8cfa8">
+  <script defer src="./public-config.js"></script>
+  <script defer src="./legal.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#deletion-content">Skip to account deletion</a>
+<header class="legal-header"><a class="legal-brand" href="./index.html" aria-label="Expenzo home"><img src="./assets/expenzo-logo.png?v=850d443b0ea5" alt="" width="32" height="32"><span>expenzo</span></a><nav aria-label="Page navigation"><a href="./index.html">Back to the experience ↗</a><a href="./privacy.html">Privacy &amp; data</a></nav></header>
+<main class="legal-page" id="deletion-content">
+<span class="legal-eyebrow">Expenzo / Account deletion</span>
+<h1>Your account.<br>Your choice.</h1>
+<p class="legal-description">Request Expenzo account deletion through an ownership-verified, manual support process. This is a pre-release service with no automated deletion receipt or status tracker.</p>
+<p class="configuration-warning" data-config-warning hidden>Configuration incomplete. This page prepares an email; it does not automatically submit or delete an account.</p>
+<p>In-app server deletion is unavailable in the free-tier Expenzo release. Request deletion by email using the form below. Support will verify account ownership and manually process the request.</p>
+<h2>Send a request outside the app</h2>
+<p>This form prepares an email in your own email app. It does not submit anything to this website and does not delete an account automatically. Send it from the email address registered with Expenzo. Support must verify ownership before acting. Never send a password, sign-in code, ID token, payment details or a copy of your financial ledger.</p>
+<div class="legal-aside"><p>Publisher: <strong data-config="publisherName">Expenzo</strong><br>Support: <span data-config="supportEmail">pratikchittroda@gmail.com</span><br>Handling: <span data-config="deletionRequestTimescale">Data remains until records are deleted or support processes your verified request. Requests are manual, with no guaranteed response or completion deadline in this small-group release.</span></p></div>
+<form id="deletion-request"><label for="account-email">Expenzo account email</label><input id="account-email" type="email" maxlength="254" autocomplete="email" required><label for="account-type">Account type</label><select id="account-type"><option value="personal">Personal</option><option value="company">Company</option></select><label><input id="deletion-confirm" type="checkbox" required> I want to request deletion of my Expenzo account and its associated data.</label><button id="prepare-request" class="button primary" type="submit" disabled>Prepare deletion-request email</button></form>
+<p id="request-status" role="status" aria-live="polite">Enable JavaScript to prepare an email using the form, or email pratikchittroda@gmail.com directly with subject “Expenzo account deletion”. This page has not sent a request.</p>
+<p>If an email app cannot open, send an email to the displayed support address with subject “Expenzo account deletion”, your registered email address and account type. A prepared email is not proof of submission or deletion.</p>
+<h2>What deletion removes</h2><p>After ownership verification, support will remove the account’s Firebase Authentication identity and associated Firestore profile, transactions, budgets, teams and member records. This is a manual process, not an atomic server job. Profile-photo uploads and AI records are not part of this free-tier release. Support cannot erase offline data, screenshots or exports already stored on a device.</p>
+<p>This small-group release has no guaranteed response or completion deadline. The publisher must monitor the support inbox and process verified requests. This page alone does not establish Google Play compliance. See the <a href="./privacy.html">privacy policy</a> for data handling.</p>
+</main>
+<footer class="legal-footer"><span>© 2026 Expenzo · Money. Minus the mess.</span><nav aria-label="Legal and support"><a href="./index.html">Product experience</a><a href="./privacy.html">Privacy &amp; data</a><a href="mailto:pratikchittroda@gmail.com">Contact Expenzo</a></nav></footer>
+</body></html>

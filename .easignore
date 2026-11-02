@@ -1,6 +1,6 @@
 # EAS Build Ignore File
 # This file tells EAS what NOT to upload.
-# Unlike .gitignore, we typically WANT to upload configuration files to the build server.
+# Public build values must be provisioned in the selected EAS environment.
 
 # Standard ignores
 node_modules/
@@ -18,5 +18,26 @@ dist/
 .DS_Store
 .metro-health-check*
 
-# Note: We are NOT ignoring .env, config/aiConfig.js, or config/ocrConfig.js
-# This ensures they are uploaded to the builder so the app works.
+.env*
+!.env.example
+.git/
+.claude/
+.omnirush/
+.opencode/
+.cursor/
+Project-diploma/
+reports/
+website/
+functions/
+ai-host/
+coverage/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+storage-debug.log
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
+ios/GoogleSignIn.generated.xcconfig
+**/google-services.json
+**/GoogleService-Info.plist

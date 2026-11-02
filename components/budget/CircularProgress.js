@@ -19,7 +19,8 @@ export default function CircularProgress({
 
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const clampedPercentage = Math.min(Math.max(percentage, 0), 100);
+  const validPercentage = Number.isFinite(percentage) ? Math.max(percentage, 0) : 0;
+  const clampedPercentage = Math.min(validPercentage, 100);
 
   useEffect(() => {
     if (animated) {
@@ -68,7 +69,7 @@ export default function CircularProgress({
       {showPercentage && (
         <View style={styles.textContainer}>
           <Text style={[styles.percentageText, { color: textColor, fontSize }]}>
-            {Math.round(clampedPercentage)}%
+            {Math.round(validPercentage)}%
           </Text>
         </View>
       )}

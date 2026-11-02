@@ -1,342 +1,76 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  Switch,
-  StatusBar,
-  SafeAreaView,
-  Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import React from 'react';
+import { StyleSheet, Switch, View } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import MessageService from '../../services/MessageService';
+import { AccountCard, AccountField, AccountRow, AccountScreen, AccountSection, useAccountTask } from '../../components/account/AccountPrimitives';
 
-export default function SettingsScreen({ navigation }) {
+export default function SettingsScreen({ navigation, company = false }) {
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const [settings, setSettings] = useState({
-    notifications: true,
-    emailReports: true,
-    biometricAuth: false,
-    autoBackup: true,
-    soundEffects: true,
-    hapticFeedback: true,
-  });
+  const { busy, run } = useAccountTask();
+  const toggleAppearance = () => run(async (stillMounted) => { if (stillMounted()) await toggleTheme(); });
+  const unavailable = (title, subtitle, icon) => <AccountRow key={title} title={title} subtitle={subtitle} icon={icon} disabled
+    control={<View style={styles.switchTarget}><Switch value={false} disabled accessibilityLabel={`${title}. ${subtitle}`}
+      trackColor={{ false: theme.border, true: theme.primary }} thumbColor={theme.textSecondary} ios_backgroundColor={theme.border} /></View>} />;
 
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-
-  useEffect(() => {
-    // Entrance animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 80,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  const handleSettingChange = (setting, value) => {
-    setSettings(prev => ({ ...prev, [setting]: value }));
-  };
-
-  const handleResetSettings = () => {
-    MessageService.showConfirm(
-      'Reset Settings',
-      'Are you sure you want to reset all settings to default?',
-      () => {
-        setSettings({
-          notifications: true,
-          emailReports: true,
-          biometricAuth: false,
-          autoBackup: true,
-          soundEffects: true,
-          hapticFeedback: true,
-        });
-        MessageService.showSuccess('Settings Reset', 'All settings have been reset to default values.');
-      },
-      () => { },
-      {
-        buttons: [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Reset', color: '#FF5252' }
-        ]
-      }
-    );
-  };
-
-  const renderSettingItem = (title, subtitle, icon, setting) => (
-    <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <BlurView
-        intensity={Platform.OS === 'android' ? 10 : (theme.isDarkMode ? 30 : 60)}
-        tint={theme.isDarkMode ? 'dark' : 'light'}
-        experimentalBlurMethod="none"
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Dynamic overlay for extra glass effect */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: theme.isDarkMode
-              ? 'rgba(0, 0, 0, 0.1)'
-              : (Platform.OS === 'android' ? 'rgba(255, 255, 255, 0)' : 'rgba(255, 255, 255, 0.1)')
-          }
-        ]}
-      />
-      <View style={styles.settingLeft}>
-        <View style={[styles.settingIcon, { backgroundColor: theme.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-          <Icon name={icon} size={22} color="white" />
-        </View>
-        <View style={styles.settingContent}>
-          <Text style={[styles.settingTitle, { color: 'white' }]}>{title}</Text>
-          <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
-        </View>
-      </View>
-      <Switch
-        value={settings[setting]}
-        onValueChange={(value) => handleSettingChange(setting, value)}
-        trackColor={{ false: theme.isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', true: theme.primary }}
-        thumbColor={settings[setting] ? '#fff' : '#f4f3f4'}
-      />
-    </Animated.View>
-  );
-
-  const renderSection = (title, children) => (
-    <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={[styles.sectionTitle, { color: 'white' }]}>{title}</Text>
-      {children}
-    </Animated.View>
-  );
-
-const styles = useMemo(() => createStyles(theme), [theme]);
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
-
-      {/* Background Gradient */}
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        style={styles.background}
-      />
-
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={24} color="white" />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: 'white' }]}>Settings</Text>
-          <TouchableOpacity style={styles.resetButton} onPress={handleResetSettings}>
-            <Icon name="refresh" size={24} color="white" />
-          </TouchableOpacity>
-        </Animated.View>
-
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {renderSection('Notifications', (
-            <>
-              {renderSettingItem(
-                'Push Notifications',
-                'Receive alerts for transactions and updates',
-                'bell',
-                'notifications'
-              )}
-              {renderSettingItem(
-                'Email Reports',
-                'Get weekly and monthly financial reports',
-                'email-newsletter',
-                'emailReports'
-              )}
-            </>
-          ))}
-
-          {renderSection('Security', (
-            <>
-              {renderSettingItem(
-                'Biometric Authentication',
-                'Use fingerprint or face ID to unlock',
-                'fingerprint',
-                'biometricAuth'
-              )}
-              {renderSettingItem(
-                'Auto Backup',
-                'Automatically backup data to cloud',
-                'backup-restore',
-                'autoBackup'
-              )}
-            </>
-          ))}
-
-          {renderSection('Experience', (
-            <>
-              {renderSettingItem(
-                'Sound Effects',
-                'Play sounds for app interactions',
-                'volume-high',
-                'soundEffects'
-              )}
-              {renderSettingItem(
-                'Haptic Feedback',
-                'Vibrate on button presses and gestures',
-                'vibrate',
-                'hapticFeedback'
-              )}
-            </>
-          ))}
-
-          {renderSection('Appearance', (
-            <Animated.View style={[styles.settingItem, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-              <BlurView
-                intensity={Platform.OS === 'android' ? 100 : (theme.isDarkMode ? 30 : 60)}
-                tint={theme.isDarkMode ? 'dark' : 'light'}
-                experimentalBlurMethod="none"
-                style={StyleSheet.absoluteFill}
-              />
-              {/* Dynamic overlay for extra glass effect */}
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  {
-                    backgroundColor: theme.isDarkMode
-                      ? 'rgba(0, 0, 0, 0.1)'
-                      : 'rgba(255, 255, 255, 0.1)'
-                  }
-                ]}
-              />
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: theme.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-                  <Icon name="theme-light-dark" size={22} color="white" />
-                </View>
-                <View style={styles.settingContent}>
-                  <Text style={[styles.settingTitle, { color: 'white' }]}>Dark Mode</Text>
-                  <Text style={[styles.settingSubtitle, { color: theme.isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>Switch between light and dark themes</Text>
-                </View>
-              </View>
-              <Switch
-                value={isDarkMode}
-                onValueChange={toggleTheme}
-                trackColor={{ false: theme.isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', true: theme.primary }}
-                thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
-              />
-            </Animated.View>
-          ))}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
-  );
+  return <AccountScreen title={company ? 'Company Settings' : 'Settings'} navigation={navigation}>
+    {company ? <>
+      <AccountSection title="Financial Management">
+        {unavailable('Automatic Reports', 'Scheduled report delivery is not configured in this build.', 'file-chart-outline')}
+        {unavailable('Budget Alerts', 'Automatic budget notifications are unavailable.', 'alert-circle-outline')}
+        {unavailable('Expense Approval', 'An expense-approval workflow is not available in this build.', 'check-circle-outline')}
+        {unavailable('Multi-Currency Support', 'Transactions use INR. Multiple currencies are unavailable.', 'currency-usd')}
+      </AccountSection>
+      <AccountSection title="Team & Notifications">
+        {unavailable('Employee Notifications', 'Team notification delivery is not configured.', 'account-group-outline')}
+        {unavailable('Audit Logging', 'A company audit-history service is not available in this build.', 'history')}
+      </AccountSection>
+      <AccountSection title="Data Management">
+        <AccountCard padding={16}>
+          <AccountField label="Data Retention" icon="database-outline" value="" placeholder="Not configured" editable={false}
+            helperText="This build has no automatic data-retention policy. Your data is not deleted by this setting." />
+        </AccountCard>
+        <AccountRow title="Backup Frequency" subtitle="Scheduled company backups require a configured backup service." icon="backup-restore" value="Unavailable" disabled />
+      </AccountSection>
+    </> : <>
+      <AccountSection title="Notifications">
+        {unavailable('Push Notifications', 'Transaction and update notifications are not configured in this build.', 'bell-outline')}
+        {unavailable('Email Reports', 'Scheduled weekly and monthly email reports are unavailable.', 'email-newsletter')}
+      </AccountSection>
+      <AccountSection title="Security">
+        <AccountRow title="Password & Sign-in" subtitle="Manage the password for your sign-in account" icon="shield-check-outline" tone="green"
+          onPress={() => navigation.navigate('SecuritySettings')} />
+        {unavailable('Biometric Authentication', 'Fingerprint and Face ID app unlocking are not configured.', 'fingerprint')}
+      </AccountSection>
+      <AccountSection title="Data Management">
+        {unavailable('Auto Backup', 'Automatic cloud backups are not available in this build.', 'cloud-upload-outline')}
+        <AccountRow title="Backup & Restore" subtitle="View backup and restore availability" icon="backup-restore" tone="purple"
+          onPress={() => navigation.navigate('BackupRestore')} />
+      </AccountSection>
+      <AccountSection title="Experience">
+        {unavailable('Sound Effects', 'Interaction sound effects are not available in this build.', 'volume-high')}
+        {unavailable('Haptic Feedback', 'App haptic-feedback preferences are not available in this build.', 'vibrate')}
+      </AccountSection>
+    </>}
+    <AccountSection title="Appearance">
+      <AccountRow title="Dark Mode" subtitle="Switch between light and dark themes on this device" icon="theme-light-dark" tone="gray"
+        control={<View style={styles.switchTarget}><Switch value={isDarkMode} onValueChange={toggleAppearance} disabled={busy}
+          accessibilityLabel="Dark mode" accessibilityState={{ checked: isDarkMode, disabled: busy }} hitSlop={8}
+          trackColor={{ false: theme.border, true: theme.primary }} thumbColor="#fff" ios_backgroundColor={theme.border} /></View>} />
+      <AccountRow title="Themes & Appearance" subtitle="Choose your Expenzo color palette" icon="palette-outline" tone="orange"
+        onPress={() => navigation.navigate('Themes')} />
+    </AccountSection>
+    <AccountSection title={company ? 'Company Account' : 'Privacy & Account'}>
+      {company && <>
+        <AccountRow title="Password & Sign-in" subtitle="Manage the password for your sign-in account" icon="shield-check-outline" tone="green"
+          onPress={() => navigation.navigate('SecuritySettings')} />
+        <AccountRow title="Billing & Subscription" subtitle="Subscription and payment services are unavailable in this build." icon="credit-card-outline" tone="purple"
+          onPress={() => navigation.navigate('BillingSubscription')} />
+      </>}
+      <AccountRow title="Privacy & Data" subtitle="Data use, support and account-deletion resources" icon="shield-lock-outline"
+        onPress={() => navigation.navigate('Privacy')} />
+    </AccountSection>
+  </AccountScreen>;
 }
 
-const createStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  background: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
-    paddingBottom: 15,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  resetButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 15,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 0,
-    overflow: 'hidden',
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  settingContent: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: 'white',
-    marginBottom: 2,
-  },
-  settingSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-  },
+const styles = StyleSheet.create({
+  switchTarget: { minWidth: 52, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
 });

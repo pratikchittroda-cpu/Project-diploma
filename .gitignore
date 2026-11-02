@@ -11,6 +11,9 @@ npm-debug.*
 web-build/
 dist/
 .claude/
+.omnirush/
+.opencode/
+.cursor/
 # macOS
 .DS_Store
 
@@ -18,5 +21,13 @@ dist/
 .metro-health-check*
 
 # API Keys and Sensitive Config
-.env
-config/aiConfig.js
+.env*
+!.env.example
+ios/GoogleSignIn.generated.xcconfig
+coverage/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+storage-debug.log
+**/google-services.json
+**/GoogleService-Info.plist

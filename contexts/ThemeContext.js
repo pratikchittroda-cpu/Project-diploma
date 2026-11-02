@@ -68,8 +68,39 @@ const borderRadius = {
   full: 9999,
 };
 
+const hexChannels = (color) => /^#[\da-f]{6}$/i.test(color)
+  ? [1, 3, 5].map((index) => parseInt(color.slice(index, index + 2), 16))
+  : [102, 126, 234];
+const channelsHex = (rgb) => `#${rgb.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+const luminance = (rgb) => rgb.reduce((sum, value, index) => {
+  const channel = value / 255;
+  return sum + (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4) * [0.2126, 0.7152, 0.0722][index];
+}, 0);
+const contrastSafeColor = (color, background, lighten = false) => {
+  let rgb = hexChannels(color);
+  const surfaceLuminance = luminance(hexChannels(background));
+  const contrast = () => (Math.max(luminance(rgb), surfaceLuminance) + 0.05) / (Math.min(luminance(rgb), surfaceLuminance) + 0.05);
+  while (contrast() < 4.5) {
+    rgb = rgb.map((value) => lighten ? Math.ceil(value + (255 - value) * 0.06) : Math.floor(value * 0.94));
+  }
+  return channelsHex(rgb);
+};
+const tintedBackground = (color, amount) => channelsHex(hexChannels(color).map((value) => Math.round(15 + (value - 15) * amount)));
+
 // Base theme structure generator
 const createTheme = (primaryColor, primaryLight, isDark = false) => {
+  // Preserve the catalogue swatches; use readable foregrounds on themed surfaces.
+  const surfaceColors = {
+    accent: contrastSafeColor(primaryColor, isDark ? '#333333' : '#F5F5F5', isDark),
+    successForeground: isDark ? '#91F0B8' : '#157A45',
+    errorForeground: isDark ? '#FFB9C3' : '#B52E43',
+    warningForeground: isDark ? '#FFE1A3' : '#865200',
+    infoForeground: isDark ? '#93C5FD' : '#1D4ED8',
+    // White page labels stay readable in light mode; dark pages retain subtle theme hues.
+    pageGradientColors: isDark
+      ? [tintedBackground(primaryColor, 0.06), tintedBackground(primaryLight, 0.05)]
+      : [primaryColor, primaryLight].map((color) => contrastSafeColor(color, '#FFFFFF')),
+  };
   const baseColors = {
     // Enhanced status colors with better contrast
     success: '#10B981', // Emerald-500
@@ -108,6 +139,7 @@ const createTheme = (primaryColor, primaryLight, isDark = false) => {
 
       // Status colors
       ...baseColors,
+      ...surfaceColors,
 
       // Enhanced border and divider colors
       border: '#2A2A2A',
@@ -207,6 +239,7 @@ const createTheme = (primaryColor, primaryLight, isDark = false) => {
 
       // Status colors
       ...baseColors,
+      ...surfaceColors,
 
       // Enhanced border and divider colors
       border: '#E5E7EB',
