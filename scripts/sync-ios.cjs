@@ -55,7 +55,8 @@ function verifyIosNativeSetup() {
   if (properties['ios.useFrameworks'] !== 'static') issues.push(`properties.ios.useFrameworks is '${properties['ios.useFrameworks']}' (expected 'static')`);
   if (!['RNFBApp', 'RNFBAppCheck'].every(name => JSON.parse(properties['ios.forceStaticLinking'] || '[]').includes(name))) issues.push(`properties.forceStaticLinking is '${properties['ios.forceStaticLinking']}'`);
   if (!project.includes('ios-firebase-build.cjs')) issues.push('project missing ios-firebase-build.cjs');
-  if (!project.includes(`PRODUCT_BUNDLE_IDENTIFIER = "${IDS.ios}";`)) issues.push(`project missing bundleId ${IDS.ios}`);
+  const hasBundleId = new RegExp(`PRODUCT_BUNDLE_IDENTIFIER = "?${IDS.ios.replace(/\\./g, '\\\\.')}"?;`).test(project);
+  if (!hasBundleId) issues.push(`project missing bundleId ${IDS.ios}`);
   if (entitlements['com.apple.developer.devicecheck.appattest-environment'] !== 'production') issues.push(`entitlements appattest is '${entitlements['com.apple.developer.devicecheck.appattest-environment']}'`);
 
   if (issues.length) {
