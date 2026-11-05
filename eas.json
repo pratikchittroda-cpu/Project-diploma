@@ -10,6 +10,9 @@
       "env": {"APP_VARIANT": "development", "EXPO_NO_DOTENV": "1"},
       "developmentClient": true,
       "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
       "ios": {
         "simulator": true
       }
