@@ -1,14 +1,12 @@
-// The core release uses the Firebase JS SDK for Auth and Firestore. RNFirebase's
-// App Check TurboModule asks the native Firebase SDK for the default app while
-// React Native is creating its module registry, so linking it without a native
-// Firebase configuration crashes the app before the JS error boundary mounts.
-//
-// EAS file environment variables are paths to the reviewed native Firebase
-// configuration. Keep the native modules available only for those builds.
+// The core release uses the Firebase JS SDK for Auth and Firestore. On Android,
+// RNFirebase's App Check TurboModule asks the native Firebase SDK for the default
+// app while React Native initializes its package list, so linking it without
+// google-services.json crashes the app before the JS error boundary mounts.
+// On iOS, the native setup is guarded in AppDelegate.swift, but the native
+// target requires the headers from Pods to compile.
 const hasNativeFile = name => typeof process.env[name] === 'string' && process.env[name].trim();
 const disabledPlatforms = {
   ...(hasNativeFile('GOOGLE_SERVICES_JSON') ? {} : { android: null }),
-  ...(hasNativeFile('GOOGLE_SERVICES_PLIST') ? {} : { ios: null }),
 };
 const nativeFirebaseConfigured = Object.keys(disabledPlatforms).length === 0;
 

@@ -26,18 +26,15 @@ function loadReactNativeConfig(nativeFiles = {}) {
   return config;
 }
 
-test('core builds do not autolink RNFirebase modules before a native Firebase app exists', () => {
+test('core builds do not autolink Android RNFirebase modules before a native Firebase app exists', () => {
   const config = loadReactNativeConfig();
-  assert.deepEqual(config.dependencies['@react-native-firebase/app'].platforms, { android: null, ios: null });
-  assert.deepEqual(config.dependencies['@react-native-firebase/app-check'].platforms, { android: null, ios: null });
+  assert.deepEqual(config.dependencies['@react-native-firebase/app'].platforms, { android: null });
+  assert.deepEqual(config.dependencies['@react-native-firebase/app-check'].platforms, { android: null });
 });
 
 test('native Firebase files keep RNFirebase autolinking available for configured builds', () => {
   const config = loadReactNativeConfig({ GOOGLE_SERVICES_JSON: '/eas/google-services.json' });
-  assert.deepEqual(config.dependencies['@react-native-firebase/app'].platforms, { ios: null });
-  assert.deepEqual(config.dependencies['@react-native-firebase/app-check'].platforms, { ios: null });
-  const complete = loadReactNativeConfig({ GOOGLE_SERVICES_JSON: '/eas/google-services.json', GOOGLE_SERVICES_PLIST: '/eas/GoogleService-Info.plist' });
-  assert.deepEqual(complete.dependencies, {});
+  assert.deepEqual(config.dependencies, {});
 });
 
 test('Android manifest disables collection before native initialization and preserves other metadata', () => {
