@@ -43,7 +43,7 @@
     "plugins": [
       "expo-font",
       ["expo-image-picker", {"photosPermission": "Choose a profile picture to upload to your Expenzo account.", "cameraPermission": false, "microphonePermission": false}],
-      ["expo-build-properties", {"android": {"compileSdkVersion": 36, "targetSdkVersion": 36}, "ios": {"deploymentTarget": "16.4", "useFrameworks": "static", "forceStaticLinking": ["RNFBApp", "RNFBAppCheck"]}}],
+      ["expo-build-properties", {"android": {"compileSdkVersion": 37, "targetSdkVersion": 36}, "ios": {"deploymentTarget": "16.4", "useFrameworks": "static", "forceStaticLinking": ["RNFBApp", "RNFBAppCheck"]}}],
       ["expo-splash-screen", {"image": "./assets/logo.png", "backgroundColor": "#f3f5ff", "resizeMode": "contain", "imageWidth": 160}]
     ],
     "extra": {
