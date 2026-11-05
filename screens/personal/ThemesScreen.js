@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'r
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import GlassCard from '../../components/GlassCard';
+import GlassSurface from '../../components/GlassSurface';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AccountScreen, AccountText, useAccountTask } from '../../components/account/AccountPrimitives';
 
@@ -80,8 +81,9 @@ export default function ThemesScreen({ navigation }) {
             return <TouchableOpacity key={option.id} disabled={busy} activeOpacity={0.85}
               accessibilityRole="button" accessibilityLabel={`${option.name} color theme`}
               accessibilityState={{ selected, disabled: busy }} onPress={() => run(() => changeTheme(option.id))}
-              style={[styles.themeCard, { width: width < 360 ? '100%' : '48%', backgroundColor: theme.surface,
+              style={[styles.themeCard, { width: width < 360 ? '100%' : '48%',
                 borderColor: selected ? (theme.accent || theme.primary) : theme.border, borderWidth: selected ? 2 : 1 }]}>
+              <GlassSurface color={theme.surface} dark={theme.isDarkMode} borderRadius={16} interactive />
               <LinearGradient colors={option.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.preview}>
                 <MaterialCommunityIcons name="palette" size={24} color={color} />
                 <Text style={[styles.previewLabel, { color }]}>{option.name}</Text>

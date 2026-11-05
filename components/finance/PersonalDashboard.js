@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcons, Icon } from '../../constants/Icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,8 +10,10 @@ import { periodRange, summarize, formatMoney, sumMoney, subtractMoney, ledgerDat
 import { remoteProfileImage } from '../../utils/profileImage';
 import { getBudgetRecommendations } from '../../utils/budgetRecommendations';
 import GlassCard from '../GlassCard';
+import AppBackground from '../AppBackground';
+import LogoLoader from '../LogoLoader';
 import BudgetAdvisor from '../BudgetAdvisor';
-import { useFinanceCardColors, useFocusRefresh } from './FinanceUI';
+import { HIDDEN_REFRESH_SPINNER, RefreshLoader, useFinanceCardColors, useFocusRefresh, usePullRefresh } from './FinanceUI';
 import HomeAIEntry from './HomeAIEntry';
 
 const HOME_PERIODS = [{ value: 'Weekly', label: 'Week' }, { value: 'Monthly', label: 'Month' }, { value: 'Yearly', label: 'Year' }];
@@ -39,6 +40,7 @@ export default function PersonalDashboard({ navigation }) {
   const budgets = useBudgets();
   const [period, setPeriod] = useState('Monthly');
   const refresh = useCallback(() => Promise.all([ledger.refresh(), budgets.refresh()]), [ledger.refresh, budgets.refresh]);
+  const pull = usePullRefresh(refresh, ledger.refreshing || budgets.refreshing);
   useFocusRefresh(navigation, refresh);
 
   const now = new Date();
@@ -75,8 +77,9 @@ export default function PersonalDashboard({ navigation }) {
 
   return <View style={[styles.container, { backgroundColor: backgroundColors[0] }]} testID="personal-home">
     <StatusBar barStyle="light-content" backgroundColor={backgroundColors[0]} />
-    <LinearGradient colors={backgroundColors} style={StyleSheet.absoluteFill} />
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.container}>
+    <AppBackground colors={backgroundColors} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+    {/* No bottom inset: content scrolls to the screen edge behind the floating tab bar. */}
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.greeting}>{greeting}, {userData?.fullName || user?.displayName || 'User'}!</Text>
@@ -88,7 +91,8 @@ export default function PersonalDashboard({ navigation }) {
       </View>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={ledger.refreshing || budgets.refreshing} onRefresh={refresh} tintColor="white" colors={['white']} />}>
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} {...HIDDEN_REFRESH_SPINNER} />}>
+        {pull.refreshing && <RefreshLoader />}
         <GlassCard testID="home-overview" borderRadius={28} borderWidth={1} padding={24}>
           <View style={styles.overviewHeader}>
             <Text accessibilityRole="header" style={[styles.overviewTitle, { color: ink }]}>{periodLabel} Balance</Text>
@@ -126,13 +130,39 @@ export default function PersonalDashboard({ navigation }) {
                 <Text style={[styles.actionText, { color: ink }]}>Retry</Text>
               </TouchableOpacity>
             </> : <>
-              <ActivityIndicator testID="home-data-loading" accessibilityLabel="Loading complete financial data" color={ink} />
+              <LogoLoader testID="home-data-loading" accessibilityLabel="Loading complete financial data" color={ink} />
               <Text style={[styles.bodyText, { color: muted }]}>Loading complete financial data…</Text>
             </>}
           </View>}
         </GlassCard>
 
         <HomeAIEntry navigation={navigation} />
+
+        {verified && <View style={styles.section} testID="home-spending">
+          <View style={styles.sectionHeader}><Text accessibilityRole="header" style={styles.sectionTitle}>Spending by category</Text></View>
+          <GlassCard borderRadius={24} borderWidth={1} padding={20}>
+            {data.stats.categoryBreakdown.length ? data.stats.categoryBreakdown.slice().sort((a, b) => b.amount - a.amount).map(category => {
+              const percentage = data.stats.totalExpenses ? category.amount / data.stats.totalExpenses * 100 : 0;
+              return <View key={category.name} style={styles.categoryRow}>
+                <View style={styles.categoryHeader}>
+                  <View style={styles.categoryName}><Icon name={CATEGORY_ICONS[category.name] || 'help-circle'} size={18} color={ink} /><Text style={[styles.bodyText, { color: ink }]}>{category.name}</Text></View>
+                  <Text style={[styles.amountValue, { color: ink }]}>{formatMoney(category.amount)}</Text>
+                </View>
+                <View style={[styles.progressTrack, { backgroundColor: divider }]}><View style={[styles.progressFill, { width: `${percentage}%`, backgroundColor: colors.accent }]} /></View>
+                <Text style={[styles.detailText, { color: muted }]}>{category.count} entries · {percentage.toFixed(1)}% of expenses</Text>
+              </View>;
+            }) : <Text style={[styles.bodyText, { color: muted }]}>No expenses in this period.</Text>}
+          </GlassCard>
+        </View>}
+
+        {verified && <>
+          <BudgetAdvisor recommendations={data.recommendations} dataSignature={data.insightSignature} />
+          <View style={styles.actions}>
+            <HomeAction title="Add transaction" icon="plus-circle-outline" onPress={() => navigation.navigate('AddTransaction')} />
+            <HomeAction title="History" icon="history" onPress={() => navigation.navigate('Transactions')} />
+            <HomeAction title="Budgets" icon="wallet-outline" onPress={() => navigation.navigate('Budget')} />
+          </View>
+        </>}
 
         <View style={styles.section} testID="home-recent-transactions">
           <View style={styles.sectionHeader}>
@@ -155,31 +185,8 @@ export default function PersonalDashboard({ navigation }) {
               : <Text style={[styles.emptyText, { color: muted }]}>Recent transactions will appear after your complete financial data is verified.</Text>}
           </GlassCard>
         </View>
+
         {verified && <>
-          <BudgetAdvisor recommendations={data.recommendations} dataSignature={data.insightSignature} />
-          <View style={styles.actions}>
-            <HomeAction title="Add transaction" icon="plus-circle-outline" onPress={() => navigation.navigate('AddTransaction')} />
-            <HomeAction title="History" icon="history" onPress={() => navigation.navigate('Transactions')} />
-            <HomeAction title="Budgets" icon="wallet-outline" onPress={() => navigation.navigate('Budget')} />
-          </View>
-
-          <View style={styles.section} testID="home-spending">
-            <View style={styles.sectionHeader}><Text accessibilityRole="header" style={styles.sectionTitle}>Spending by category</Text></View>
-            <GlassCard borderRadius={24} borderWidth={1} padding={20}>
-              {data.stats.categoryBreakdown.length ? data.stats.categoryBreakdown.slice().sort((a, b) => b.amount - a.amount).map(category => {
-                const percentage = data.stats.totalExpenses ? category.amount / data.stats.totalExpenses * 100 : 0;
-                return <View key={category.name} style={styles.categoryRow}>
-                  <View style={styles.categoryHeader}>
-                    <View style={styles.categoryName}><Icon name={CATEGORY_ICONS[category.name] || 'help-circle'} size={18} color={ink} /><Text style={[styles.bodyText, { color: ink }]}>{category.name}</Text></View>
-                    <Text style={[styles.amountValue, { color: ink }]}>{formatMoney(category.amount)}</Text>
-                  </View>
-                  <View style={[styles.progressTrack, { backgroundColor: divider }]}><View style={[styles.progressFill, { width: `${percentage}%`, backgroundColor: colors.accent }]} /></View>
-                  <Text style={[styles.detailText, { color: muted }]}>{category.count} entries · {percentage.toFixed(1)}% of expenses</Text>
-                </View>;
-              }) : <Text style={[styles.bodyText, { color: muted }]}>No expenses in this period.</Text>}
-            </GlassCard>
-          </View>
-
           <View style={styles.section} testID="home-budget-check">
             <View style={styles.sectionHeader}>
               <Text accessibilityRole="header" style={styles.sectionTitle}>Budget check</Text>

@@ -2,10 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import BrandLogo from '../../components/BrandLogo';
 import { accountGradientColors } from '../../components/account/AccountPrimitives';
+import AppBackground from '../../components/AppBackground';
+import GlassSurface from '../../components/GlassSurface';
 import SplashScreen from './SplashScreen';
 
 const accountTypes = [
@@ -25,17 +26,19 @@ export default function UserTypeScreen({ navigation }) {
     return () => animation.stop();
   }, [entrance, isLoading]);
   if (isLoading || !theme) return <SplashScreen />;
-  const gradient = accountGradientColors(theme);
+  const gradient = theme.isDarkMode ? (theme.pageGradientColors || [theme.background || '#050505', theme.background || '#050505']) : accountGradientColors(theme);
+  const cardGradient = theme.isDarkMode
+    ? [theme.cardBackground || '#1A1A1A', theme.cardBackgroundElevated || '#2A2A2A']
+    : accountGradientColors(theme);
 
-  return <View style={[styles.page, { backgroundColor: theme.primary }]}>
+  return <View style={[styles.page, { backgroundColor: theme.background }]}>
     <StatusBar barStyle="light-content" />
-    <LinearGradient colors={gradient} style={StyleSheet.absoluteFill}
-      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+    <AppBackground colors={gradient} />
     <SafeAreaView style={styles.page}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Animated.View style={{ opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }}>
           <View style={styles.header}>
-            <View style={styles.logo}><BrandLogo size={44} /></View>
+            <View style={[styles.logo, { backgroundColor: theme.isDarkMode ? (theme.cardBackgroundElevated || '#f3f5ff') : '#f3f5ff' }]}><BrandLogo size={44} /></View>
             <Text accessibilityRole="header" style={styles.appTitle}>Expenzo</Text>
             <Text style={styles.welcome}>Welcome! Let's get started</Text>
             <Text style={styles.subtitle}>Choose your account type to continue</Text>
@@ -45,8 +48,9 @@ export default function UserTypeScreen({ navigation }) {
               accessibilityRole="button" accessibilityLabel={account.id === 'company' ? 'Company account' : 'Personal account'}
               accessibilityHint={`Sign in or create a ${account.id} account`}
               onPress={() => navigation.navigate(account.route)} style={styles.card}>
-              <LinearGradient colors={account.id === 'personal' ? gradient : [...gradient].reverse()}
-                style={styles.cardContent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <GlassSurface color={account.id === 'personal' ? cardGradient[0] : cardGradient[cardGradient.length - 1]}
+                dark={theme.isDarkMode} borderRadius={22} interactive />
+              <View style={styles.cardContent}>
                 <View style={styles.cardIcon}><MaterialCommunityIcons name={account.icon} size={36} color="#fff" /></View>
                 <Text style={styles.cardTitle}>{account.title}</Text>
                 <Text style={styles.cardSubtitle}>{account.subtitle}</Text>
@@ -57,7 +61,7 @@ export default function UserTypeScreen({ navigation }) {
                   </View>)}
                 </View>
                 <View style={styles.arrow}><MaterialCommunityIcons name="arrow-right" size={22} color="#fff" /></View>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>)}
           </View>
           <View style={styles.footer}>

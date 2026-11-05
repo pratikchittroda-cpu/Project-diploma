@@ -1,7 +1,9 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Icon } from '../../constants/Icons';
+import LogoLoader from '../LogoLoader';
+import { loadToolsConsent, saveToolsConsent } from '../../utils/aiConsent';
 import { auth } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import aiService from '../../services/aiService';
@@ -29,6 +31,7 @@ const AITransactionTools = forwardRef(function AITransactionTools({
   const busyRef = useRef(false);
   const requestRef = useRef(null);
   const consentRef = useRef(null);
+  const consentChosenRef = useRef(false);
   const receiptTextRef = useRef('');
   const inputRevisionRef = useRef(0);
   const categoryRef = useRef(null);
@@ -56,18 +59,24 @@ const AITransactionTools = forwardRef(function AITransactionTools({
     setPendingKind(null); setCategorySuggestion(null); setReceiptReview(null); setSelectedItem(null);
     setMessage(notice || (pending ? 'Draft changed. The pending request was cancelled; data already sent cannot be recalled.' : ''));
   }, []);
+  // Clears the tools (text, results, pending work). Consent is asked once per account and kept.
   const reset = useCallback(() => {
-    consentRef.current = null;
     receiptTextRef.current = '';
     invalidateDraft();
-    if (mountedRef.current) { setConsent(false); setReceiptText(''); setMessage(''); }
+    if (mountedRef.current) { setReceiptText(''); setMessage(''); }
   }, [invalidateDraft]);
+  // Drops in-memory consent when the account changes; the remembered choice is reloaded per account.
+  const forgetConsent = useCallback(() => {
+    consentRef.current = null;
+    consentChosenRef.current = false;
+    if (mountedRef.current) setConsent(false);
+  }, []);
   useImperativeHandle(ref, () => ({ invalidateDraft, reset }), [invalidateDraft, reset]);
 
   useEffect(() => {
     mountedRef.current = true;
     const unsubscribe = onAuthStateChanged(auth, nextUser => {
-      if (nextUser !== contextRef.current.user) reset();
+      if (nextUser !== contextRef.current.user) { reset(); forgetConsent(); }
     });
     return () => {
       mountedRef.current = false;
@@ -76,8 +85,21 @@ const AITransactionTools = forwardRef(function AITransactionTools({
       invalidateDraft();
       unsubscribe();
     };
-  }, [invalidateDraft, reset]);
-  useEffect(() => { reset(); }, [user, profileStatus, initializing, company, ready, reset]);
+  }, [invalidateDraft, reset, forgetConsent]);
+  useEffect(() => {
+    reset();
+    forgetConsent();
+    if (!ready || !user) return undefined;
+    let active = true;
+    // Restore the remembered choice unless the user already changed it on this form.
+    loadToolsConsent(user.uid).then(granted => {
+      if (!active || !granted || consentChosenRef.current || !mountedRef.current
+        || contextRef.current.user !== user || auth.currentUser !== user) return;
+      consentRef.current = user;
+      setConsent(true);
+    });
+    return () => { active = false; };
+  }, [user, profileStatus, initializing, company, ready, reset, forgetConsent]);
   useEffect(() => {
     const snapshots = [requestRef.current?.snapshot, categoryRef.current?.snapshot, receiptReviewRef.current?.snapshot];
     if (snapshots.some(snapshot => snapshot && snapshot.revision !== draft.revision)) invalidateDraft();
@@ -96,10 +118,18 @@ const AITransactionTools = forwardRef(function AITransactionTools({
   const changeConsent = () => {
     if (!sameAccount()) return;
     const next = consentRef.current !== user;
+    consentChosenRef.current = true;
     consentRef.current = next ? user : null;
     setConsent(next);
     if (!next) invalidateDraft(requestRef.current ? CANCEL_NOTE : 'Sharing consent revoked.');
     else setMessage('');
+    saveToolsConsent(user.uid, next).then(saved => {
+      if (!saved && mountedRef.current) {
+        setMessage(next
+          ? 'Sharing is on for now, but this device could not remember it; you may be asked again.'
+          : 'Sharing is off for now, but this device could not save that. Revoke again before closing the app.');
+      }
+    });
   };
   const editReceiptText = value => {
     if (!sameAccount()) return;
@@ -110,7 +140,7 @@ const AITransactionTools = forwardRef(function AITransactionTools({
   const runTool = async kind => {
     if (busyRef.current) return;
     if (!sameAccount()) { setMessage('Finish signing in to your ready account before using AI tools.'); return; }
-    if (consentRef.current !== user) { setMessage('Review data sharing and agree for this form before requesting AI assistance.'); return; }
+    if (consentRef.current !== user) { setMessage('Review data sharing and agree before requesting AI assistance.'); return; }
     const currentDraft = contextRef.current.getDraftSnapshot();
     if (currentDraft.type !== 'expense') return;
     const text = kind === 'category' ? currentDraft.description : receiptTextRef.current;
@@ -184,7 +214,7 @@ const AITransactionTools = forwardRef(function AITransactionTools({
     <Copy>Choose when to share. “Suggest category” sends only this description (up to 500 characters); “Parse receipt text” sends only the text you paste below (up to 6000 characters) through the secure API to hosted NVIDIA AI.</Copy>
     <Copy caption muted>No background sends. Account authentication is handled by the API; your ledger, amount, date and department are not included in these tool requests. Service and provider privacy policies apply to text you send.</Copy>
     <SharingConsent allowed={consent && ready} disabled={!ready || disabled} onPress={changeConsent} />
-    <Copy caption muted>Consent applies only to this form and account. Clearing the tools, saving, leaving this form or changing accounts resets it. AI results need your review; applying a result does not save anything.</Copy>
+    <Copy caption muted>You're asked once: your choice is remembered for this account on this device until you revoke it here or sign out. AI results need your review; applying a result does not save anything.</Copy>
     {!ready && <Copy caption accessibilityRole="alert">Finish account setup and sign in before using AI tools.</Copy>}
     <Button title="Suggest category" icon="tag-outline" showLabel disabled={controlsDisabled || !consent} onPress={() => runTool('category')} />
     {visibleCategory && <View style={styles.review}>
@@ -198,7 +228,7 @@ const AITransactionTools = forwardRef(function AITransactionTools({
     <Copy caption muted>Paste text only. Remove any private details you do not want to send. Names, quantities and unit prices must be checked against your receipt.</Copy>
     <Button title="Parse receipt text" icon="receipt-text-outline" showLabel disabled={controlsDisabled || !consent} onPress={() => runTool('receipt')} />
     {pendingKind && <View style={styles.review}>
-      <ActivityIndicator accessibilityLabel={pendingKind === 'category' ? 'Requesting category suggestion' : 'Parsing receipt text'} />
+      <PendingLoader label={pendingKind === 'category' ? 'Requesting category suggestion' : 'Parsing receipt text'} />
       <Copy accessibilityLiveRegion="polite">{pendingKind === 'category' ? 'Requesting a category suggestion…' : 'Parsing receipt text…'}</Copy>
       <Button title="Cancel AI request" icon="close-circle-outline" showLabel onPress={() => invalidateDraft(CANCEL_NOTE)} />
     </View>}
@@ -215,13 +245,18 @@ const AITransactionTools = forwardRef(function AITransactionTools({
   </Card>;
 });
 
+function PendingLoader({ label }) {
+  const colors = useFinanceColors();
+  return <LogoLoader color={colors.accent} accessibilityLabel={label} />;
+}
+
 function SharingConsent({ allowed, disabled, onPress }) {
   const colors = useFinanceColors();
-  return <TouchableOpacity accessibilityRole="checkbox" accessibilityLabel="Allow description or receipt text sharing with hosted NVIDIA AI when I request a tool"
+  return <TouchableOpacity accessibilityRole="checkbox" accessibilityLabel="Allow description or receipt text sharing with hosted NVIDIA AI when I request a tool, remembered for this account"
     accessibilityState={{ checked: allowed, disabled }} disabled={disabled} onPress={onPress}
     style={[styles.consent, { borderColor: allowed ? colors.accent : colors.border, backgroundColor: colors.surface, opacity: disabled ? 0.55 : 1 }]}>
     <Icon name={allowed ? 'checkbox-marked-outline' : 'checkbox-blank-outline'} size={24} color={colors.accent} />
-    <Copy style={styles.flex}>{allowed ? 'Sharing allowed · tap to revoke' : 'I agree for this form'}</Copy>
+    <Copy style={styles.flex}>{allowed ? 'Sharing allowed · tap to revoke' : 'I agree · remember my choice'}</Copy>
   </TouchableOpacity>;
 }
 

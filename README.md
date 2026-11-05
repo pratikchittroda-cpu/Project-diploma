@@ -8,7 +8,8 @@ uploads, AI reporting and automated account deletion disabled.
 Personal and company screens retain the original gradient/glass design, including
 finance forms, history, reports, profiles, settings, themes and floating tabs.
 **Home → Ask Financial AI** opens the restored interactive chat client with drafts,
-question shortcuts, explicit conversation-only sharing consent and send/retry/cancel.
+question shortcuts, explicit sharing consent (asked once per account, remembered on the
+device until revoked or sign-out) and send/retry/cancel.
 The hosted API requires Firebase sign-in and explicit sharing consent. Chat stays
 in memory and resets on account changes or Clear chat. Add Transaction also offers
 consented category suggestions and receipt-text parsing with review before Save.

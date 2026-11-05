@@ -6,7 +6,7 @@ test('provider sends one bounded nonstreaming request to fixed endpoint', async 
   let calls = 0;
   const answer = await callProvider({ apiKey: 'test-only', messages: [{ role: 'user', content: 'hello' }], maxTokens: 9999, fetchImpl: async (url, options) => {
     calls++; assert.equal(url, 'https://integrate.api.nvidia.com/v1/chat/completions');
-    const body = JSON.parse(options.body); assert.equal(body.max_tokens, 900); assert.equal(body.stream, false);
+    const body = JSON.parse(options.body); assert.equal(body.model, 'nvidia/nemotron-3.5-super-vl-120b-a12b'); assert.equal(body.max_tokens, 900); assert.equal(body.stream, false);
     return new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: 'answer' } }] }));
   } });
   assert.equal(answer, 'answer'); assert.equal(calls, 1);

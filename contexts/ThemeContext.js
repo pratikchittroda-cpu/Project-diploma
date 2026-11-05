@@ -85,8 +85,6 @@ const contrastSafeColor = (color, background, lighten = false) => {
   }
   return channelsHex(rgb);
 };
-const tintedBackground = (color, amount) => channelsHex(hexChannels(color).map((value) => Math.round(15 + (value - 15) * amount)));
-
 // Base theme structure generator
 const createTheme = (primaryColor, primaryLight, isDark = false) => {
   // Preserve the catalogue swatches; use readable foregrounds on themed surfaces.
@@ -98,7 +96,7 @@ const createTheme = (primaryColor, primaryLight, isDark = false) => {
     infoForeground: isDark ? '#93C5FD' : '#1D4ED8',
     // White page labels stay readable in light mode; dark pages retain subtle theme hues.
     pageGradientColors: isDark
-      ? [tintedBackground(primaryColor, 0.06), tintedBackground(primaryLight, 0.05)]
+      ? ['#050505', '#151515']
       : [primaryColor, primaryLight].map((color) => contrastSafeColor(color, '#FFFFFF')),
   };
   const baseColors = {
@@ -320,14 +318,33 @@ const createTheme = (primaryColor, primaryLight, isDark = false) => {
 
 // Available theme configurations
 export const themeConfigs = {
+  // The Expenzo brand theme (logo blue on white) and the default for new installs.
+  expenzo: {
+    id: 'expenzo',
+    name: 'Expenzo',
+    description: 'Expenzo blue and white',
+    colors: ['#3157FF', '#1F3FD1'],
+    primary: '#3157FF',
+    primaryLight: '#1F3FD1',
+    category: 'Classic',
+  },
   default: {
     id: 'default',
-    name: 'Default',
+    name: 'Classic',
     description: 'Classic blue and purple gradient',
     colors: ['#667eea', '#764ba2'],
     primary: '#667eea',
     primaryLight: '#764ba2',
     category: 'Classic',
+  },
+  black: {
+    id: 'black',
+    name: 'Black',
+    description: 'OLED black with violet accents',
+    colors: ['#050505', '#171717'],
+    primary: '#8B5CF6',
+    primaryLight: '#A78BFA',
+    category: 'Professional',
   },
   ocean: {
     id: 'ocean',
@@ -578,13 +595,17 @@ export const darkTheme = createTheme('#667eea', '#764ba2', true);
 
 
 
+export const DEFAULT_THEME_ID = 'expenzo';
+export const DEFAULT_DARK_MODE = false;
+
 // Create Theme Context
 const ThemeContext = createContext();
 
 // Theme Provider Component
 export const ThemeProvider = ({ children }) => {
-    const [isDarkMode, setIsDarkMode] = useState(false);
-    const [currentThemeId, setCurrentThemeId] = useState('default');
+    // New installs start on the Expenzo brand theme in light mode (blue and white).
+    const [isDarkMode, setIsDarkMode] = useState(DEFAULT_DARK_MODE);
+    const [currentThemeId, setCurrentThemeId] = useState(DEFAULT_THEME_ID);
     const [isLoading, setIsLoading] = useState(true);
 
     // Load theme preferences from storage
@@ -630,7 +651,7 @@ export const ThemeProvider = ({ children }) => {
     }, []);
 
     const theme = useMemo(() => {
-        const themeConfig = themeConfigs[currentThemeId] || themeConfigs.default;
+        const themeConfig = themeConfigs[currentThemeId] || themeConfigs[DEFAULT_THEME_ID];
         return createTheme(themeConfig.primary, themeConfig.primaryLight, isDarkMode);
     }, [currentThemeId, isDarkMode]);
 

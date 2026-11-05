@@ -1,10 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, RefreshControl, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, RefreshControl, KeyboardAvoidingView, Platform, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import { Icon } from '../../constants/Icons';
 import GlassCard from '../GlassCard';
+import AppBackground from '../AppBackground';
+import LogoLoader from '../LogoLoader';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../config/firebase';
@@ -13,7 +14,7 @@ import { formatMoney, ledgerDate, normalizeCategory } from '../../utils/finance'
 const FinanceSurface = createContext(null);
 const whitePalette = {
   ink: '#FFFFFF', muted: '#FFFFFF', border: 'rgba(255,255,255,0.18)',
-  surface: 'rgba(0,0,0,0.16)', input: 'rgba(0,0,0,0.12)',
+  surface: 'rgba(255,255,255,0.10)', input: 'rgba(0,0,0,0.12)',
   income: '#91F0B8', expense: '#FFB9C3', warning: '#FFE1A3', accent: '#C7D7FF', light: false,
 };
 
@@ -40,8 +41,9 @@ export function categoryDetails(value) {
 export function useFinanceCardColors() {
   const { theme } = useTheme();
   const dark = theme.isDarkMode;
-  return { ink: theme.text, muted: theme.textSecondary, border: theme.border,
-    card: theme.cardBackground || theme.card || theme.surface, surface: theme.surfaceVariant || theme.surface,
+  // Inner tiles, tracks and dividers are translucent so they sit on the glass instead of over it.
+  return { ink: theme.text, muted: theme.textSecondary, border: dark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.10)',
+    card: theme.cardBackground || theme.card || theme.surface, surface: dark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.05)',
     input: theme.inputBackground, selected: theme.inputBackgroundFocused || theme.border,
     income: theme.successForeground || (dark ? '#91F0B8' : '#157A45'),
     expense: theme.errorForeground || (dark ? '#FFB9C3' : '#B52E43'), warning: theme.warningForeground || (dark ? '#FFE1A3' : '#865200'),
@@ -83,6 +85,7 @@ export const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, metricCard: { flex: 1, minWidth: 135 },
   metric: { flexGrow: 1, minWidth: 105, gap: 6 }, metricValue: { fontSize: 20, lineHeight: 28, fontWeight: '700' },
   iconCircle: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  refreshLoader: { alignItems: 'center', paddingBottom: 8 },
   divider: { borderTopWidth: 1, paddingTop: 14, gap: 6 }, section: { gap: 12 }, badge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   state: { minHeight: 120, alignItems: 'center', justifyContent: 'center', gap: 14 }, stateText: { textAlign: 'center' },
   progressTrack: { height: 7, borderRadius: 4, overflow: 'hidden' }, progressFill: { height: '100%', borderRadius: 4 },
@@ -95,7 +98,7 @@ export const styles = StyleSheet.create({
 export function FinanceAccount({ component: Component, ...props }) {
   const { user } = useAuth();
   const { theme, isLoading } = useTheme();
-  if (isLoading || !theme) return <SafeAreaView style={styles.centered}><ActivityIndicator accessibilityLabel="Loading theme" /></SafeAreaView>;
+  if (isLoading || !theme) return <SafeAreaView style={styles.centered}><LogoLoader size="large" accessibilityLabel="Loading theme" /></SafeAreaView>;
   if (!user || auth?.currentUser !== user) return <SafeAreaView style={[styles.centered, { backgroundColor: theme.background }]}><Icon name="account-lock-outline" size={40} color={theme.text} /><Text style={[styles.text, styles.stateText, { color: theme.text }]}>Please sign in to view your finances.</Text></SafeAreaView>;
   return <Component key={user.uid} {...props} />;
 }
@@ -160,9 +163,35 @@ export function LoadState({ loading, error, onRetry, loadingLabel = 'Loading com
   if (loading) return <Card><View style={styles.state}><LoadingIndicator label={loadingLabel} /><Copy muted style={styles.stateText}>{loadingLabel}…</Copy></View></Card>;
   return null;
 }
+// Pull-to-refresh: the native spinner is hidden on both platforms and the Expenzo logo loader shows
+// at the top of the list instead. iOS: transparent tint. Android always draws its white disc, so
+// it is also parked far above the screen (the pull distance that triggers a refresh is unchanged).
+export const HIDDEN_REFRESH_SPINNER = {
+  tintColor: 'transparent', colors: ['transparent'], progressBackgroundColor: 'transparent',
+  ...(Platform.OS === 'android' ? { progressViewOffset: -1000 } : null),
+};
+// Pull-to-refresh state that shows the logo from the moment you release until the refresh
+// finishes, and for at least one pass of the animation even when local data returns instantly.
+const MIN_REFRESH_MS = 1200;
+export function usePullRefresh(onRefresh, externalRefreshing = false) {
+  const [pulling, setPulling] = useState(false);
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  const start = useCallback(() => {
+    if (!onRefresh) return;
+    setPulling(true);
+    const minimum = new Promise(resolve => setTimeout(resolve, MIN_REFRESH_MS));
+    Promise.allSettled([Promise.resolve().then(onRefresh), minimum])
+      .then(() => { if (mountedRef.current) setPulling(false); });
+  }, [onRefresh]);
+  return { refreshing: pulling || !!externalRefreshing, onRefresh: start };
+}
+export function RefreshLoader() {
+  return <View style={styles.refreshLoader}><LogoLoader size={30} color="white" accessibilityLabel="Refreshing" /></View>;
+}
 function LoadingIndicator({ label }) {
   const colors = useFinanceColors();
-  return <ActivityIndicator color={colors.ink} accessibilityLabel={label} />;
+  return <LogoLoader color={colors.ink} accessibilityLabel={label} />;
 }
 function StateIcon({ name }) {
   const colors = useFinanceColors();
@@ -175,23 +204,26 @@ export function Notice({ message }) {
   if (!message) return null;
   return <Card padding={16}><View style={[styles.row, { flexWrap: 'nowrap', alignItems: 'flex-start' }]}><StateIcon name="information-outline" /><Copy accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flex: 1 }}>{message}</Copy></View></Card>;
 }
-export function FinancePage({ title, subtitle, navigation, children, onRefresh, refreshing = false, actions, showBack = true, onBack, scrollRef }) {
+export function FinancePage({ title, subtitle, navigation, children, onRefresh, refreshing: dataRefreshing = false, actions, showBack = true, onBack, scrollRef }) {
   const { theme } = useTheme();
+  const pull = usePullRefresh(onRefresh, dataRefreshing);
+  const refreshing = pull.refreshing;
   const backgroundColors = theme.pageGradientColors || (theme.isDarkMode ? [theme.background, theme.background] : [theme.primary, theme.primaryLight]);
   const canGoBack = typeof navigation?.canGoBack === 'function' && navigation.canGoBack();
   const backAction = onBack || (() => navigation?.goBack?.());
   return <View style={[styles.page, { backgroundColor: backgroundColors[0] }]}>
     <StatusBar barStyle="light-content" backgroundColor={backgroundColors[0]} />
-    <LinearGradient colors={backgroundColors} style={StyleSheet.absoluteFill} />
-    <FinanceSurface.Provider value={whitePalette}><SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.page}>
+    <AppBackground colors={backgroundColors} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+    <FinanceSurface.Provider value={whitePalette}><SafeAreaView edges={['top', 'left', 'right']} style={styles.page}>
       <View style={styles.header}>
         {showBack && (onBack || canGoBack) && <Button title="Back" icon="arrow-left" onPress={backAction} />}
         <View style={styles.headerText}><Text accessibilityRole="header" style={[styles.title, { color: whitePalette.ink }]}>{title}</Text>{subtitle && <Copy caption muted>{subtitle}</Copy>}</View>
-        {actions || (onRefresh && <Button title="Refresh" icon="refresh" disabled={refreshing} onPress={onRefresh} />)}
+        {actions || (onRefresh && <Button title="Refresh" icon="refresh" disabled={refreshing} onPress={pull.onRefresh} />)}
       </View>
       <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scrollRef} style={styles.page} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}
-          refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="white" colors={['white']} /> : undefined}>
+          refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={pull.onRefresh} {...HIDDEN_REFRESH_SPINNER} /> : undefined}>
+          {refreshing && <RefreshLoader />}
           {children}
         </ScrollView>
       </KeyboardAvoidingView>

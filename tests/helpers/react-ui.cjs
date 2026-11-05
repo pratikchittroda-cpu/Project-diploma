@@ -83,8 +83,28 @@ const plain = value => JSON.parse(JSON.stringify(value));
 const esm = value => ({ default: value, __esModule: true });
 const native = Object.fromEntries(['ActivityIndicator', 'Image', 'KeyboardAvoidingView', 'Pressable', 'RefreshControl', 'ScrollView', 'StatusBar', 'Switch', 'Text', 'TextInput', 'TouchableOpacity', 'View'].map(name => [name, name]));
 native.Platform = { OS: 'ios' };
-native.StyleSheet = { create: value => value, absoluteFill: { position: 'absolute' }, absoluteFillObject: { position: 'absolute' }, hairlineWidth: 0.5 };
+// Matches React Native 0.88: absoluteFill only (absoluteFillObject was removed).
+native.StyleSheet = { create: value => value, absoluteFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }, hairlineWidth: 0.5 };
 native.useWindowDimensions = () => ({ width: 393, height: 852, fontScale: 1 });
 const theme = { primary: '#6755D7', primaryLight: '#3C74D8', text: '#171717', textSecondary: '#4A4A4A', background: '#FAFAFA', surface: '#FFFFFF', border: '#E5E7EB', warning: '#F59E0B', warningLight: '#FEF3C7', inputBackground: '#F5F5F5', primaryContainer: '#6755D720' };
 
-module.exports = { load, createHooks, treeNodes, treeText, byId, button, plain, esm, native, theme };
+// A recording Animated stand-in: values jump to their target when an animation starts, and every
+// started animation's config is kept so tests can check e.g. that it runs on the native driver.
+function animatedMock() {
+  const started = [];
+  class Value {
+    constructor(value) { this.value = value; }
+    setValue(value) { this.value = value; }
+    interpolate(config) { return { interpolation: config, source: this }; }
+  }
+  const run = (value, config = {}) => ({
+    start(done) { if (value && 'toValue' in config) value.value = config.toValue; started.push(config); done?.({ finished: true }); },
+    stop() {},
+  });
+  const group = list => ({ start(done) { list.forEach(item => item.start()); done?.({ finished: true }); }, stop() {} });
+  return { View: 'AnimatedView', Text: 'AnimatedText', Value, started,
+    spring: run, timing: run, delay: () => run(), parallel: group, sequence: group, loop: item => item,
+    multiply: (a, b) => ({ multiply: [a, b] }) };
+}
+
+module.exports = { load, createHooks, treeNodes, treeText, byId, button, plain, esm, native, theme, animatedMock };

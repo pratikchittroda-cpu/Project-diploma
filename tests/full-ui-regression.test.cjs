@@ -1,6 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { load, createHooks, treeNodes, treeText, plain, esm, native, theme } = require('./helpers/react-ui.cjs');
+const { animatedMock } = require('./helpers/react-ui.cjs');
+const backgroundColours = load('components/AppBackground.js', { react: {}, 'react-native': native, 'expo-linear-gradient': {}, 'react-native-svg': {}, '@react-navigation/native': { NavigationContext: {} },
+  '../contexts/ThemeContext': {}, './GlassSurface': load('components/GlassSurface.js', { react: {}, 'react-native': native, 'expo-blur': {}, 'expo-linear-gradient': {}, 'expo-glass-effect': {} }) });
 
 class FixedDate extends Date {
   constructor(...args) { super(...(args.length ? args : ['2026-10-06T12:00:00'])); }
@@ -16,7 +19,7 @@ function financeUI(hooks, auth, account) {
   return load('components/finance/FinanceUI.js', {
     react: hooks.react, 'react-native': native, 'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     'expo-linear-gradient': { LinearGradient: 'Gradient' }, 'react-native-svg': { ...esm('Svg'), Circle: 'Circle' },
-    '../../constants/Icons': icons, '../GlassCard': esm('GlassCard'), '../../utils/finance': finance,
+    '../../constants/Icons': icons, '../GlassCard': esm('GlassCard'), '../AppBackground': esm('AppBackground'), '../LogoLoader': esm('LogoLoader'), '../../utils/finance': finance,
     '../../contexts/ThemeContext': { useTheme: () => ({ theme, isDarkMode: false }) },
     '../../contexts/AuthContext': { useAuth: () => account }, '../../config/firebase': { auth },
   });
@@ -136,7 +139,7 @@ function accountPrimitives(hooks) {
   return load('components/account/AccountPrimitives.js', {
     react: hooks.react, 'react-native': native, 'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     'expo-linear-gradient': { LinearGradient: 'Gradient' }, '../../contexts/ThemeContext': { useTheme: () => ({ theme }) },
-    '../../constants/Icons': icons, '../../utils/profileImage': profileImage, '../GlassCard': esm('GlassCard'), '../BrandLogo': esm('BrandLogo'),
+    '../../constants/Icons': icons, '../../utils/profileImage': profileImage, '../GlassCard': esm('GlassCard'), '../AppBackground': esm('AppBackground'), '../LogoLoader': esm('LogoLoader'), '../BrandLogo': esm('BrandLogo'),
   });
 }
 
@@ -151,8 +154,8 @@ test('restored account fields keep controlled values and provide accessible pass
   assert.equal(controls(tree, 'TextInput')[0].props.value, props.value);
   assert.equal(control(tree, 'TouchableOpacity', 'accessibilityLabel', 'Hide password').props.disabled, false);
   const screen = ui.AccountScreen({ title: 'Profile', children: 'Fixture' });
-  assert.equal(screen.type, 'Gradient');
-  assert.equal(screen.props.colors.length, 2);
+  const background = treeNodes(screen, false).find(node => node.type === 'AppBackground');
+  assert.equal(background.props.colors.length, 2);
   hooks.unmount();
 });
 
@@ -218,7 +221,8 @@ test('restored floating tabs preserve prevention, previous-tab return, long pres
   let prevent = false;
   const state = { routes: [{ name: 'Home', key: 'home' }, { name: 'Transactions', key: 'history' }, { name: 'AddTransaction', key: 'add' }], index: 1 };
   const Bar = load('navigation/SharedTabBar.js', {
-    react: hooks.react, 'react-native': { ...native, Keyboard: { isVisible: () => false, addListener: (event, fn) => {
+    '../components/AppBackground': backgroundColours, '../theme/fonts': { brandFontsReady: () => false },
+    react: hooks.react, 'react-native': { ...native, Animated: animatedMock(), Easing: { out: x => x, quad: x => x, cubic: x => x }, Keyboard: { isVisible: () => false, addListener: (event, fn) => {
       keyboard.set(event, fn); return { remove: () => keyboard.delete(event) };
     } } }, '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' }, 'expo-blur': { BlurView: 'Blur' },
     'expo-linear-gradient': { LinearGradient: 'Gradient' }, 'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 59, bottom: 34, left: 0, right: 0 }) },
@@ -303,6 +307,7 @@ test('restored prompt dialog forwards current input once and does not steal dism
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 59, bottom: 34, left: 0, right: 0 }) },
     '../contexts/ThemeContext': { useTheme: () => ({ theme, isDarkMode: false }) },
     './account/AccountPrimitives': { accountGradientColors: () => [theme.primary, theme.primaryLight] },
+    './GlassSurface': esm('GlassSurface'), './LogoLoader': esm('LogoLoader'),
   }).default;
   const props = { visible: true, type: 'confirm', title: 'Synthetic prompt', showInput: true, initialValue: 'initial',
     buttons: [{ text: 'Confirm', onPress: value => { submitted.push(value); return pending.promise; } }],
@@ -321,5 +326,34 @@ test('restored prompt dialog forwards current input once and does not steal dism
   assert.equal(dismissals, 0);
   render().props.onRequestClose();
   assert.equal(dismissals, 1);
+  hooks.unmount();
+});
+
+test('toasts sit over the top of the screen and drop in from above without blocking the page', () => {
+  const hooks = createHooks();
+  const Animated = animatedMock();
+  const Box = load('components/ThemedMessageBox.js', {
+    react: hooks.react, 'react-native': { ...native, Modal: 'Modal', Animated, useWindowDimensions: () => ({ width: 402, height: 874 }),
+      BackHandler: { addEventListener: () => ({ remove() {} }) } },
+    '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' }, 'expo-linear-gradient': { LinearGradient: 'Gradient' },
+    'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 59, bottom: 34, left: 0, right: 0 }) },
+    '../contexts/ThemeContext': { useTheme: () => ({ theme, isDarkMode: false }) },
+    './account/AccountPrimitives': { accountGradientColors: () => [theme.primary, theme.primaryLight] },
+    './GlassSurface': esm('GlassSurface'), './LogoLoader': esm('LogoLoader'),
+  }).default;
+  const tree = hooks.render(() => Box({ visible: true, type: 'success', title: 'Profile saved', message: 'Your profile details were saved.', autoHide: false }));
+  const flat = style => Object.assign({}, ...[style].flat(Infinity).filter(Boolean));
+  const overlay = flat(tree.props.style);
+  // A full-screen overlay pinned to the top edge, below the status bar / notch.
+  assert.deepEqual([overlay.position, overlay.top, overlay.left, overlay.right, overlay.bottom], ['absolute', 0, 0, 0, 0]);
+  assert.equal(overlay.justifyContent, 'flex-start');
+  assert.equal(overlay.paddingTop, 59 + 8);
+  assert.equal(tree.props.pointerEvents, 'box-none'); // the page underneath stays usable
+  // It springs down from above the screen edge on the native driver.
+  const toast = tree.props.children;
+  assert.deepEqual(Array.from(flat(toast.props.style).transform[0].translateY.interpolation.outputRange), [-120, 0]);
+  const entrance = Animated.started.at(-1);
+  assert.equal(entrance.useNativeDriver, true);
+  assert.ok('stiffness' in entrance);
   hooks.unmount();
 });

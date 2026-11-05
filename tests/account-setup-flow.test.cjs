@@ -50,7 +50,7 @@ async function setupHarness({ saveError = null } = {}) {
     const primitives = load('components/account/AccountPrimitives.js', {
       react: recoveryHooks.react, 'react-native': native, 'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
       'expo-linear-gradient': { LinearGradient: 'Gradient' }, '../../contexts/ThemeContext': { useTheme: () => ({ theme }) },
-      '../../constants/Icons': { Icon: 'Icon' }, '../../utils/profileImage': {}, '../GlassCard': esm('GlassCard'), '../BrandLogo': esm('BrandLogo'),
+      '../../constants/Icons': { Icon: 'Icon' }, '../../utils/profileImage': {}, '../GlassCard': esm('GlassCard'), '../AppBackground': esm('AppBackground'), '../LogoLoader': esm('LogoLoader'), '../BrandLogo': esm('BrandLogo'),
     });
     for (const name of ['AccountButton', 'AccountCard', 'AccountField', 'AccountRow', 'AccountScreen', 'AccountSection', 'AccountText']) primitives[name] = name;
     recovery = load('components/account/AccountRecovery.js', { react: recoveryHooks.react, 'react-native': native,

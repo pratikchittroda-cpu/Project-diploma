@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -7,6 +7,8 @@ import { Icon } from '../../constants/Icons';
 import { remoteProfileImage } from '../../utils/profileImage';
 import BrandLogo from '../BrandLogo';
 import GlassCard from '../GlassCard';
+import AppBackground from '../AppBackground';
+import LogoLoader from '../LogoLoader';
 
 const AccountTone = createContext(false);
 
@@ -32,7 +34,8 @@ export function AccountScreen({ title, navigation, children, subtitle, brand = f
     onPress={onBack || (() => navigation.goBack())} activeOpacity={0.8} style={styles.backButton}>
     <Icon name="arrow-left" size={24} color="#fff" />
   </TouchableOpacity> : <View style={styles.headerSpacer} />;
-  return <LinearGradient colors={backgroundColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.screen}>
+  return <View style={[styles.screen, { backgroundColor: backgroundColors[0] }]}>
+    <AppBackground colors={backgroundColors} />
     <StatusBar barStyle="light-content" backgroundColor={backgroundColors[0]} />
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -41,7 +44,7 @@ export function AccountScreen({ title, navigation, children, subtitle, brand = f
             contentContainerStyle={[styles.page, contentContainerStyle]}>
             {brand ? <View style={styles.brandHeader}>
               <View style={styles.brandBack}>{back}</View>
-              <View style={styles.brandLogo}><BrandLogo size={48} /></View>
+              <View style={[styles.brandLogo, { backgroundColor: theme.isDarkMode ? (theme.cardBackgroundElevated || '#f3f5ff') : '#f3f5ff' }]}><BrandLogo size={48} /></View>
               <Text accessibilityRole="header" style={styles.brandTitle}>{title}</Text>
               {!!subtitle && <Text style={styles.brandSubtitle}>{subtitle}</Text>}
             </View> : <View style={styles.header}>
@@ -58,7 +61,7 @@ export function AccountScreen({ title, navigation, children, subtitle, brand = f
         </AccountTone.Provider>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  </LinearGradient>;
+  </View>;
 }
 
 export function AccountText({ children, style, onGradient = false, ...props }) {
@@ -107,7 +110,7 @@ export function AccountButton({ title, onPress, disabled, busy, secondary, destr
   const { theme } = useTheme();
   const color = secondary ? (destructive ? (theme.isDarkMode ? '#FFB4AB' : '#B42318') : theme.text) : '#fff';
   const content = <>
-    {busy ? <ActivityIndicator color={color} /> : leading || (!!icon && <Icon name={icon} size={21} color={color} />)}
+    {busy ? <LogoLoader color={color} accessibilityLabel={`${title} in progress`} /> : leading || (!!icon && <Icon name={icon} size={21} color={color} />)}
     <Text style={[styles.buttonText, { color }, textStyle]}>{title}</Text>
   </>;
   return <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !!disabled || !!busy, busy: !!busy }} disabled={disabled || busy}

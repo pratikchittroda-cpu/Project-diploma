@@ -1,5 +1,6 @@
 'use strict';
 const { HttpError } = require('./validation');
+const PROVIDER_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 async function callProvider({ apiKey, messages, maxTokens = 900, fetchImpl = fetch, timeoutMs = 18000 }) {
   if (!apiKey) throw new HttpError(503, 'ai/not-configured', 'AI is unavailable.');
   const controller = new AbortController();
@@ -8,7 +9,7 @@ async function callProvider({ apiKey, messages, maxTokens = 900, fetchImpl = fet
     const response = await fetchImpl('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST', signal: controller.signal,
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'nvidia/nemotron-3-super-120b-a12b', messages, temperature: 0.2, max_tokens: Math.min(maxTokens, 900), stream: false }),
+      body: JSON.stringify({ model: PROVIDER_MODEL, messages, temperature: 0.2, max_tokens: Math.min(maxTokens, 900), stream: false }),
     });
     if (!response.ok) throw new HttpError(502, 'ai/unavailable', 'The assistant is temporarily unavailable.');
     // Bound the body before JSON parsing; provider error bodies are never read/logged.

@@ -27,7 +27,7 @@ function load(file, mocks = {}) {
 }
 const native = Object.fromEntries(['ActivityIndicator', 'Image', 'RefreshControl', 'ScrollView', 'StatusBar', 'Text', 'TextInput', 'TouchableOpacity', 'View'].map(name => [name, name]));
 native.Platform = { OS: 'ios' };
-native.StyleSheet = { create: value => value, absoluteFill: { position: 'absolute' }, absoluteFillObject: { position: 'absolute' } };
+native.StyleSheet = { create: value => value, absoluteFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 } };
 const icons = { Icon: 'Icon', AppIcons: { Profile: 'ProfileIcon', Income: 'IncomeIcon', Expense: 'ExpenseIcon' } };
 const theme = { primary: '#6755D7', primaryLight: '#3C74D8', text: '#171717', textSecondary: '#4A4A4A', background: '#FAFAFA',
   surface: '#FFFFFF', border: '#E5E7EB', warning: '#F59E0B', warningLight: '#FEF3C7', inputBackground: '#F5F5F5', primaryContainer: '#6755D720' };
@@ -47,7 +47,7 @@ const byId = (tree, id) => nodes(tree).find(node => node.props.testID === id);
 const button = (tree, label) => nodes(tree).find(node => node.props.accessibilityRole === 'button' && node.props.accessibilityLabel === label);
 const finance = load('utils/finance.js');
 const profileImage = load('utils/profileImage.js');
-function homeHarness(connected = false) {
+function homeHarness(connected = false, sharingOn = false) {
   let index = 0;
   const slots = [], refreshed = [], navigated = [], focusRefreshes = [];
   const react = { useCallback: fn => fn, useState: initial => {
@@ -62,6 +62,8 @@ function homeHarness(connected = false) {
     card: theme.surface, surface: theme.inputBackground, input: theme.inputBackground, selected: theme.border,
     income: '#157A45', expense: '#B52E43', warning: '#865200', accent: theme.primary, light: true });
   const entry = load('components/finance/HomeAIEntry.js', { react, 'react-native': native, '../../constants/Icons': icons,
+    '../../contexts/AuthContext': { useAuth: () => ({ user: { uid: 'fixture-owner' } }) },
+    '../../utils/aiConsent': { useStoredChatConsent: uid => (assert.equal(uid, 'fixture-owner'), sharingOn) },
     '../../config/releaseFeatures': { SERVER_FEATURES_ENABLED: false, AI_FEATURES_ENABLED: connected },
     '../../config/publicConfig': { API_BASE_URL: '', AI_API_BASE_URL: connected ? 'https://ai.example.test/api' : '' },
     './FinanceUI': { Card: 'Card', Copy: 'Text', useFinanceCardColors } }).default;
@@ -71,9 +73,10 @@ function homeHarness(connected = false) {
     '../../contexts/ThemeContext': { useTheme: () => ({ theme, isDarkMode: false }) },
     '../../contexts/AuthContext': { useAuth: () => ({ user: { uid: 'fixture-owner' }, userData: { fullName: 'Fixture User' } }) },
     '../../hooks/useTransactions': { useTransactions: () => ledger }, '../../hooks/useBudgets': { useBudgets: () => budgets },
-    '../../utils/finance': finance, '../../utils/profileImage': profileImage, '../GlassCard': esm('GlassCard'),
+    '../../utils/finance': finance, '../../utils/profileImage': profileImage, '../GlassCard': esm('GlassCard'), '../AppBackground': esm('AppBackground'), '../LogoLoader': esm('LogoLoader'),
     '../../utils/budgetRecommendations': { getBudgetRecommendations: () => [] }, '../BudgetAdvisor': esm('BudgetAdvisor'),
-    './FinanceUI': { useFinanceCardColors, useFocusRefresh: (_, refresh) => focusRefreshes.push(refresh) }, './HomeAIEntry': esm(entry),
+    './FinanceUI': { useFinanceCardColors, useFocusRefresh: (_, refresh) => focusRefreshes.push(refresh),
+      usePullRefresh: (onRefresh, refreshing) => ({ refreshing, onRefresh }), HIDDEN_REFRESH_SPINNER: { tintColor: 'transparent' }, RefreshLoader: 'RefreshLoader' }, './HomeAIEntry': esm(entry),
   }).default;
   return { Dashboard, entry, ledger, budgets, navigation, refreshed, navigated, focusRefreshes,
     render: () => { index = 0; return Dashboard({ navigation }); } };
@@ -92,14 +95,19 @@ test('personal Home keeps the FinanceAccount boundary while using the styled das
   assert.equal(tree.props.navigation, navigation);
 });
 
-test('styled Home shows overview then AI then recent transactions even with an empty ledger', () => {
+test('styled Home shows overview, AI, spending by category, then recent transactions even with an empty ledger', () => {
   const h = homeHarness(), tree = h.render();
-  assert.deepEqual(Array.from(nodes(tree).find(node => node.type === 'Gradient').props.colors), [theme.primary, theme.primaryLight]);
-  const content = nodes(tree).find(node => node.type === 'ScrollView').props.children;
+  assert.deepEqual(Array.from(nodes(tree).find(node => node.type === 'AppBackground').props.colors), [theme.primary, theme.primaryLight]);
+  // Empty slots (e.g. the refresh loader while idle) render nothing.
+  const content = [nodes(tree).find(node => node.type === 'ScrollView').props.children].flat().filter(Boolean);
   assert.ok(nodes(tree).find(node => node.type === 'ScrollView').props.contentContainerStyle.paddingBottom >= 160);
-  assert.equal(content[0].props.testID, 'home-overview');
-  assert.equal(content[1].type, h.entry);
-  assert.equal(content[2].props.testID, 'home-recent-transactions');
+  // Overview, AI, then spending by category; recent transactions come after the quick actions.
+  const order = content.flatMap(node => (node.type === 'Fragment' || typeof node.type === 'symbol') ? [node.props.children].flat().filter(Boolean) : [node]);
+  assert.equal(order[0].props.testID, 'home-overview');
+  assert.equal(order[1].type, h.entry);
+  assert.equal(order[2].props.testID, 'home-spending');
+  const ids = order.map(node => node.props?.testID);
+  assert.ok(ids.indexOf('home-recent-transactions') > ids.indexOf('home-spending'));
   assert.equal(text(byId(tree, 'home-balance')), '₹0.00');
   assert.match(text(tree), /No transactions yet/);
   assert.match(text(byId(tree, 'home-ai-entry')), /Ask Financial AI.*Setup required/);
@@ -190,7 +198,7 @@ test('styled Home retains the shared UID identity and theme loading guard', () =
   const { FinanceAccount } = load('components/finance/FinanceUI.js', { react: require('react'), 'react-native': native,
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' }, 'react-native-vector-icons/MaterialCommunityIcons': esm('Icon'),
     'expo-linear-gradient': { LinearGradient: 'Gradient' }, 'react-native-svg': { ...esm('Svg'), Circle: 'Circle' },
-    '../../constants/Icons': icons, '../GlassCard': esm('GlassCard'), '../../utils/finance': finance,
+    '../../constants/Icons': icons, '../GlassCard': esm('GlassCard'), '../AppBackground': esm('AppBackground'), '../LogoLoader': esm('LogoLoader'), '../../utils/finance': finance,
     '../../contexts/ThemeContext': { useTheme: () => palette }, '../../contexts/AuthContext': { useAuth: () => ({ user }) },
     '../../config/firebase': { auth },
   });
@@ -201,4 +209,15 @@ test('styled Home retains the shared UID identity and theme loading guard', () =
   assert.match(text(FinanceAccount({ component: 'PersonalDashboard' })), /Please sign in/);
   palette = { theme: null, isLoading: true };
   assert.ok(nodes(FinanceAccount({ component: 'PersonalDashboard' })).some(node => node.props.accessibilityLabel === 'Loading theme'));
+});
+
+test('the Home AI badge asks for consent only until it has been given once', () => {
+  for (const [sharingOn, badge, hint] of [[false, 'Consent required', /Review sharing and consent/], [true, 'Sharing on', /Data sharing is on for this account/]]) {
+    const h = homeHarness(true, sharingOn), tree = h.render();
+    const entry = byId(tree, 'home-ai-entry');
+    assert.match(text(entry), new RegExp(badge));
+    assert.match(entry.props.accessibilityHint, hint);
+    assert.match(entry.props.accessibilityHint, /No data is sent automatically/);
+  }
+  assert.match(text(byId(homeHarness(false, true).render(), 'home-ai-entry')), /Setup required/);
 });

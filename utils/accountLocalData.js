@@ -11,7 +11,8 @@ export const clearAccountLocalData = async (uid) => {
     const keys = await AsyncStorage.getAllKeys();
     const owned = keys.filter((key) => legacyKeys.includes(key) || (uid && (
       key.startsWith(`account:${uid}:`) || key === `ai-consent:${uid}` ||
-      (/^aiConsent:v[0-9]+:/.test(key) && key.replace(/^aiConsent:v[0-9]+:/, '') === uid)
+      // Remembered AI sharing consent (chat and transaction tools), one key per account.
+      (/^(aiConsent|aiToolsConsent):v[0-9]+:/.test(key) && key.replace(/^(aiConsent|aiToolsConsent):v[0-9]+:/, '') === uid)
     )));
     if (owned.length) await AsyncStorage.multiRemove(owned);
   } catch (_) { failures.push('preferences'); }

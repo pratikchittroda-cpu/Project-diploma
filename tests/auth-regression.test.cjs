@@ -345,12 +345,12 @@ test('account cleanup removes account preferences and legacy images but preserve
   let removed;
   const deleted = [];
   const { clearAccountLocalData } = load('utils/accountLocalData.js', {
-    '@react-native-async-storage/async-storage': { getAllKeys: async () => ['firebase:authUser', 'currentThemeId', 'account:owner:cache', 'account:other:cache', 'personal_recent_actions', 'company_recent_actions', 'aiConsent:v1:owner', 'aiConsent:v2:owner', 'aiConsent:v2:other', 'aiConsent:v2:owner2'],
+    '@react-native-async-storage/async-storage': { getAllKeys: async () => ['firebase:authUser', 'currentThemeId', 'account:owner:cache', 'account:other:cache', 'personal_recent_actions', 'company_recent_actions', 'aiConsent:v1:owner', 'aiConsent:v2:owner', 'aiConsent:v2:other', 'aiConsent:v2:owner2', 'aiConsent:v3:owner', 'aiToolsConsent:v1:owner', 'aiToolsConsent:v1:other', 'aiToolsConsent:v1:owner2'],
       multiRemove: async (keys) => { removed = keys; } },
     'expo-file-system/legacy': { documentDirectory: 'file:///documents/', cacheDirectory: 'file:///cache/', deleteAsync: async (directory) => deleted.push(directory) },
   });
   assert.equal((await clearAccountLocalData('owner')).success, true);
-  assert.deepEqual(Array.from(removed), ['account:owner:cache', 'personal_recent_actions', 'company_recent_actions', 'aiConsent:v1:owner', 'aiConsent:v2:owner']);
+  assert.deepEqual(Array.from(removed), ['account:owner:cache', 'personal_recent_actions', 'company_recent_actions', 'aiConsent:v1:owner', 'aiConsent:v2:owner', 'aiConsent:v3:owner', 'aiToolsConsent:v1:owner']);
   assert.ok(deleted.includes('file:///documents/profile-images/'));
 });
 

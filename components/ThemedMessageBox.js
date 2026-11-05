@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, BackHandler, KeyboardAvoidingView, Modal, Platform, ScrollView,
+import { Animated, BackHandler, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import { accountGradientColors } from './account/AccountPrimitives';
+import GlassSurface from './GlassSurface';
+import LogoLoader from './LogoLoader';
 
 export default function ThemedMessageBox({ visible, title, message, type = 'info', buttons = [], onDismiss,
   autoHide = false, autoHideDelay = 3000, showInput = false, initialValue = '', placeholder,
@@ -23,10 +25,13 @@ export default function ThemedMessageBox({ visible, title, message, type = 'info
   useEffect(() => {
     if (!visible) return;
     entrance.setValue(0);
-    const animation = Animated.timing(entrance, { toValue: 1, duration: 220, useNativeDriver: true });
+    // Toasts drop in from the top with a soft spring; dialogs fade/scale in.
+    const animation = isDialog
+      ? Animated.timing(entrance, { toValue: 1, duration: 220, useNativeDriver: true })
+      : Animated.spring(entrance, { toValue: 1, stiffness: 260, damping: 22, mass: 0.9, useNativeDriver: true });
     animation.start();
     return () => animation.stop();
-  }, [entrance, visible]);
+  }, [entrance, visible, isDialog]);
   useEffect(() => {
     if (!visible || !autoHide || type === 'confirm') return;
     const timer = setTimeout(() => onDismiss?.(), autoHideDelay);
@@ -63,7 +68,7 @@ export default function ThemedMessageBox({ visible, title, message, type = 'info
   const animationStyle = { opacity: entrance,
     transform: animationType === 'scale'
       ? [{ scale: entrance.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }]
-      : [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [animationType === 'slide' ? -24 : -8, 0] }) }],
+      : [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [!isDialog ? -120 : animationType === 'slide' ? -24 : -8, 0] }) }],
   };
   if (!visible) return null;
 
@@ -75,7 +80,8 @@ export default function ThemedMessageBox({ visible, title, message, type = 'info
   if (!isDialog) return <View pointerEvents="box-none" style={[styles.toastOverlay,
     { paddingTop: Math.max(insets.top, 12) + 8, paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16) }]}>
     <Animated.View accessibilityLiveRegion="polite" style={[styles.toast, animationStyle,
-      { backgroundColor: theme.surface || theme.background, borderColor: theme.border, maxHeight: height - insets.top - insets.bottom - 40 }]}>
+      { borderColor: theme.border, maxHeight: height - insets.top - insets.bottom - 40 }]}>
+      <GlassSurface color={theme.surface || theme.background} dark={theme.isDarkMode} borderRadius={36} />
       {icon}
       <ScrollView style={styles.toastText} showsVerticalScrollIndicator={false}>
         {!!title && <Text accessibilityRole="header" style={[styles.toastTitle, { color: theme.text }]}>{title}</Text>}
@@ -92,7 +98,8 @@ export default function ThemedMessageBox({ visible, title, message, type = 'info
       { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 24),
         paddingLeft: Math.max(insets.left, 24), paddingRight: Math.max(insets.right, 24) }]}>
       <Animated.View accessibilityViewIsModal style={[styles.card, animationStyle,
-        { backgroundColor: theme.surface || theme.background, borderColor: theme.border }]}>
+        { borderColor: theme.border }]}>
+        <GlassSurface color={theme.surface || theme.background} dark={theme.isDarkMode} borderRadius={32} />
         <ScrollView style={styles.dialogScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.dialogContent}>
           {icon}
           {!!title && <Text accessibilityRole="header" style={[styles.title, { color: theme.text }]}>{title}</Text>}
@@ -101,7 +108,7 @@ export default function ThemedMessageBox({ visible, title, message, type = 'info
             style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.inputBackground }]}
             value={input} onChangeText={setInput} placeholder={placeholder} placeholderTextColor={theme.textSecondary}
             secureTextEntry={secureTextEntry} autoCapitalize="none" autoCorrect={false} autoFocus keyboardType={keyboardType} editable={!busy} />}
-          {busy && <ActivityIndicator accessibilityLabel="Processing action" color={theme.primary} style={styles.spinner} />}
+          {busy && <LogoLoader size={30} accessibilityLabel="Processing action" color={theme.primary} style={styles.spinner} />}
           <View style={styles.buttons}>
             {buttons.length ? buttons.map((button, index) => {
               const cancel = button.style === 'cancel';
@@ -126,7 +133,7 @@ export default function ThemedMessageBox({ visible, title, message, type = 'info
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.35)' },
-  card: { borderRadius: 32, borderWidth: 1, width: '100%', maxWidth: 440, maxHeight: '100%',
+  card: { borderRadius: 32, borderWidth: 1, width: '100%', maxWidth: 440, maxHeight: '100%', overflow: 'hidden',
     elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 20 },
   dialogContent: { padding: 24, alignItems: 'center' },
   dialogScroll: { flexGrow: 0, flexShrink: 1 },
@@ -139,8 +146,9 @@ const styles = StyleSheet.create({
   buttons: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 6 },
   button: { flexGrow: 1, flexBasis: 120, padding: 14, borderRadius: 14, minHeight: 50, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   buttonText: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  toastOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', zIndex: 999, elevation: 40 },
-  toast: { flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: 600, borderRadius: 36,
+  // Pinned over the top of the screen (React Native 0.88 has no absoluteFillObject; use absoluteFill).
+  toastOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'flex-start', zIndex: 999, elevation: 40 },
+  toast: { flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: 600, borderRadius: 36, overflow: 'hidden',
     borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12, elevation: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.18, shadowRadius: 14 },
   toastText: { flex: 1 },

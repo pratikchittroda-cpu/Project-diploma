@@ -29,8 +29,10 @@ test('the tracked release boundary explicitly disables server features', () => {
 test('core app startup never registers backend App Check', () => {
   const calls = [];
   const app = load('App.js', {
-    react: { useEffect() {} }, 'react/jsx-runtime': jsxRuntime,
-    'react-native': { View: 'View', Text: 'Text', StatusBar: 'StatusBar' },
+    react: { useEffect() {}, useRef: current => ({ current }), useState: value => [value, () => {}] }, 'react/jsx-runtime': jsxRuntime,
+    'react-native': { View: 'View', Text: 'Text', StatusBar: 'StatusBar', Animated: { View: 'AnimatedView', Value: class {} },
+      StyleSheet: { absoluteFill: {} } },
+    './screens/personal/SplashScreen': { default: 'SplashScreen', __esModule: true },
     'expo-splash-screen': { preventAutoHideAsync: async () => {}, hideAsync: async () => {} },
     'react-native-screens': { enableFreeze() {}, enableScreens() {} },
     'react-native-safe-area-context': { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' },
@@ -42,6 +44,7 @@ test('core app startup never registers backend App Check', () => {
     './config/firebase': { firebaseConfigured: true },
     './config/releaseFeatures': releaseFeatures,
     './utils/appCheck': { registerBackendAppCheck: () => calls.push('register') },
+    './theme/fonts': { useAppFonts: () => true },
   }, { jsx: true });
   assert.equal(app.default().type, 'SafeAreaProvider');
   assert.deepEqual(calls, []);

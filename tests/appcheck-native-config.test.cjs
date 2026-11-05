@@ -7,6 +7,39 @@ const { disableAutomaticCollection } = require('../scripts/with-native-app-check
 const { verifyIosNativeSetup } = require('../scripts/sync-ios.cjs');
 const { prepareIosFirebase } = require('../scripts/ios-firebase-build.cjs');
 
+const reactNativeConfigPath = path.join(__dirname, '../react-native.config.js');
+
+function loadReactNativeConfig(nativeFiles = {}) {
+  const previous = {};
+  for (const name of ['GOOGLE_SERVICES_JSON', 'GOOGLE_SERVICES_PLIST']) {
+    previous[name] = process.env[name];
+    if (nativeFiles[name] === undefined) delete process.env[name];
+    else process.env[name] = nativeFiles[name];
+  }
+  delete require.cache[require.resolve(reactNativeConfigPath)];
+  const config = require(reactNativeConfigPath);
+  for (const name of ['GOOGLE_SERVICES_JSON', 'GOOGLE_SERVICES_PLIST']) {
+    if (previous[name] === undefined) delete process.env[name];
+    else process.env[name] = previous[name];
+  }
+  delete require.cache[require.resolve(reactNativeConfigPath)];
+  return config;
+}
+
+test('core builds do not autolink RNFirebase modules before a native Firebase app exists', () => {
+  const config = loadReactNativeConfig();
+  assert.deepEqual(config.dependencies['@react-native-firebase/app'].platforms, { android: null, ios: null });
+  assert.deepEqual(config.dependencies['@react-native-firebase/app-check'].platforms, { android: null, ios: null });
+});
+
+test('native Firebase files keep RNFirebase autolinking available for configured builds', () => {
+  const config = loadReactNativeConfig({ GOOGLE_SERVICES_JSON: '/eas/google-services.json' });
+  assert.deepEqual(config.dependencies['@react-native-firebase/app'].platforms, { ios: null });
+  assert.deepEqual(config.dependencies['@react-native-firebase/app-check'].platforms, { ios: null });
+  const complete = loadReactNativeConfig({ GOOGLE_SERVICES_JSON: '/eas/google-services.json', GOOGLE_SERVICES_PLIST: '/eas/GoogleService-Info.plist' });
+  assert.deepEqual(complete.dependencies, {});
+});
+
 test('Android manifest disables collection before native initialization and preserves other metadata', () => {
   const manifest = { manifest: { $: {}, application: [{ 'meta-data': [
     { $: { 'android:name': 'app_check_token_auto_refresh', 'android:value': 'true' } },

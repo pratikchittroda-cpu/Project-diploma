@@ -1,34 +1,34 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, StyleSheet } from 'react-native';
+import GlassSurface, { glassEdge } from './GlassSurface';
 import { useTheme } from '../contexts/ThemeContext';
 
 /**
- * Reusable glassmorphism card component
- * One themed surface on every platform; optional blur sits behind that surface.
+ * Reusable glass card: Expo Liquid Glass (GlassView) tinted with the card colour where iOS supports
+ * it, otherwise a blur/translucent tint (see GlassSurface). Pass glass={false} for a solid surface.
  */
 const GlassCard = ({
     children,
     style,
     intensity,
-    blur,
+    glass = true,
     backgroundColor,
     borderRadius = 20,
-    borderWidth = 0, // Removed border by default
+    borderWidth,
     padding = 16,
     ...props
 }) => {
     const { theme, isDarkMode } = useTheme();
     const dark = isDarkMode ?? theme.isDarkMode;
 
-    const blurIntensity = Number.isFinite(intensity) ? Math.max(0, Math.min(100, intensity)) : (dark ? 30 : 60);
-    const showBlur = blur ?? (Number.isFinite(intensity) && intensity > 0);
+    const blurIntensity = Number.isFinite(intensity) ? Math.max(0, Math.min(100, intensity)) : undefined;
     const resolvedStyle = StyleSheet.flatten([
         styles.container,
         {
             borderRadius,
-            borderWidth,
-            borderColor: theme.border,
+            // Glass panes get a thin light rim; solid cards keep the old border-less default.
+            borderWidth: borderWidth ?? (glass ? 1 : 0),
+            borderColor: glass ? glassEdge(dark) : theme.border,
             padding,
             backgroundColor: theme.cardBackground || theme.card || theme.surface,
         },
@@ -42,16 +42,9 @@ const GlassCard = ({
             style={containerStyle}
             {...props}
         >
-            {showBlur && blurIntensity > 0 && Platform.OS !== 'android' && <BlurView
-                intensity={blurIntensity}
-                tint={dark ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
-            />}
-            <View
-                pointerEvents="none"
-                style={[StyleSheet.absoluteFill, { backgroundColor: surfaceColor }]}
-            />
+            {glass
+                ? <GlassSurface color={surfaceColor} dark={dark} borderRadius={containerStyle.borderRadius} intensity={blurIntensity} />
+                : <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: surfaceColor }]} />}
             <View style={styles.content}>
                 {children}
             </View>

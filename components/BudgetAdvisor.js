@@ -76,7 +76,7 @@ const BudgetInsightCards = ({ recommendations, onDismiss }) => {
                         borderRadius={20}
                         padding={0}
                     >
-                        <View style={[styles.cardContent, { backgroundColor: theme.cardBackground || theme.card || theme.surface }]}>
+                        <View style={styles.cardContent}>
                             <View style={styles.cardHeader}>
                                 <View style={styles.titleRow}>
                                     <View style={[styles.iconContainer, { backgroundColor: `${getTypeColor(recommendation.type)}20` }]}>

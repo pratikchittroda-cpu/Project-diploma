@@ -65,14 +65,14 @@ test('Android adaptive artwork stays inside the circular launcher safe zone', as
   }
 });
 
-test('splash, welcome and personal/company auth headers show one shared logo on light/dark themes', () => {
+test('welcome and personal/company auth headers show one shared logo on light/dark themes', () => {
   const animation = () => ({ start() {}, stop() {} });
   const Animated = { View: 'AnimatedView', Value: class { interpolate({ outputRange }) { return outputRange[0]; } },
     spring: animation, timing: animation, sequence: animation, loop: animation };
   const environment = { ...native, Animated, Easing: { out: value => value, inOut: value => value } };
   const flatten = style => Object.assign({}, ...(Array.isArray(style) ? style : [style]));
   for (const currentTheme of [theme, { ...theme, isDarkMode: true }]) {
-    for (const file of ['screens/personal/SplashScreen.js', 'screens/personal/UserTypeScreen.js', 'components/account/AccountPrimitives.js']) {
+    for (const file of ['screens/personal/UserTypeScreen.js', 'components/account/AccountPrimitives.js']) {
       const hooks = createHooks();
       const useTheme = () => ({ theme: currentTheme, isLoading: false });
       const primitives = load('components/account/AccountPrimitives.js', {
@@ -80,7 +80,7 @@ test('splash, welcome and personal/company auth headers show one shared logo on 
         'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
         'expo-linear-gradient': { LinearGradient: 'Gradient' }, '../../contexts/ThemeContext': { useTheme },
         '../../constants/Icons': { Icon: 'Icon' }, '../../utils/profileImage': {},
-        '../GlassCard': esm('GlassCard'), '../BrandLogo': esm(BrandLogo),
+        '../GlassCard': esm('GlassCard'), '../AppBackground': esm('AppBackground'), '../LogoLoader': esm('LogoLoader'), '../BrandLogo': esm(BrandLogo),
       });
       const Screen = file.includes('AccountPrimitives') ? primitives.AccountScreen : load(file, {
         react: hooks.react, 'react-native': environment,
@@ -88,7 +88,8 @@ test('splash, welcome and personal/company auth headers show one shared logo on 
         'expo-linear-gradient': { LinearGradient: 'Gradient' }, '../../contexts/ThemeContext': { useTheme },
         '../../components/BrandLogo': esm(BrandLogo), '../../components/account/AccountPrimitives': primitives,
         'expo-splash-screen': { hideAsync: async () => {} }, '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
-        './SplashScreen': esm('SplashScreen'),
+        './SplashScreen': esm('SplashScreen'), '../../components/AppBackground': esm('AppBackground'), '../../components/LogoLoader': esm('LogoLoader'),
+        '../../components/GlassSurface': esm('GlassSurface'),
       }).default;
       const routes = [];
       for (const title of ['Expenzo', 'Expenzo Business']) {
@@ -107,6 +108,68 @@ test('splash, welcome and personal/company auth headers show one shared logo on 
       if (file.includes('UserType')) assert.deepEqual(routes, ['Login', 'CompanyLogin', 'Login', 'CompanyLogin']);
       hooks.unmount();
     }
+  }
+});
+
+test('animated splash draws the website mark in vector and hands off from the native launch colour', () => {
+  const svg = read('website/assets/expenzo-mark.svg').toString();
+  const markPaths = [...svg.matchAll(/<path[^>]*d="([^"]+)"/gi)].map(match => match[1].replace(/\s+/g, ''));
+  const started = [];
+  const timing = () => ({ start(callback) { if (callback) started.push(callback); }, stop() {} });
+  class Value { constructor(v) { this.v = v; } setValue(v) { this.v = v; } interpolate({ outputRange }) { return outputRange.at(-1); } }
+  const Animated = { View: 'AnimatedView', Text: 'AnimatedText', Value, createAnimatedComponent: () => 'AnimatedG',
+    timing, delay: timing, sequence: timing, parallel: timing, loop: timing };
+  const environment = { ...native, Animated, Easing: { bezier: () => x => x, out: x => x, inOut: x => x, quad: x => x, ease: x => x },
+    AccessibilityInfo: { isReduceMotionEnabled: async () => false } };
+  const svgMock = { __esModule: true, default: 'Svg', Path: 'Path', Defs: 'Defs', ClipPath: 'ClipPath', G: 'G', RadialGradient: 'RadialGradient', Stop: 'Stop', Circle: 'Circle' };
+  let fontState = [true, null];
+  const loadSplash = (hooks, isDarkMode, onHide) => load('screens/personal/SplashScreen.js', {
+    react: hooks.react, 'react-native': environment, 'react-native-svg': svgMock,
+    'expo-splash-screen': { hideAsync: async () => onHide() },
+    'expo-font': { useFonts: map => { assert.deepEqual(Object.keys(map), ['Syne_800ExtraBold', 'Manrope_800ExtraBold']); return fontState; } },
+    '@expo-google-fonts/syne/800ExtraBold': { Syne_800ExtraBold: 'syne.ttf' },
+    '@expo-google-fonts/manrope/800ExtraBold': { Manrope_800ExtraBold: 'manrope.ttf' },
+    '../../contexts/ThemeContext': { useTheme: () => ({ theme: { ...theme, isDarkMode } }) },
+  }).default;
+
+  // Until the brand fonts load, only the launch colour shows: no intro, native splash stays up.
+  fontState = [false, null];
+  started.length = 0;
+  const waiting = createHooks();
+  const pending = waiting.render(() => loadSplash(waiting, false, () => assert.fail('hid native splash early'))({}));
+  assert.equal(pending.props.onLayout, undefined);
+  assert.equal(pending.props.style[1].backgroundColor, '#F3F5FF');
+  assert.equal(started.length, 0);
+  waiting.unmount();
+  fontState = [true, null];
+
+  for (const [isDarkMode, background] of [[false, '#F3F5FF'], [true, '#0A0C17']]) {
+    const hooks = createHooks();
+    let hidden = 0;
+    const Screen = loadSplash(hooks, isDarkMode, () => { hidden++; });
+    let finished = 0;
+    started.length = 0;
+    const tree = hooks.render(() => Screen({ onFinish: () => { finished++; } }));
+    // The launch overlay waits for the intro: only a completed intro reports, and only once.
+    assert.equal(started.length, 1);
+    started[0]({ finished: false });
+    assert.equal(finished, 0);
+    started[0]({ finished: true }); started[0]({ finished: true });
+    assert.equal(finished, 1);
+    assert.equal(tree.props.style[1].backgroundColor, background);
+    const paths = treeNodes(tree).filter(node => node.type === 'Path');
+    const fills = new Map(paths.map(node => [node.props.d.replace(/\s+/g, ''), node.props.fill]));
+    for (const d of markPaths[0].match(/M[^M]+/g)) assert.equal(fills.get(d), '#3157FF', d);
+    assert.equal(fills.get(markPaths[1]), '#10121D');
+    const header = treeNodes(tree).find(node => node.props.accessibilityRole === 'header');
+    assert.equal(header.props.accessibilityLabel, 'Expenzo');
+    for (const letter of header.props.children) assert.equal(Object.assign({}, ...letter.props.style).fontFamily, 'Syne_800ExtraBold');
+    const tagline = treeNodes(tree).find(node => node.props.children === 'SMART FINANCE MANAGEMENT');
+    assert.equal(Object.assign({}, ...tagline.props.style).fontFamily, 'Manrope_800ExtraBold');
+    assert.ok(treeNodes(tree).some(node => node.props.accessibilityRole === 'progressbar' && node.props.accessibilityLabel === 'Loading your account'));
+    tree.props.onLayout(); tree.props.onLayout();
+    assert.equal(hidden, 1);
+    hooks.unmount();
   }
 });
 
