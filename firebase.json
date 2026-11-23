@@ -3,7 +3,7 @@
   "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
   "storage": { "rules": "storage.rules" },
   "hosting": {
-    "public": "website",
+    "public": "website-redesign",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/*.cjs"],
     "headers": [{ "source": "**", "headers": [
       { "key": "X-Content-Type-Options", "value": "nosniff" },
